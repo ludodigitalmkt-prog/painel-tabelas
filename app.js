@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// IMPORTAMOS AGORA AS FUNÇÕES DE EDITAR E EXCLUIR (doc, updateDoc, deleteDoc)
-import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
@@ -17,9 +16,10 @@ const db = initializeFirestore(app, { localCache: persistentLocalCache() });
 const auth = getAuth(app);
 
 let isAdmin = false;
-let abaAtual = 'corpo-clinico'; 
+let abaAtual = 'home'; 
 const EMAIL_GESTAO = "gestao@clinica.com";
 
+// DICIONÁRIO COMPLETO (Agora com as abas de Boletins!)
 const configuracaoAbas = {
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA'] },
     'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Código', 'Serviço', 'Observações'] },
@@ -33,10 +33,13 @@ const configuracaoAbas = {
     'emails': { titulo: 'E-mail', campos: ['Descrição do E-mail', 'Setor'] },
     'contatos-gerais': { titulo: 'Contato Geral', campos: ['Descrição (Lugar ou Pessoa)', 'Número'] },
     'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
-    'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] }
+    'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] },
+    // AQUI ESTÃO OS BOLETINS QUE ESTAVAM FALTANDO:
+    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Link do Arquivo ou Vídeo', 'Profissionais que Assinaram', 'Motivo ou Observação'] },
+    'boletins-privados': { titulo: 'Boletim Privado', campos: ['Para qual Colaborador?', 'Título do Documento', 'Link do Arquivo'] }
 };
 
-// Autenticação
+// Autenticação e Menu
 document.getElementById('btn-login').addEventListener('click', () => {
     signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('senha').value).catch(err => alert("Erro: " + err.message));
 });
@@ -49,7 +52,8 @@ onAuthStateChanged(auth, (user) => {
         isAdmin = (user.email === EMAIL_GESTAO);
         document.getElementById('user-role-badge').textContent = isAdmin ? "Gestão Administrador" : "Acesso Geral";
         if(isAdmin) document.getElementById('user-role-badge').classList.add('admin');
-        document.getElementById('btn-novo').style.display = isAdmin ? 'flex' : 'none';
+        
+        document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home') ? 'flex' : 'none';
         
         Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
     } else {
@@ -58,7 +62,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Navegação do Menu
+// Navegação
 document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
@@ -67,35 +71,30 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         abaAtual = btn.getAttribute('data-tab');
         document.getElementById(`tab-${abaAtual}`).style.display = 'block';
         document.getElementById('page-title').textContent = btn.textContent.trim();
-        if(abaAtual !== 'contatos') window.voltarSubAba();
+        
+        document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home') ? 'flex' : 'none';
+        if(abaAtual !== 'contatos' && window.voltarSubAba) window.voltarSubAba();
     });
 });
 
-// --- FUNÇÃO PARA ABRIR O MODAL (CRIAR OU EDITAR) ---
+// Modal Dinâmico
 const modal = document.getElementById('modal-cadastro');
 
 function abrirModal(colecao, docId = null, dadosAntigos = null) {
     const config = configuracaoAbas[colecao];
     document.getElementById('modal-title').textContent = docId ? `Editar ${config.titulo}` : `Novo(a) ${config.titulo}`;
-    
-    // Limpa ou preenche ID escondido e Cor
     document.getElementById('modal-doc-id').value = docId || "";
     document.getElementById('card-color').value = (dadosAntigos && dadosAntigos.corCard) ? dadosAntigos.corCard : "#8B252C";
 
-    // Cria os inputs dinamicamente
     let htmlCampos = '';
     config.campos.forEach(campo => {
         const valorAntigo = (dadosAntigos && dadosAntigos[campo]) ? dadosAntigos[campo] : '';
-        
-        if(colecao === 'consultas' && campo.includes('Tipo')) {
-            htmlCampos += `
-            <select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;">
-                <option value="">Selecione o Tipo...</option>
-                <option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option>
-                <option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option>
-                <option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option>
-                <option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option>
-            </select>`;
+        if(colecao === 'consultas' && campo === 'Tipo') {
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+        } else if (campo.includes('Data')) {
+            htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
+        } else if (campo.includes('Link')) {
+            htmlCampos += `<input type="url" id="input-${campo}" placeholder="Cole o link do Drive/Vídeo aqui" value="${valorAntigo}" class="form-input">`;
         } else {
             htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" value="${valorAntigo}" class="form-input">`;
         }
@@ -106,117 +105,138 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
     modal.style.display = 'flex';
 }
 
-// Botão Adicionar Novo (Abre Modal Vazio)
 document.getElementById('btn-novo').addEventListener('click', () => {
-    let abaParaCadastrar = abaAtual;
-    if(abaAtual === 'contatos') {
-        const subAba = document.getElementById('btn-novo').getAttribute('data-sub-aba');
-        if(!subAba) return alert("Abra uma categoria de contato primeiro!");
-        abaParaCadastrar = subAba;
-    }
-    abrirModal(abaParaCadastrar);
+    let aba = abaAtual;
+    if(aba === 'contatos') aba = document.getElementById('btn-novo').getAttribute('data-sub-aba') || alert("Abra uma categoria!");
+    if(aba !== 'contatos') abrirModal(aba);
 });
-
 document.getElementById('btn-fechar-modal').addEventListener('click', () => modal.style.display = 'none');
 
-// --- SALVAR DADOS (CRIAR OU ATUALIZAR) ---
 document.getElementById('btn-salvar-dados').addEventListener('click', async () => {
     if(!isAdmin) return;
     const colecaoNome = document.getElementById('btn-salvar-dados').getAttribute('data-colecao');
-    const docId = document.getElementById('modal-doc-id').value; // Pega o ID se estiver editando
+    const docId = document.getElementById('modal-doc-id').value;
     const config = configuracaoAbas[colecaoNome];
     
-    let dadosParaSalvar = {};
-    let temDado = false;
-
+    let dados = {};
     config.campos.forEach(campo => {
         const valor = document.getElementById(`input-${campo}`).value.trim();
-        if(valor) {
-            dadosParaSalvar[campo] = valor;
-            temDado = true;
-        }
+        if(valor) dados[campo] = valor;
     });
 
-    if(!temDado) return alert("Preencha pelo menos um campo!");
-
-    // Adiciona a cor escolhida aos dados
-    dadosParaSalvar.corCard = document.getElementById('card-color').value;
-
+    dados.corCard = document.getElementById('card-color').value;
+    
     document.getElementById('btn-salvar-dados').textContent = "Salvando...";
     try {
-        if (docId) {
-            // Se tem ID, Atualiza!
-            await updateDoc(doc(db, colecaoNome, docId), dadosParaSalvar);
-        } else {
-            // Se não tem ID, Cria novo!
-            await addDoc(collection(db, colecaoNome), dadosParaSalvar);
-        }
+        if (docId) await updateDoc(doc(db, colecaoNome, docId), dados);
+        else await addDoc(collection(db, colecaoNome), dados);
         modal.style.display = 'none';
-    } catch(e) {
-        alert("Erro ao salvar: " + e);
-    }
+    } catch(e) { alert("Erro: " + e); }
     document.getElementById('btn-salvar-dados').textContent = "Salvar Dados";
 });
 
-// --- DELETAR E ABRIR EDIÇÃO (Ouvinte de cliques no painel) ---
-// Escutamos os cliques na tela toda. Se clicar no ícone de lixo ou lápis, aciona a função.
+// Ações nos Cards (Excluir, Editar, Assinar)
 document.querySelector('.main-content').addEventListener('click', async (e) => {
     const btnExcluir = e.target.closest('.btn-delete');
     const btnEditar = e.target.closest('.btn-edit');
+    const btnAssinar = e.target.closest('.btn-assinar');
 
-    if (btnExcluir && isAdmin) {
-        if(confirm("Tem certeza que deseja EXCLUIR permanentemente este cadastro?")) {
-            await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
-        }
+    if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) {
+        await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
     }
-
     if (btnEditar && isAdmin) {
-        const dados = JSON.parse(btnEditar.dataset.info);
-        abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, dados);
+        abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+    }
+    
+    // Função de Assinatura do Boletim
+    if (btnAssinar && isAdmin) {
+        const idDoc = btnAssinar.dataset.id;
+        const colecao = btnAssinar.dataset.colecao;
+        const inputNome = document.getElementById(`leitor-${idDoc}`).value.trim();
+        
+        if(!inputNome) return alert("Digite o nome de quem leu!");
+        
+        const dataHoje = new Date().toLocaleString('pt-BR');
+        const registro = `${inputNome} (Lido em: ${dataHoje})`;
+        
+        await updateDoc(doc(db, colecao, idDoc), {
+            leituras: arrayUnion(registro)
+        });
+        
+        document.getElementById(`leitor-${idDoc}`).value = ''; // Limpa o campo
     }
 });
 
-// --- RENDERIZADOR UNIVERSAL DE CARDS ---
+// --- RENDERIZADOR UNIVERSAL (Ordem Alfabética e Cores) ---
 function renderizarCards(colecaoNome) {
-    const gridId = `grid-${colecaoNome}`;
-    const grid = document.getElementById(gridId);
+    const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid) return;
 
     onSnapshot(collection(db, colecaoNome), (snapshot) => {
         grid.innerHTML = '';
         if(snapshot.empty) return;
 
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            const docId = doc.id; // Pegamos o ID exclusivo do Firebase
-            const campoTitulo = configuracaoAbas[colecaoNome].campos[0];
+        let itens = [];
+        snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() }));
+
+        const campoTitulo = configuracaoAbas[colecaoNome].campos[0];
+        itens.sort((a, b) => {
+            const tituloA = a.data[campoTitulo] ? a.data[campoTitulo].toUpperCase() : "";
+            const tituloB = b.data[campoTitulo] ? b.data[campoTitulo].toUpperCase() : "";
+            return tituloA.localeCompare(tituloB);
+        });
+
+        itens.forEach((item) => {
+            const data = item.data;
+            const docId = item.id;
             
-            // Aqui aplicamos a Borda Colorida Elegante baseada na cor escolhida!
-            const corEscolhida = data.corCard || "transparent";
-            let cardHtml = `<div class="card" style="display:flex; flex-direction:column; gap:8px; border-left: 6px solid ${corEscolhida};">`;
+            const corEscolhida = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+            // Aplica a cor translúcida no fundo se uma cor foi escolhida
+            const fundoColorido = corEscolhida !== "#ffffff" ? corEscolhida + "1A" : "var(--surface-color)";
             
-            if (data[campoTitulo]) {
-                cardHtml += `<div class="card-title" style="margin-bottom:10px; font-size:18px; color:var(--text-main); font-weight:600;">${data[campoTitulo]}</div>`;
-            }
+            let cardHtml = `<div class="card" style="display:flex; flex-direction:column; gap:8px; border-left: 6px solid ${corEscolhida}; background-color: ${fundoColorido};">`;
+            
+            if (data[campoTitulo]) cardHtml += `<div class="card-title" style="margin-bottom:10px; font-size:18px; color:var(--text-main); font-weight:600;">${data[campoTitulo]}</div>`;
             
             for (const [chave, valor] of Object.entries(data)) {
-                if (chave !== campoTitulo && chave !== 'corCard') { // Não imprimimos o código da cor no texto
-                    cardHtml += `<div class="card-info" style="font-size:14px; color:var(--text-muted);"><strong style="color:var(--text-main)">${chave}:</strong> ${valor}</div>`;
+                if (chave !== campoTitulo && chave !== 'corCard' && chave !== 'leituras') {
+                    if(chave.includes('Link')) {
+                        cardHtml += `<div class="boletim-media"><a href="${valor}" target="_blank" style="display: inline-block; background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 13px; margin-top: 10px;"><i class="ri-external-link-line"></i> Acessar Material</a></div>`;
+                    } else {
+                        cardHtml += `<div class="card-info" style="font-size:14px; color:var(--text-main);"><strong style="color:var(--primary-color)">${chave}:</strong> ${valor}</div>`;
+                    }
                 }
             }
             
-            // Adiciona os botões de Ação apenas se for a Gestão
-            if (isAdmin) {
-                // Prepara os dados para mandar para o Modal de Edição de forma segura
-                const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+            // Área de Check de Boletins
+            if(colecaoNome.includes('boletim')) {
+                cardHtml += `<div class="leituras-lista" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color); font-size: 13px;"><strong>Status de Leitura:</strong>`;
+                if(data.leituras && data.leituras.length > 0) {
+                    data.leituras.forEach(leitura => {
+                        cardHtml += `<div class="leitura-item" style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.6); padding: 6px 10px; border-radius: 6px; margin-top: 6px;"><i class="ri-check-double-line" style="color:#38a169;"></i> <span style="color: #38a169; font-weight: 600;">${leitura}</span></div>`;
+                    });
+                } else {
+                    cardHtml += `<div style="color:var(--text-muted); font-size: 12px; margin-top:5px;">Ninguém assinou ainda.</div>`;
+                }
                 
-                cardHtml += `
-                <div class="card-actions">
-                    <button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${dadosSeguros}" title="Editar informações"><i class="ri-pencil-line"></i></button>
-                    <button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button>
-                </div>`;
+                if(isAdmin) {
+                    cardHtml += `
+                    <div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 10px;">
+                        <input type="text" id="leitor-${docId}" placeholder="Nome de quem leu..." style="flex:1; padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px;">
+                        <button class="btn-action btn-assinar" data-id="${docId}" data-colecao="${colecaoNome}" style="background:var(--primary-color); color:white; padding:4px 10px; border-radius:4px; cursor:pointer;"><i class="ri-check-line"></i> Assinar</button>
+                    </div>`;
+                }
+                cardHtml += `</div>`;
             }
             
+            if (isAdmin) {
+                const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                cardHtml += `
+                <div class="card-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                    <button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${dadosSeguros}" title="Editar" style="background: none; border: none; cursor: pointer; font-size: 18px; color: #3182ce;"><i class="ri-pencil-line"></i></button>
+                    <button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir" style="background: none; border: none; cursor: pointer; font-size: 18px; color: #e53e3e;"><i class="ri-delete-bin-line"></i></button>
+                </div>`;
+            }
             cardHtml += `</div>`;
             grid.innerHTML += cardHtml;
         });
