@@ -27,15 +27,20 @@
         <aside class="sidebar">
             <div class="sidebar-header"><img src="logo.png" alt="Logo" class="sidebar-logo"></div>
             <nav class="sidebar-nav">
-                <button class="nav-btn active" data-tab="corpo-clinico"><i class="ri-team-line"></i> Corpo Clínico</button>
-                <button class="nav-btn" data-tab="convenios"><i class="ri-article-line"></i> Convênios e Liberações</button>
+                <button class="nav-btn active" data-tab="home"><i class="ri-home-4-line"></i> Início</button>
+                
+                <button class="nav-btn" data-tab="corpo-clinico"><i class="ri-team-line"></i> Corpo Clínico</button>
+                <button class="nav-btn" data-tab="convenios"><i class="ri-article-line"></i> Convênios</button>
                 <button class="nav-btn" data-tab="ultrassom"><i class="ri-pulse-line"></i> Ultrassom</button>
-                <button class="nav-btn" data-tab="consultas"><i class="ri-stethoscope-line"></i> Consultas/Procedimentos</button>
+                <button class="nav-btn" data-tab="consultas"><i class="ri-stethoscope-line"></i> Consultas</button>
                 <button class="nav-btn" data-tab="pacotes"><i class="ri-first-aid-kit-line"></i> Pacotes PS</button>
                 <button class="nav-btn" data-tab="exames-imagem"><i class="ri-body-scan-line"></i> Exames Imagem</button>
                 <button class="nav-btn" data-tab="institutos"><i class="ri-building-line"></i> Institutos</button>
                 <button class="nav-btn" data-tab="contatos"><i class="ri-contacts-book-line"></i> Contatos Úteis</button>
                 <button class="nav-btn" data-tab="remocoes"><i class="ri-ambulance-line"></i> Remoções</button>
+                
+                <button class="nav-btn" data-tab="boletins" style="margin-top: 15px; border-top: 1px solid #eee; border-radius: 0; padding-top: 15px;"><i class="ri-newspaper-line"></i> Boletins Gerais</button>
+                <button class="nav-btn" data-tab="boletins-privados"><i class="ri-user-star-line"></i> Área do Colaborador</button>
             </nav>
             <div class="sidebar-footer"><button id="btn-logout" class="nav-btn logout-btn"><i class="ri-logout-box-r-line"></i> Sair</button></div>
         </aside>
@@ -43,13 +48,38 @@
         <main class="main-content">
             <header class="top-header">
                 <div>
-                    <h1 id="page-title">Corpo Clínico</h1>
+                    <h1 id="page-title">Início</h1>
                     <p id="user-role-badge" class="badge">Visualização</p>
                 </div>
                 <button id="btn-novo" class="btn-primary" style="display: none;"><i class="ri-add-line"></i> Adicionar Novo</button>
             </header>
 
-            <section id="tab-corpo-clinico" class="tab-content active"><div class="cards-grid" id="grid-corpo-clinico"></div></section>
+            <section id="tab-home" class="tab-content active">
+                <h2 style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted);">Acesso Rápido</h2>
+                <div class="home-grid">
+                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\'boletins\']').click()">
+                        <div class="shortcut-icon"><i class="ri-alarm-warning-line"></i></div>
+                        <div class="shortcut-title">Informativos Urgentes</div>
+                    </div>
+                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\'corpo-clinico\']').click()">
+                        <div class="shortcut-icon"><i class="ri-team-fill"></i></div>
+                        <div class="shortcut-title">Corpo Clínico</div>
+                    </div>
+                    <div class="shortcut-card" onclick="abrirSubAba('ramais'); document.querySelector('[data-tab=\'contatos\']').click();">
+                        <div class="shortcut-icon"><i class="ri-phone-fill"></i></div>
+                        <div class="shortcut-title">Ramais Internos</div>
+                    </div>
+                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\'boletins-privados\']').click()">
+                        <div class="shortcut-icon"><i class="ri-folder-user-line"></i></div>
+                        <div class="shortcut-title">Meus Boletins</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-boletins" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-boletins"></div></section>
+            <section id="tab-boletins-privados" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-boletins-privados"></div></section>
+
+            <section id="tab-corpo-clinico" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-corpo-clinico"></div></section>
             <section id="tab-convenios" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-convenios"></div></section>
             <section id="tab-ultrassom" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-ultrassom"></div></section>
             <section id="tab-consultas" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-consultas"></div></section>
@@ -84,9 +114,7 @@
             
             <div class="modal-body">
                 <input type="hidden" id="modal-doc-id">
-                
                 <div id="modal-form-area"></div>
-                
                 <div style="margin-top: 15px; text-align: left;">
                     <label for="card-color" style="font-size: 13px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 5px;">Cor de Identificação (Opcional):</label>
                     <input type="color" id="card-color" value="#8B252C" style="width: 100%; height: 45px; border: none; border-radius: 8px; cursor: pointer; padding: 0; background: none;">
@@ -99,10 +127,9 @@
 
     <script type="module" src="app.js"></script>
     <script>
-      // Funções para a aba de contatos abrirem e fecharem (Global)
       function abrirSubAba(subAbaId) {
           document.getElementById('menu-contatos').style.display = 'none';
-          document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId); // Diz ao botão novo onde estamos
+          document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId);
           document.getElementById('sub-' + subAbaId).style.display = 'block';
       }
       function voltarSubAba() {
