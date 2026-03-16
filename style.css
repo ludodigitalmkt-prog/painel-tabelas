@@ -289,3 +289,38 @@ body {
     margin-bottom: 15px;
     font-size: 14px;
 }
+/* --- BOTÕES DE AÇÃO DOS CARDS (EDITAR/EXCLUIR) --- */
+.card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 15px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.btn-edit {
+    color: #3182ce;
+}
+
+.btn-edit:hover {
+    background-color: #ebf8ff;
+}
+
+.btn-delete {
+    color: #e53e3e;
+}
+
+.btn-delete:hover {
+    background-color: #fff5f5;
+}
