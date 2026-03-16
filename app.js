@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// SUAS CREDENCIAIS APLICADAS
 const firebaseConfig = {
   apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
   authDomain: "painel-tabelas.firebaseapp.com",
@@ -16,137 +15,164 @@ const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { localCache: persistentLocalCache() });
 const auth = getAuth(app);
 
-// ELEMENTOS DA TELA
-const loginScreen = document.getElementById('login-screen');
-const dashboardScreen = document.getElementById('dashboard-screen');
-const btnLogin = document.getElementById('btn-login');
-const btnLogout = document.getElementById('btn-logout');
-const emailInput = document.getElementById('email');
-const senhaInput = document.getElementById('senha');
-const userRoleBadge = document.getElementById('user-role-badge');
-const btnNovo = document.getElementById('btn-novo');
-
-// ELEMENTOS DO MODAL
-const modalMedico = document.getElementById('modal-medico');
-const btnFecharModal = document.getElementById('btn-fechar-modal');
-const btnSalvarMedico = document.getElementById('btn-salvar-medico');
-
-// VARIÁVEL DE CONTROLE DE ACESSO
 let isAdmin = false;
-const EMAIL_GESTAO = "gestao@clinica.com"; // <-- CRIE ESTE EMAIL NO FIREBASE PARA SER O ADMIN
+let abaAtual = 'corpo-clinico'; 
+const EMAIL_GESTAO = "gestao@clinica.com";
 
-// LOGIN E LOGOUT
-btnLogin.addEventListener('click', () => {
-    signInWithEmailAndPassword(auth, emailInput.value, senhaInput.value)
-    .catch((error) => alert("Erro ao entrar: " + error.message));
+// Dicionário de Formulários (Quais campos aparecem em qual aba)
+const configuracaoAbas = {
+    'corpo-clinico': { titulo: 'Médico', campos: ['Nome/Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA'] },
+    'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Código', 'Serviço', 'Observações'] },
+    'ultrassom': { titulo: 'Ultrassom', campos: ['Código', 'Exame', 'Profissional', 'Restrição de Idade', 'Observação'] },
+    'consultas': { titulo: 'Consulta/Procedimento', campos: ['Código', 'Tipo (Consulta, Exame, Pacote, Outros)', 'Descrição', 'Observações'] },
+    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor/Informação', 'O que está incluso', 'Observações', 'Pacotes', 'Kit'] },
+    'exames-imagem': { titulo: 'Exame de Imagem', campos: ['Código', 'Descrição', 'Valor', 'Prazo de Laudo', 'Onde encontrar resultado', 'Observações', 'Convênios'] },
+    'institutos': { titulo: 'Instituto', campos: ['Número da Tabela', 'Profissional', 'Especialidade', 'Restrição de Idade', 'CRM', 'CBO', 'URA', 'Outros'] },
+    'remocoes': { titulo: 'Remoção', campos: ['Nome do Lugar', 'Números (Separe por vírgula)', 'Local/Link Maps', 'Observações Importantes'] },
+    // Sub-abas de contatos
+    'ramais': { titulo: 'Ramal', campos: ['Local/Prédio', 'Setor', 'Número do Ramal', 'Observações'] },
+    'emails': { titulo: 'E-mail', campos: ['Descrição do E-mail', 'Setor'] },
+    'contatos-gerais': { titulo: 'Contato Geral', campos: ['Descrição (Lugar/Pessoa)', 'Número'] },
+    'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
+    'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio/Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] }
+};
+
+// Autenticação
+document.getElementById('btn-login').addEventListener('click', () => {
+    signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('senha').value)
+    .catch(err => alert("Erro: " + err.message));
 });
+document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
 
-btnLogout.addEventListener('click', () => signOut(auth));
-
-// CONTROLE DE SESSÃO E PERMISSÕES
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        loginScreen.style.display = 'none';
-        dashboardScreen.style.display = 'flex';
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard-screen').style.display = 'flex';
+        isAdmin = (user.email === EMAIL_GESTAO);
+        document.getElementById('user-role-badge').textContent = isAdmin ? "Gestão Administrador" : "Acesso Geral";
+        if(isAdmin) document.getElementById('user-role-badge').classList.add('admin');
+        document.getElementById('btn-novo').style.display = isAdmin ? 'flex' : 'none';
         
-        // Verifica se é o email da Gestão
-        if(user.email === EMAIL_GESTAO) {
-            isAdmin = true;
-            userRoleBadge.textContent = "Gestão Administrador";
-            userRoleBadge.classList.add('admin');
-            btnNovo.style.display = 'flex'; // Mostra botão de adicionar
-        } else {
-            isAdmin = false;
-            userRoleBadge.textContent = "Acesso Geral (Apenas Visualização)";
-            userRoleBadge.classList.remove('admin');
-            btnNovo.style.display = 'none'; // Esconde botão de adicionar
-        }
-        
-        carregarCorpoClinico(); // Carrega os dados quando loga
+        // Carrega todas as abas automaticamente ao logar
+        Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
     } else {
-        loginScreen.style.display = 'flex';
-        dashboardScreen.style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('dashboard-screen').style.display = 'none';
     }
 });
 
-// NAVEGAÇÃO ENTRE ABAS (Menu Lateral)
+// Navegação do Menu
 document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        // Remove active de todos
         document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        
-        // Adiciona active no clicado
         btn.classList.add('active');
-        const tabId = btn.getAttribute('data-tab');
-        document.getElementById(`tab-${tabId}`).style.display = 'block';
-        
-        // Muda o título da página
+        abaAtual = btn.getAttribute('data-tab');
+        document.getElementById(`tab-${abaAtual}`).style.display = 'block';
         document.getElementById('page-title').textContent = btn.textContent.trim();
+        
+        // Se saiu de contatos, reseta as sub-abas
+        if(abaAtual !== 'contatos') window.voltarSubAba();
     });
 });
 
-// ABRIR E FECHAR MODAL
-btnNovo.addEventListener('click', () => modalMedico.style.display = 'flex');
-btnFecharModal.addEventListener('click', () => modalMedico.style.display = 'none');
+// --- LÓGICA DO MODAL DINÂMICO ---
+const modal = document.getElementById('modal-cadastro');
 
-// SALVAR NOVO MÉDICO NO FIREBASE
-btnSalvarMedico.addEventListener('click', async () => {
-    if(!isAdmin) return; // Segurança extra
+document.getElementById('btn-novo').addEventListener('click', () => {
+    let abaParaCadastrar = abaAtual;
     
-    const nome = document.getElementById('medico-nome').value;
-    const especialidade = document.getElementById('medico-especialidade').value;
-    const crm = document.getElementById('medico-crm').value;
-
-    if(!nome || !especialidade) return alert("Preencha os campos obrigatórios!");
-
-    btnSalvarMedico.textContent = "Salvando...";
-    
-    try {
-        await addDoc(collection(db, "corpo_clinico"), {
-            nome: nome,
-            especialidade: especialidade,
-            crm: crm
-        });
-        
-        // Limpa form e fecha modal
-        document.getElementById('medico-nome').value = '';
-        document.getElementById('medico-especialidade').value = '';
-        document.getElementById('medico-crm').value = '';
-        modalMedico.style.display = 'none';
-        btnSalvarMedico.textContent = "Salvar Dados";
-        
-    } catch (e) {
-        alert("Erro ao salvar: " + e);
-        btnSalvarMedico.textContent = "Salvar Dados";
+    // Se estiver na aba contatos, pega qual sub-aba está aberta
+    if(abaAtual === 'contatos') {
+        const subAba = document.getElementById('btn-novo').getAttribute('data-sub-aba');
+        if(!subAba) return alert("Abra uma categoria de contato primeiro!");
+        abaParaCadastrar = subAba;
     }
+
+    const config = configuracaoAbas[abaParaCadastrar];
+    document.getElementById('modal-title').textContent = `Novo(a) ${config.titulo}`;
+    
+    // Cria os inputs dinamicamente com base na lista de campos
+    let htmlCampos = '';
+    config.campos.forEach(campo => {
+        // Se a aba for Consultas e o campo for Tipo, cria um select
+        if(abaParaCadastrar === 'consultas' && campo.includes('Tipo')) {
+            htmlCampos += `
+            <select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;">
+                <option value="">Selecione o Tipo...</option>
+                <option value="Consulta">Consulta</option>
+                <option value="Exame">Exame</option>
+                <option value="Pacotes">Pacotes</option>
+                <option value="Outros">Outros</option>
+            </select>`;
+        } else {
+            htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" class="form-input">`;
+        }
+    });
+    
+    document.getElementById('modal-form-area').innerHTML = htmlCampos;
+    document.getElementById('btn-salvar-dados').setAttribute('data-colecao', abaParaCadastrar);
+    modal.style.display = 'flex';
 });
 
-// CARREGAR DADOS DO BANCO EM TEMPO REAL
-function carregarCorpoClinico() {
-    const grid = document.getElementById('grid-medicos');
+document.getElementById('btn-fechar-modal').addEventListener('click', () => modal.style.display = 'none');
+
+// Salvar Dados
+document.getElementById('btn-salvar-dados').addEventListener('click', async () => {
+    if(!isAdmin) return;
+    const colecaoNome = document.getElementById('btn-salvar-dados').getAttribute('data-colecao');
+    const config = configuracaoAbas[colecaoNome];
     
-    // onSnapshot atualiza a tela na hora se alguém adicionar ou alterar algo
-    onSnapshot(collection(db, "corpo_clinico"), (snapshot) => {
-        grid.innerHTML = ''; // Limpa a tela
-        
-        if(snapshot.empty) {
-            grid.innerHTML = '<p class="loading-text">Nenhum profissional cadastrado ainda.</p>';
-            return;
+    let dadosParaSalvar = {};
+    let temDado = false;
+
+    // Coleta os valores digitados
+    config.campos.forEach(campo => {
+        const valor = document.getElementById(`input-${campo}`).value.trim();
+        if(valor) {
+            dadosParaSalvar[campo] = valor;
+            temDado = true;
         }
+    });
+
+    if(!temDado) return alert("Preencha pelo menos um campo!");
+
+    document.getElementById('btn-salvar-dados').textContent = "Salvando...";
+    try {
+        await addDoc(collection(db, colecaoNome), dadosParaSalvar);
+        modal.style.display = 'none';
+    } catch(e) {
+        alert("Erro ao salvar: " + e);
+    }
+    document.getElementById('btn-salvar-dados').textContent = "Salvar Dados";
+});
+
+// --- RENDERIZADOR UNIVERSAL DE CARDS ---
+// Esta função lê do Firebase e só mostra os campos que foram preenchidos
+function renderizarCards(colecaoNome) {
+    const gridId = `grid-${colecaoNome}`;
+    const grid = document.getElementById(gridId);
+    if(!grid) return; // Segurança
+
+    onSnapshot(collection(db, colecaoNome), (snapshot) => {
+        grid.innerHTML = '';
+        if(snapshot.empty) return;
 
         snapshot.forEach((doc) => {
-            const medico = doc.data();
+            const data = doc.data();
+            let cardHtml = `<div class="card" style="display:flex; flex-direction:column; gap:8px;">`;
             
-            // Cria o HTML do Cardzinho
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="card-title">${medico.nome}</div>
-                <div class="card-subtitle">${medico.especialidade}</div>
-                <div class="card-info">CRM: ${medico.crm || 'N/A'}</div>
-            `;
-            grid.appendChild(card);
+            // Loop automático por todos os campos preenchidos no Firebase
+            for (const [chave, valor] of Object.entries(data)) {
+                // A primeira chave que encontrar fica como título (maior)
+                if(chave === configuracaoAbas[colecaoNome].campos[0]) {
+                    cardHtml = `<div class="card"><div class="card-title" style="margin-bottom:10px;">${valor}</div>` + cardHtml.replace('<div class="card"', '');
+                } else {
+                    cardHtml += `<div class="card-info"><strong style="color:var(--primary-color)">${chave}:</strong> ${valor}</div>`;
+                }
+            }
+            cardHtml += `</div>`;
+            grid.innerHTML += cardHtml;
         });
     });
 }
