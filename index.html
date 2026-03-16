@@ -3,48 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Consultas</title>
+    <title>Painel Clínico</title>
     
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8B252C">
     
-    <meta name="theme-color" content="#0056b3">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="login-screen" class="screen">
-        <div class="login-box">
+        <div class="login-box glass-effect">
             <img src="logo.png" alt="Logo" class="login-logo">
             <h2>Acesso ao Sistema</h2>
-            <input type="email" id="email" placeholder="E-mail" required>
-            <input type="password" id="senha" placeholder="Senha" required>
-            <button id="btn-login">Entrar</button>
+            <p class="subtitle">Faça login para continuar</p>
+            <div class="input-group">
+                <i class="ri-mail-line"></i>
+                <input type="email" id="email" placeholder="E-mail" required>
+            </div>
+            <div class="input-group">
+                <i class="ri-lock-line"></i>
+                <input type="password" id="senha" placeholder="Senha" required>
+            </div>
+            <button id="btn-login" class="btn-primary">Entrar no Painel</button>
         </div>
     </div>
 
     <div id="dashboard-screen" class="screen" style="display: none;">
-        <header>
-            <img src="logo.png" alt="Logo" class="header-logo">
-            <h1>Painel Principal</h1>
-            <button id="btn-logout">Sair</button>
-        </header>
         
-        <main>
-            <p>Bem-vindo ao sistema de consultas.</p>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="Logo" class="sidebar-logo">
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-tab="corpo-clinico">
+                    <i class="ri-team-line"></i> Corpo Clínico
+                </button>
+                <button class="nav-btn" data-tab="procedimentos">
+                    <i class="ri-heart-pulse-line"></i> Procedimentos
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="nav-btn logout-btn">
+                    <i class="ri-logout-box-r-line"></i> Sair
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1 id="page-title">Corpo Clínico</h1>
+                    <p id="user-role-badge" class="badge">Visualização</p>
+                </div>
+                <button id="btn-novo" class="btn-primary" style="display: none;">
+                    <i class="ri-add-line"></i> Adicionar Novo
+                </button>
+            </header>
+
+            <section id="tab-corpo-clinico" class="tab-content active">
+                <div class="cards-grid" id="grid-medicos">
+                    <div class="loading-text">Carregando dados...</div>
+                </div>
+            </section>
+
+            <section id="tab-procedimentos" class="tab-content" style="display: none;">
+                <div class="cards-grid" id="grid-procedimentos">
+                    <div class="loading-text">Módulo em construção...</div>
+                </div>
+            </section>
         </main>
+    </div>
+
+    <div id="modal-medico" class="modal-overlay" style="display: none;">
+        <div class="modal-box glass-effect">
+            <header class="modal-header">
+                <h3>Novo Membro - Corpo Clínico</h3>
+                <button id="btn-fechar-modal" class="btn-icon"><i class="ri-close-line"></i></button>
+            </header>
+            <div class="modal-body">
+                <input type="text" id="medico-nome" placeholder="Nome do Profissional (Ex: Dr. Bruno)" class="form-input">
+                <input type="text" id="medico-especialidade" placeholder="Especialidade" class="form-input">
+                <input type="text" id="medico-crm" placeholder="CRM/Registro" class="form-input">
+                <button id="btn-salvar-medico" class="btn-primary" style="width: 100%; margin-top: 15px;">Salvar Dados</button>
+            </div>
+        </div>
     </div>
 
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('Service Worker registado com sucesso!'))
-            .catch(err => console.log('Erro no Service Worker:', err));
+          navigator.serviceWorker.register('./sw.js').catch(err => console.log('Erro no SW:', err));
         });
       }
     </script>
-
     <script type="module" src="app.js"></script>
 </body>
 </html>
