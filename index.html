@@ -28,7 +28,6 @@
             <div class="sidebar-header"><img src="logo.png" alt="Logo" class="sidebar-logo"></div>
             <nav class="sidebar-nav">
                 <button class="nav-btn active" data-tab="home"><i class="ri-home-4-line"></i> Início</button>
-                
                 <button class="nav-btn" data-tab="corpo-clinico"><i class="ri-team-line"></i> Corpo Clínico</button>
                 <button class="nav-btn" data-tab="convenios"><i class="ri-article-line"></i> Convênios</button>
                 <button class="nav-btn" data-tab="ultrassom"><i class="ri-pulse-line"></i> Ultrassom</button>
@@ -61,20 +60,35 @@
             </header>
 
             <section id="tab-home" class="tab-content active">
-                <h2 style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted);">Acesso Rápido</h2>
+                
+                <div class="home-top-bar">
+                    <div class="relogio-digital" id="relogio">00:00:00</div>
+                    <div class="frase-motivacional" id="frase-dia">"Carregando motivação..."</div>
+                </div>
+
+                <div class="search-container">
+                    <i class="ri-search-line" style="color: var(--primary-color); font-size: 20px;"></i>
+                    <input type="text" id="input-pesquisa-global" class="search-input" placeholder="Pesquisar em todo o sistema (Digite e aguarde)..." style="border: 2px solid var(--primary-color);">
+                </div>
+                <div id="resultados-globais" class="cards-grid" style="display: none; margin-bottom: 30px; padding: 15px; background: #fff; border-radius: 15px; box-shadow: var(--shadow-soft);"></div>
+
+                <div class="home-banner" id="banner-area">
+                    <div id="banner-content"><p style="color: var(--text-muted);">Espaço reservado para Banner de Comunicação</p></div>
+                    <button id="btn-editar-banner" style="display: none;"><i class="ri-pencil-line"></i> Editar Banner</button>
+                </div>
+
+                <div id="area-notificacoes"></div>
+
+                <h2 style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted); margin-top: 10px;">Acesso Rápido</h2>
                 <div class="home-grid">
-                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\'boletins\']').click()">
-                        <div class="shortcut-icon"><i class="ri-alarm-warning-line"></i></div>
-                        <div class="shortcut-title">Boletins Gerais</div>
-                    </div>
-                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\'corpo-clinico\']').click()">
-                        <div class="shortcut-icon"><i class="ri-team-fill"></i></div>
-                        <div class="shortcut-title">Corpo Clínico</div>
-                    </div>
-                    <div class="shortcut-card" onclick="abrirSubAba('ramais'); document.querySelector('[data-tab=\'contatos\']').click();">
-                        <div class="shortcut-icon"><i class="ri-phone-fill"></i></div>
-                        <div class="shortcut-title">Ramais Internos</div>
-                    </div>
+                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\\'boletins\\']').click()"><div class="shortcut-icon"><i class="ri-alarm-warning-line"></i></div><div class="shortcut-title">Boletins Gerais</div></div>
+                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\\'corpo-clinico\\']').click()"><div class="shortcut-icon"><i class="ri-team-fill"></i></div><div class="shortcut-title">Corpo Clínico</div></div>
+                    <div class="shortcut-card" onclick="abrirSubAba('ramais'); document.querySelector('[data-tab=\\'contatos\\']').click();"><div class="shortcut-icon"><i class="ri-phone-fill"></i></div><div class="shortcut-title">Ramais Internos</div></div>
+                </div>
+
+                <h2 style="margin-bottom: 10px; font-weight: 500; color: var(--text-muted); margin-top: 30px;">Últimas Atualizações no Sistema</h2>
+                <div class="historico-lista" id="lista-historico">
+                    <p style="font-size: 13px; color: var(--text-muted); text-align: center;">Nenhuma atualização recente.</p>
                 </div>
             </section>
 
@@ -89,7 +103,6 @@
             <section id="tab-exames-imagem" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-exames-imagem"></div></section>
             <section id="tab-institutos" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-institutos"></div></section>
             <section id="tab-remocoes" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-remocoes"></div></section>
-
             <section id="tab-contatos" class="tab-content" style="display: none;">
                 <div class="cards-grid" id="menu-contatos">
                     <div class="card" onclick="abrirSubAba('ramais')" style="cursor:pointer; text-align:center;"><h3>Ramais Internos</h3></div>
@@ -109,48 +122,39 @@
 
     <div id="modal-cadastro" class="modal-overlay" style="display: none;">
         <div class="modal-box glass-effect">
-            <header class="modal-header">
-                <h3 id="modal-title">Cadastrar</h3>
-                <button id="btn-fechar-modal" class="btn-icon"><i class="ri-close-line"></i></button>
-            </header>
+            <header class="modal-header"><h3 id="modal-title">Cadastrar</h3><button id="btn-fechar-modal" class="btn-icon"><i class="ri-close-line"></i></button></header>
             <div class="modal-body">
                 <input type="hidden" id="modal-doc-id">
                 <div id="modal-form-area"></div>
-                <div style="margin-top: 15px; text-align: left;">
-                    <label for="card-color" style="font-size: 13px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 5px;">Cor de Identificação (Opcional):</label>
-                    <input type="color" id="card-color" value="#8B252C" style="width: 100%; height: 45px; border: none; border-radius: 8px; cursor: pointer; padding: 0; background: none;">
-                </div>
+                <div style="margin-top: 15px;"><label style="font-size: 13px;">Cor de Identificação (Opcional):</label><input type="color" id="card-color" value="#8B252C" style="width: 100%; height: 45px; border: none; background: none;"></div>
             </div>
             <button id="btn-salvar-dados" class="btn-primary" style="width: 100%; margin-top: 20px;">Salvar Dados</button>
         </div>
     </div>
 
+    <div id="modal-banner" class="modal-overlay" style="display: none;">
+        <div class="modal-box glass-effect">
+            <header class="modal-header"><h3>Configurar Banner Home</h3><button id="btn-fechar-banner" class="btn-icon"><i class="ri-close-line"></i></button></header>
+            <div class="modal-body">
+                <p style="font-size: 12px; margin-bottom: 10px;">Cole o link de uma Imagem, do Google Drive ou YouTube, ou digite apenas um texto de aviso.</p>
+                <input type="text" id="input-banner-link" placeholder="Link (URL) da Mídia (Opcional)" class="form-input">
+                <textarea id="input-banner-texto" placeholder="Texto do Banner (Aparece se não houver mídia)" class="form-input" style="height: 100px; margin-top: 10px;"></textarea>
+            </div>
+            <button id="btn-salvar-banner" class="btn-primary" style="width: 100%; margin-top: 20px;">Atualizar Banner</button>
+        </div>
+    </div>
+
     <div id="modal-media" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-box glass-effect">
-            <header class="modal-header" style="margin-bottom: 10px;">
-                <h3>Visualização de Documento/Mídia</h3>
-                <button id="btn-fechar-media" class="btn-icon"><i class="ri-close-line"></i></button>
-            </header>
-            <div class="modal-body" style="height: 100%;">
-                <iframe id="iframe-media" src="" allowfullscreen></iframe>
-                <p style="font-size: 11px; text-align: center; color: var(--text-muted); margin-top: 10px;">Se o material não carregar, seu provedor não permite visualização flutuante. <a href="#" id="link-externo" target="_blank" style="color: var(--primary-color);">Clique aqui para abrir na janela normal</a>.</p>
-            </div>
+            <header class="modal-header" style="margin-bottom: 10px;"><h3>Visualização de Documento/Mídia</h3><button id="btn-fechar-media" class="btn-icon"><i class="ri-close-line"></i></button></header>
+            <div class="modal-body"><iframe id="iframe-media" src="" allowfullscreen></iframe></div>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
     <script>
-      function abrirSubAba(subAbaId) {
-          document.getElementById('menu-contatos').style.display = 'none';
-          document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId);
-          document.getElementById('sub-' + subAbaId).style.display = 'block';
-      }
-      function voltarSubAba() {
-          const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas'];
-          subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none');
-          document.getElementById('menu-contatos').style.display = 'grid';
-          document.getElementById('btn-novo').removeAttribute('data-sub-aba');
-      }
+      function abrirSubAba(subAbaId) { document.getElementById('menu-contatos').style.display = 'none'; document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId); document.getElementById('sub-' + subAbaId).style.display = 'block'; }
+      function voltarSubAba() { const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas']; subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none'); document.getElementById('menu-contatos').style.display = 'grid'; document.getElementById('btn-novo').removeAttribute('data-sub-aba'); }
     </script>
 </body>
 </html>
