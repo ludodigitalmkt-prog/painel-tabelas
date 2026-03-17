@@ -155,19 +155,33 @@ document.getElementById('btn-salvar-dados').addEventListener('click', async () =
     document.getElementById('btn-salvar-dados').textContent = "Salvar Dados";
 });
 
-// FUNÇÃO PARA O POPUP DE MÍDIA
+// FUNÇÃO PARA O POPUP DE MÍDIA (INTELIGENTE)
 window.abrirMidaFlutuante = function(url) {
-    // Corrige links do Drive para modo leitura no iframe
-    if(url.includes("drive.google.com") && url.includes("/view")) {
-        url = url.replace("/view", "/preview");
+    let urlCorrigida = url;
+
+    // 1. Converte links do Google Drive para modo Leitura na tela
+    if(urlCorrigida.includes("drive.google.com") && urlCorrigida.includes("/view")) {
+        urlCorrigida = urlCorrigida.replace("/view", "/preview");
     }
-    document.getElementById('iframe-media').src = url;
-    document.getElementById('link-externo').href = url;
+    
+    // 2. Converte links do YouTube para modo Embutido (Embed)
+    if(urlCorrigida.includes("youtube.com/watch?v=")) {
+        const videoId = urlCorrigida.split("v=")[1].split("&")[0];
+        urlCorrigida = `https://www.youtube.com/embed/${videoId}`;
+    } else if (urlCorrigida.includes("youtu.be/")) {
+        const videoId = urlCorrigida.split("youtu.be/")[1].split("?")[0];
+        urlCorrigida = `https://www.youtube.com/embed/${videoId}`;
+    }
+
+    // Joga o link corrigido dentro do popup da própria tela
+    document.getElementById('iframe-media').src = urlCorrigida;
+    document.getElementById('link-externo').href = url; // Mantém o original salvo no rodapé por precaução
     document.getElementById('modal-media').style.display = 'flex';
 }
+
 document.getElementById('btn-fechar-media').addEventListener('click', () => {
     document.getElementById('modal-media').style.display = 'none';
-    document.getElementById('iframe-media').src = ""; // Para o vídeo/audio
+    document.getElementById('iframe-media').src = ""; // Corta o vídeo/áudio imediatamente ao fechar o popup
 });
 
 // SISTEMA DE PESQUISA (FILTRO)
