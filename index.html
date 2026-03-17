@@ -132,13 +132,13 @@
         </div>
     </div>
 
-    <div id="modal-banner" class="modal-overlay" style="display: none;">
+    <div id="modal-banner" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-box glass-effect">
             <header class="modal-header"><h3>Configurar Banner Home</h3><button id="btn-fechar-banner" class="btn-icon"><i class="ri-close-line"></i></button></header>
             <div class="modal-body">
-                <p style="font-size: 12px; margin-bottom: 10px;">Cole o link de uma Imagem, do Google Drive ou YouTube, ou digite apenas um texto de aviso.</p>
-                <input type="text" id="input-banner-link" placeholder="Link (URL) da Mídia (Opcional)" class="form-input">
-                <textarea id="input-banner-texto" placeholder="Texto do Banner (Aparece se não houver mídia)" class="form-input" style="height: 100px; margin-top: 10px;"></textarea>
+                <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Cole os links das Imagens ou Vídeos. <b>Para colocar várias imagens, coloque um link por linha.</b></p>
+                <textarea id="input-banner-link" placeholder="Ex: https://site.com/imagem1.png&#10;https://site.com/imagem2.png" class="form-input" style="height: 100px; resize: vertical;"></textarea>
+                <textarea id="input-banner-texto" placeholder="Texto do Banner (Aparece apenas se não houver imagens)" class="form-input" style="height: 80px; margin-top: 10px;"></textarea>
             </div>
             <button id="btn-salvar-banner" class="btn-primary" style="width: 100%; margin-top: 20px;">Atualizar Banner</button>
         </div>
