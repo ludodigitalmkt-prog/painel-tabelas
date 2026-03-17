@@ -152,7 +152,13 @@
     </div>
 
     <script type="module" src="app.js"></script>
-    <script>
+   <script>
+      // Função à prova de falhas para os atalhos da Home
+      window.irParaAba = function(aba) {
+          const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`);
+          if(btn) btn.click();
+      };
+
       function abrirSubAba(subAbaId) { document.getElementById('menu-contatos').style.display = 'none'; document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId); document.getElementById('sub-' + subAbaId).style.display = 'block'; }
       function voltarSubAba() { const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas']; subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none'); document.getElementById('menu-contatos').style.display = 'grid'; document.getElementById('btn-novo').removeAttribute('data-sub-aba'); }
     </script>
