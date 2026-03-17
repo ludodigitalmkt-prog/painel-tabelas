@@ -81,9 +81,9 @@
 
                 <h2 style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted); margin-top: 10px;">Acesso Rápido</h2>
                 <div class="home-grid">
-                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\\'boletins\\']').click()"><div class="shortcut-icon"><i class="ri-alarm-warning-line"></i></div><div class="shortcut-title">Boletins Gerais</div></div>
-                    <div class="shortcut-card" onclick="document.querySelector('[data-tab=\\'corpo-clinico\\']').click()"><div class="shortcut-icon"><i class="ri-team-fill"></i></div><div class="shortcut-title">Corpo Clínico</div></div>
-                    <div class="shortcut-card" onclick="abrirSubAba('ramais'); document.querySelector('[data-tab=\\'contatos\\']').click();"><div class="shortcut-icon"><i class="ri-phone-fill"></i></div><div class="shortcut-title">Ramais Internos</div></div>
+                    <div class="shortcut-card" onclick="irParaAba('boletins')"><div class="shortcut-icon"><i class="ri-alarm-warning-line"></i></div><div class="shortcut-title">Boletins Gerais</div></div>
+                    <div class="shortcut-card" onclick="irParaAba('corpo-clinico')"><div class="shortcut-icon"><i class="ri-team-fill"></i></div><div class="shortcut-title">Corpo Clínico</div></div>
+                    <div class="shortcut-card" onclick="abrirSubAba('ramais'); irParaAba('contatos');"><div class="shortcut-icon"><i class="ri-phone-fill"></i></div><div class="shortcut-title">Ramais Internos</div></div>
                 </div>
 
                 <h2 style="margin-bottom: 10px; font-weight: 500; color: var(--text-muted); margin-top: 30px;">Últimas Atualizações no Sistema</h2>
