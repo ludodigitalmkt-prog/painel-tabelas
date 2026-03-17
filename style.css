@@ -399,3 +399,62 @@ body {
     gap: 8px;
     margin-top: 10px;
 }
+/* --- ANIMAÇÃO DE URGÊNCIA --- */
+.card-urgente {
+    border-color: #e53e3e !important;
+    animation: pulseUrgente 2s infinite;
+}
+
+@keyframes pulseUrgente {
+    0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); }
+}
+
+/* --- BARRA DE PESQUISA (FILTRO) --- */
+.search-container {
+    margin-bottom: 25px;
+    position: relative;
+}
+
+.search-container i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 18px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 14px 14px 14px 45px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 15px;
+    background-color: var(--surface-color);
+    box-shadow: var(--shadow-soft);
+    outline: none;
+    transition: all 0.3s;
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+}
+
+/* --- POPUP DE MATERIAL (MÍDIA/DOCS) --- */
+#modal-media .modal-box {
+    max-width: 900px;
+    width: 95%;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#iframe-media {
+    flex: 1;
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    background-color: #f4f4f4;
+}
