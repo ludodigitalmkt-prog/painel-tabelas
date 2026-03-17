@@ -571,91 +571,56 @@ body {
     max-width: 60%;
 }
 
-/* Banner Editável */
+/* --- BANNER EDITÁVEL INTELIGENTE E RESPONSIVO --- */
 .home-banner {
     width: 100%;
-    min-height: 120px;
-    background-color: var(--surface-color);
-    border-radius: 15px;
     margin-bottom: 25px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    overflow: hidden;
     position: relative;
-    box-shadow: var(--shadow-soft);
-    border: 1px dashed var(--border-color);
-    padding: 15px;
-    text-align: center;
 }
 
-.home-banner img, .home-banner iframe {
+#banner-content {
+    display: flex;
+    flex-wrap: wrap; /* Permite que várias imagens fiquem lado a lado */
+    gap: 15px;
+    justify-content: center;
     width: 100%;
-    max-height: 300px;
-    object-fit: cover;
-    border-radius: 10px;
+}
+
+#banner-content img {
+    max-width: 100%;
+    height: auto; /* Mantém a proporção real da imagem sem amassar */
+    object-fit: contain;
+    border-radius: 15px;
+    box-shadow: var(--shadow-soft);
+}
+
+#banner-content iframe {
+    width: 100%;
+    min-height: 400px; /* Garante que o vídeo fique com um tamanho excelente */
+    border-radius: 15px;
+    border: none;
+    box-shadow: var(--shadow-soft);
 }
 
 #btn-editar-banner {
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.7);
     color: white;
     border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-/* Notificações do Dia */
-.notificacao-dia {
-    background-color: #ebf8ff;
-    border-left: 5px solid #3182ce;
-    padding: 15px;
+    padding: 8px 12px;
     border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    animation: slideDown 0.5s ease-out;
-}
-
-.notificacao-dia i {
-    font-size: 24px;
-    color: #3182ce;
-    animation: pulseUrgente 2s infinite;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Histórico de Atualizações */
-.historico-lista {
-    background: var(--surface-color);
-    border-radius: 15px;
-    padding: 20px;
-    margin-top: 15px;
-    box-shadow: var(--shadow-soft);
-}
-
-.historico-item {
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
     font-size: 13px;
-    display: flex;
-    justify-content: space-between;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    transition: 0.2s;
 }
-.historico-item:last-child { border-bottom: none; }
-.historico-badge {
-    background: #e2e8f0;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--primary-color);
+
+#btn-editar-banner:hover {
+    background: var(--primary-color);
 }
