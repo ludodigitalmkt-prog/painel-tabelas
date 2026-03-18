@@ -18,9 +18,14 @@ const auth = getAuth(app);
 let isAdmin = false;
 let abaAtual = 'home'; 
 const EMAIL_GESTAO = "gestao@clinica.com";
-let listaColaboradoresGlobal = []; 
+
+// VARIÁVEIS GLOBAIS INTELIGENTES
+let listaColaboradoresGlobal = []; // Agora armazena {nome: 'Ana', setor: 'Recepção'}
 let locaisGlobais = []; 
-window.dadosBoletins = {}; // Salva os dados para o popup de leituras
+let setoresGlobais = [];
+window.todosBoletinsData = [];
+window.dadosBoletins = {}; 
+window.pastaBoletimAtual = null;
 
 const paletaGradientes = [
     { valor: "#ffffff", nome: "Branco Padrão", dark: false },
@@ -38,9 +43,10 @@ const paletaGradientes = [
 
 const frases = ["O sucesso é a soma de pequenos esforços repetidos dia após dia.", "A empatia é a medicina que o mundo mais precisa.", "Juntos, fazemos a diferença na vida de cada paciente.", "Trabalho em equipe divide as tarefas e multiplica o sucesso.", "A excelência não é um ato, mas um hábito."];
 
+// O NOVO DICIONÁRIO ESTRATÉGICO
 const configuracaoAbas = {
-    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor ou Cargo'] },
-    'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA'] }, // LOGO REMOVIDA
+    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
+    'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA'] }, 
     'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Código', 'Serviço', 'Observações'] },
     'ultrassom': { titulo: 'Ultrassom', campos: ['Código', 'Exame', 'Profissional', 'Restrição de Idade', 'Observação'] },
     'consultas': { titulo: 'Consulta ou Procedimento', campos: ['Código', 'Tipo', 'Descrição', 'Observações'] },
@@ -53,7 +59,7 @@ const configuracaoAbas = {
     'contatos-gerais': { titulo: 'Contato Geral', campos: ['Descrição (Lugar ou Pessoa)', 'Número'] },
     'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
     'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] },
-    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo ou Observação', 'Link do Arquivo'] },
+    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo ou Observação', 'Link do Arquivo'] },
     'boletins-privados': { titulo: 'Informativo Direto (Privado)', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Link do Arquivo'] }
 };
 
@@ -85,7 +91,7 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
         carregarConfiguracoes();
-        buscarClimaAraucaria(); // Busca o clima ao logar!
+        buscarClimaAraucaria(); 
     } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('dashboard-screen').style.display = 'none';
@@ -102,6 +108,8 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         document.getElementById('page-title').textContent = btn.textContent.trim();
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         document.getElementById('search-box').style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
+        
+        if(abaAtual === 'boletins') window.fecharPastaBoletim(); // Sempre que clicar no menu, volta para as pastas
     });
 });
 
@@ -113,8 +121,14 @@ document.getElementById('btn-salvar-dados').addEventListener('click', async () =
     
     let dados = {};
     config.campos.forEach(campo => {
-        const valor = document.getElementById(`input-${campo}`).value.trim();
-        if(valor) dados[campo] = valor;
+        // Lógica Especial para salvar as caixinhas de setores
+        if (campo === 'Para quais Setores?') {
+            const checks = Array.from(document.querySelectorAll('.check-setor:checked')).map(cb => cb.value);
+            if(checks.length > 0) dados[campo] = checks.join(', ');
+        } else {
+            const el = document.getElementById(`input-${campo}`);
+            if(el && el.value.trim() !== '') dados[campo] = el.value.trim();
+        }
     });
     dados.corCard = document.getElementById('card-color').value;
     
@@ -129,10 +143,11 @@ document.getElementById('btn-salvar-ajustes').addEventListener('click', async ()
     if(!isAdmin) return;
     const texto = document.getElementById('tab-input-banner').value;
     const locaisTexto = document.getElementById('tab-input-locais').value; 
+    const setoresTexto = document.getElementById('tab-input-setores').value; 
     
     document.getElementById('btn-salvar-ajustes').textContent = "Salvando...";
     try {
-        await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, locais: locaisTexto });
+        await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, locais: locaisTexto, setores: setoresTexto });
         alert("Configurações salvas com sucesso!");
     } catch(e) { alert("Erro ao salvar configurações."); }
     document.getElementById('btn-salvar-ajustes').innerHTML = '<i class="ri-save-line"></i> Salvar Alterações';
@@ -148,22 +163,21 @@ function carregarConfiguracoes() {
             
             if(document.getElementById('tab-input-banner')) document.getElementById('tab-input-banner').value = data.banner_texto || '';
             if(document.getElementById('tab-input-locais')) document.getElementById('tab-input-locais').value = data.locais || '';
+            if(document.getElementById('tab-input-setores')) document.getElementById('tab-input-setores').value = data.setores || '';
+            
             locaisGlobais = data.locais ? data.locais.split('\n').filter(l => l.trim() !== '') : [];
+            setoresGlobais = data.setores ? data.setores.split('\n').filter(s => s.trim() !== '') : [];
+            if(abaAtual === 'boletins' && !window.pastaBoletimAtual) renderizarPastasBoletins();
         }
     });
 }
 
-// --- WIDGET DO CLIMA EM TEMPO REAL (ARAUCÁRIA) ---
 async function buscarClimaAraucaria() {
     try {
-        // Busca do satélite pelo Open-Meteo (Gratuito e super rápido) para a lat/long de Araucária
         const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-25.59&longitude=-49.41&current_weather=true');
         const data = await response.json();
         const clima = data.current_weather;
-        
         document.getElementById('weather-deg').textContent = Math.round(clima.temperature);
-        
-        // Traduz os códigos da OMM para texto e ícone lindo
         let desc = "Céu Limpo"; let icon = "ri-sun-fill";
         if(clima.weathercode >= 1 && clima.weathercode <= 3) { desc = "Parcialmente Nublado"; icon = "ri-sun-cloudy-fill"; }
         if(clima.weathercode === 45 || clima.weathercode === 48) { desc = "Neblina"; icon = "ri-foggy-fill"; }
@@ -171,59 +185,61 @@ async function buscarClimaAraucaria() {
         if(clima.weathercode >= 71 && clima.weathercode <= 77) { desc = "Chuva/Neve"; icon = "ri-snowy-line"; }
         if(clima.weathercode >= 80 && clima.weathercode <= 82) { desc = "Pancadas de Chuva"; icon = "ri-showers-fill"; }
         if(clima.weathercode >= 95) { desc = "Tempestade"; icon = "ri-thunderstorms-fill"; }
-
-        document.getElementById('weather-desc').textContent = desc;
-        document.getElementById('weather-icon-class').className = icon;
-    } catch(e) {
-        document.getElementById('weather-desc').textContent = "Clima indisponível no momento";
-    }
+        document.getElementById('weather-desc').textContent = desc; document.getElementById('weather-icon-class').className = icon;
+    } catch(e) { document.getElementById('weather-desc').textContent = "Clima indisponível no momento"; }
 }
 
 document.getElementById('input-pesquisa-global').addEventListener('keyup', (e) => {
     const texto = e.target.value.toLowerCase();
     const areaRes = document.getElementById('resultados-globais');
     if(texto.length < 2) { areaRes.style.display = 'none'; return; }
-    areaRes.style.display = 'grid';
-    areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px;">Resultados da Busca:</h3>';
-    const todosCards = document.querySelectorAll('.tab-content:not(#tab-home) .card');
+    areaRes.style.display = 'grid'; areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px;">Resultados da Busca:</h3>';
     let encontrou = false;
-    todosCards.forEach(card => {
+    document.querySelectorAll('.tab-content:not(#tab-home) .card').forEach(card => {
         if(card.innerText.toLowerCase().includes(texto)) { areaRes.appendChild(card.cloneNode(true)); encontrou = true; }
     });
     if(!encontrou) areaRes.innerHTML += '<p>Nenhum resultado encontrado.</p>';
 });
 
-// ABRIR POPUP DE LEITURAS (NOVO)
+// --- O CÉREBRO: CRUZAMENTO DE PÚBLICO ALVO ---
+function obterPublicoAlvo(setoresAlvoString) {
+    if (!setoresAlvoString || setoresAlvoString.includes('Geral')) {
+        return listaColaboradoresGlobal.map(c => c.nome); // Vai pra todo mundo
+    }
+    const setoresMarcados = setoresAlvoString.split(', ');
+    return listaColaboradoresGlobal.filter(c => setoresMarcados.includes(c.setor)).map(c => c.nome);
+}
+
+// --- POPUP DE DETALHES DE QUEM LEU (CORRIGIDO) ---
 window.abrirListaLeituras = function(docId) {
     const data = window.dadosBoletins[docId];
     if(!data) return;
     
     document.getElementById('modal-leitura-titulo').textContent = data['Título do Informativo'] || 'Status do Documento';
     
+    const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
     const lidosTextos = data.leituras || [];
-    // Pega só o primeiro nome de quem leu para comparar
     const lidosNomes = lidosTextos.map(txt => txt.split(' (')[0]); 
 
     let htmlLidos = '';
     let htmlNaoLidos = '';
 
-    listaColaboradoresGlobal.forEach(nome => {
+    // Verifica SOMENTE quem deveria ler (O Público Alvo)
+    publicoAlvoNomes.forEach(nome => {
         const registroCompleto = lidosTextos.find(txt => txt.startsWith(nome));
-        if (registroCompleto) {
-            htmlLidos += `<div class="item-lido"><i class="ri-check-line"></i> ${registroCompleto}</div>`;
-        } else {
-            htmlNaoLidos += `<div class="item-falta"><i class="ri-time-line"></i> ${nome}</div>`;
-        }
+        if (registroCompleto) htmlLidos += `<div class="item-lido"><i class="ri-check-line"></i> ${registroCompleto}</div>`;
+        else htmlNaoLidos += `<div class="item-falta"><i class="ri-time-line"></i> ${nome}</div>`;
     });
 
     document.getElementById('lista-lidos-content').innerHTML = htmlLidos || '<p style="color:var(--text-muted);">Ninguém leu ainda.</p>';
-    document.getElementById('lista-falta-content').innerHTML = htmlNaoLidos || '<p style="color:#38a169;">Todos já leram!</p>';
+    document.getElementById('lista-falta-content').innerHTML = htmlNaoLidos || '<p style="color:#38a169;">Todos os envolvidos já leram!</p>';
     document.getElementById('modal-leituras').style.display = 'flex';
 }
 
 function abrirModal(colecao, docId = null, dadosAntigos = null) {
     const config = configuracaoAbas[colecao];
     document.getElementById('modal-title').textContent = docId ? `Editar ${config.titulo}` : `Novo(a) ${config.titulo}`;
+    
     const corSalva = (dadosAntigos && dadosAntigos.corCard) ? dadosAntigos.corCard : "#ffffff";
     document.getElementById('card-color').value = corSalva;
     
@@ -234,16 +250,34 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
     });
     document.getElementById('gradient-picker').innerHTML = htmlGradientes;
     document.querySelectorAll('.color-swatch').forEach(swatch => { swatch.addEventListener('click', (e) => { document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected')); e.target.classList.add('selected'); document.getElementById('card-color').value = e.target.getAttribute('data-color'); }); });
+
     document.getElementById('modal-doc-id').value = docId || "";
 
     let htmlCampos = '';
     config.campos.forEach(campo => {
         const valorAntigo = (dadosAntigos && dadosAntigos[campo]) ? dadosAntigos[campo] : '';
-        if(colecao === 'boletins-privados' && campo === 'Para qual Colaborador?') {
+        
+        // COLABORADOR: LISTA DE SETORES
+        if(colecao === 'colaboradores' && campo === 'Setor da Clínica') {
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="Geral">Setor Padrão (Geral)</option>`;
+            setoresGlobais.forEach(s => { htmlCampos += `<option value="${s}" ${valorAntigo === s ? 'selected' : ''}>${s}</option>`; });
+            htmlCampos += `</select>`;
+        }
+        else if(colecao === 'boletins-privados' && campo === 'Para qual Colaborador?') {
             htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione o Colaborador...</option>`;
-            listaColaboradoresGlobal.forEach(nome => { htmlCampos += `<option value="${nome}" ${valorAntigo === nome ? 'selected' : ''}>${nome}</option>`; });
+            listaColaboradoresGlobal.forEach(c => { htmlCampos += `<option value="${c.nome}" ${valorAntigo === c.nome ? 'selected' : ''}>${c.nome}</option>`; });
             htmlCampos += `</select>`;
         } 
+        // BOLETINS GERAIS: CAIXINHAS MULTIPLAS
+        else if(colecao === 'boletins' && campo === 'Para quais Setores?') {
+            htmlCampos += `<label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Para quais setores? (Marque 1 ou mais)</label><div class="checkbox-group" style="margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">`;
+            const valoresSalvos = valorAntigo ? valorAntigo.split(', ') : ['Geral'];
+            ['Geral', ...setoresGlobais].forEach(setor => {
+                const checked = valoresSalvos.includes(setor) ? 'checked' : '';
+                htmlCampos += `<label style="font-size:13px; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="check-setor" value="${setor}" ${checked}> ${setor}</label>`;
+            });
+            htmlCampos += `</div>`;
+        }
         else if(colecao === 'consultas' && campo === 'Tipo') {
             htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
         } 
@@ -265,6 +299,148 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
 document.getElementById('btn-novo').addEventListener('click', () => { let aba = abaAtual; if(aba === 'contatos') aba = document.getElementById('btn-novo').getAttribute('data-sub-aba') || alert("Abra uma categoria!"); if(aba !== 'contatos') abrirModal(aba); });
 document.getElementById('btn-fechar-modal').addEventListener('click', () => document.getElementById('modal-cadastro').style.display = 'none');
 
+// --- SISTEMA DE PASTAS E LISTA DE BOLETINS ---
+window.abrirPastaBoletim = function(pasta) {
+    window.pastaBoletimAtual = pasta;
+    document.getElementById('boletins-view-folders').style.display = 'none';
+    document.getElementById('boletins-view-list').style.display = 'block';
+    document.getElementById('titulo-pasta-boletins').innerHTML = `<i class="ri-folder-open-line"></i> Setor: ${pasta}`;
+    renderizarListaBoletins();
+}
+
+window.fecharPastaBoletim = function() {
+    window.pastaBoletimAtual = null;
+    document.getElementById('boletins-view-list').style.display = 'none';
+    document.getElementById('boletins-view-folders').style.display = 'block';
+    renderizarPastasBoletins();
+}
+
+function renderizarPastasBoletins() {
+    const gridFolders = document.getElementById('grid-boletins-folders');
+    if(!gridFolders) return;
+    gridFolders.innerHTML = '';
+
+    const pastasParaExibir = ['Geral', ...setoresGlobais];
+
+    pastasParaExibir.forEach(pasta => {
+        // Pega só os boletins que tem essa pasta no alvo
+        const boletinsDaPasta = window.todosBoletinsData.filter(item => {
+            const alvo = item.data['Para quais Setores?'] || 'Geral';
+            return alvo.includes(pasta);
+        });
+
+        let totalLidos = 0;
+        let totalFaltam = 0;
+
+        boletinsDaPasta.forEach(b => {
+            const alvo = b.data['Para quais Setores?'] || 'Geral';
+            const publicoDaqui = obterPublicoAlvo(alvo);
+            const lidosNames = (b.data.leituras || []).map(txt => txt.split(' (')[0]);
+            
+            // Quantos do publico alvo já leram?
+            const leram = publicoDaqui.filter(n => lidosNames.includes(n)).length;
+            totalLidos += leram;
+            totalFaltam += Math.max(0, publicoDaqui.length - leram);
+        });
+
+        const icone = pasta === 'Geral' ? 'ri-global-line' : 'ri-folder-user-line';
+        
+        gridFolders.innerHTML += `
+            <div class="shortcut-card" onclick="window.abrirPastaBoletim('${pasta}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: var(--primary-color); font-size: 24px;"><i class="${icone}"></i></div>
+                    <div style="font-size: 16px; font-weight: 600;">${pasta}</div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">
+                    <div>Boletins Ativos: <b style="color: var(--text-main);">${boletinsDaPasta.length}</b></div>
+                    <div style="margin-top: 5px; color: #38a169;">Lidos Acumulados: <b>${totalLidos}</b></div>
+                    <div style="color: #e53e3e;">Pendências: <b>${totalFaltam}</b></div>
+                </div>
+            </div>`;
+    });
+}
+
+function renderizarListaBoletins() {
+    const grid = document.getElementById('grid-boletins');
+    grid.innerHTML = '';
+    const pasta = window.pastaBoletimAtual;
+    
+    const boletinsExibir = window.todosBoletinsData.filter(item => {
+        const alvo = item.data['Para quais Setores?'] || 'Geral';
+        return alvo.includes(pasta);
+    });
+
+    const camposOrdem = configuracaoAbas['boletins'].campos;
+    const campoTitulo = camposOrdem[0];
+
+    boletinsExibir.forEach(item => {
+        const data = item.data;
+        const docId = item.id;
+        window.dadosBoletins[docId] = data; // Salva para o modal
+
+        const titulo = data[campoTitulo] || 'Boletim';
+        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
+        const classeUrgente = isUrgente ? 'card-urgente' : '';
+        const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+        const configCor = paletaGradientes.find(p => p.valor === corSalva);
+        const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
+        const bordaUrgente = isUrgente ? 'border: 2px solid #e53e3e;' : '';
+        const bordaEsqNormal = (!isUrgente && !(configCor ? configCor.dark : false)) ? 'border-left: 6px solid var(--primary-color);' : '';
+
+        let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${bordaUrgente} ${bordaEsqNormal}">`;
+        cardHtml += `<div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; line-height:1.2;">${titulo}</div>`;
+        
+        let botaoLinkHtml = '';
+        camposOrdem.forEach(chave => {
+            const valor = data[chave];
+            if (valor && chave !== campoTitulo) {
+                if(chave.includes('Link')) {
+                    botaoLinkHtml = `<div class="boletim-media" style="margin-top: 15px;"><button onclick="abrirMidaFlutuante('${valor}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"><i class="ri-eye-line"></i> Acessar Material</button></div>`;
+                } else { 
+                    const corTexto = (isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''; 
+                    const pesoTexto = (isUrgente && chave.includes('Tipo')) ? '700' : '500';
+                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${corTexto};"><strong>${chave}:</strong> <span style="font-weight: ${pesoTexto};">${valor}</span></div>`; 
+                }
+            }
+        });
+        cardHtml += botaoLinkHtml;
+        
+        // CÁLCULO INTELIGENTE DE QUEM FALTA ASSINAR
+        const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+        const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
+        // Pendentes = Quem está no publico e NÃO está nos lidos
+        const faltamAssinar = publicoAlvoNomes.filter(n => !lidosNomes.includes(n));
+        
+        const qtdLidos = publicoAlvoNomes.filter(n => lidosNomes.includes(n)).length;
+        const qtdFaltam = faltamAssinar.length;
+
+        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;">`;
+        cardHtml += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;">
+                        <div style="font-size: 11px;">Visualizações: <b style="color:#38a169; font-size:13px;">${qtdLidos}</b> <br> Faltam: <b style="color:#e53e3e; font-size:13px;">${qtdFaltam}</b></div>
+                        <button onclick="window.abrirListaLeituras('${docId}')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-team-line"></i> Detalhes</button>
+                     </div>`;
+        
+        if(isAdmin) {
+            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><select id="leitor-${docId}" style="flex:1; padding:8px; border-radius:8px; border:none; font-size:12px; background:rgba(255,255,255,0.9); outline:none;">`;
+            if(faltamAssinar.length === 0) {
+                cardHtml += `<option value="">Todos já leram!</option>`;
+            } else {
+                cardHtml += `<option value="">Selecionar Pendente...</option>`;
+                faltamAssinar.forEach(nome => { cardHtml += `<option value="${nome}">${nome}</option>`; });
+            }
+            cardHtml += `</select><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins" style="background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i></button></div>`;
+        }
+        cardHtml += `</div>`;
+        
+        if (isAdmin) {
+            const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+            cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins" data-info="${dadosSeguros}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+        }
+        cardHtml += `</div>`; 
+        grid.innerHTML += cardHtml;
+    });
+}
+
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid) return;
@@ -276,9 +452,24 @@ function renderizarCards(colecaoNome) {
         let itens = [];
         snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() }));
 
-        if(colecaoNome === 'colaboradores') listaColaboradoresGlobal = itens.map(item => item.data['Nome Completo do Colaborador']).filter(Boolean).sort();
+        // SALVA OS COLABORADORES COM SEU SETOR PARA CRUZAR DADOS DEPOIS
+        if(colecaoNome === 'colaboradores') {
+            listaColaboradoresGlobal = itens.map(item => {
+                return { nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' };
+            }).filter(c => c.nome).sort((a,b) => a.nome.localeCompare(b.nome));
+        }
 
-        // RENDER DE RAMAIS AGRUPADOS
+        // DESVIO PARA BOLETINS (Pois agora usa o sistema de pastas)
+        if(colecaoNome === 'boletins') {
+            window.todosBoletinsData = itens;
+            if(abaAtual === 'boletins') {
+                if(window.pastaBoletimAtual) renderizarListaBoletins();
+                else renderizarPastasBoletins();
+            }
+            return;
+        }
+
+        // DESVIO PARA RAMAIS (Sistem de blocos)
         if (colecaoNome === 'ramais') {
             grid.style.display = 'block'; 
             const locaisMap = {};
@@ -299,8 +490,8 @@ function renderizarCards(colecaoNome) {
             return; 
         }
         
+        // RENDERIZAÇÃO PADRÃO DOS OUTROS
         grid.style.display = 'grid'; 
-
         const camposOrdem = configuracaoAbas[colecaoNome].campos;
         const campoTitulo = camposOrdem[0];
         
@@ -310,18 +501,10 @@ function renderizarCards(colecaoNome) {
             return tituloA.toUpperCase().localeCompare(tituloB.toUpperCase());
         });
 
-        const dataHoje = new Date().toISOString().split('T')[0];
-        const areaNotificacoes = document.getElementById('area-notificacoes');
-        if(colecaoNome === 'boletins') areaNotificacoes.innerHTML = ''; 
-
         itens.forEach((item) => {
             const data = item.data;
             const docId = item.id;
             const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'];
-            
-            if(colecaoNome === 'boletins' && data['Data de Publicação'] === dataHoje) {
-                areaNotificacoes.innerHTML += `<div class="notificacao-dia" onclick="window.irParaAba('boletins')" style="cursor:pointer;"><i class="ri-notification-3-line"></i><div><strong style="display:block; color:#2c5282;">Novo Boletim Hoje!</strong><span style="font-size:13px; color:#4a5568;">${tituloDesteCard} foi publicado. Clique para ler.</span></div></div>`;
-            }
             
             const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
             const classeUrgente = isUrgente ? 'card-urgente' : '';
@@ -343,7 +526,6 @@ function renderizarCards(colecaoNome) {
                 const valor = data[chave];
                 if (valor && chave !== campoTitulo) {
                     if(typeof valor === 'string' && valor.includes('file:///')) return; 
-
                     if(chave.includes('Link')) {
                         botaoLinkHtml = `<div class="boletim-media" style="margin-top: 15px;"><button onclick="abrirMidaFlutuante('${valor}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"><i class="ri-eye-line"></i> Acessar Material</button></div>`;
                     } else { 
@@ -353,33 +535,7 @@ function renderizarCards(colecaoNome) {
                     }
                 }
             });
-            
             cardHtml += botaoLinkHtml;
-            
-            // --- NOVA LÓGICA DE RESUMO DE LEITURAS E POPUP ---
-            if(colecaoNome.includes('boletins')) {
-                window.dadosBoletins[docId] = data; // Salva para o Pop-up consultar
-                const lidos = data.leituras || [];
-                const total = listaColaboradoresGlobal.length;
-                const qtdLidos = lidos.length;
-                const qtdFaltam = Math.max(0, total - qtdLidos);
-
-                cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;">`;
-                
-                // Resumo Inteligente com Botão
-                cardHtml += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;">
-                                <div style="font-size: 11px;">Visualizações: <b style="color:#38a169; font-size:13px;">${qtdLidos}</b> <br> Faltam: <b style="color:#e53e3e; font-size:13px;">${qtdFaltam}</b></div>
-                                <button onclick="window.abrirListaLeituras('${docId}')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color); box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s;"><i class="ri-team-line"></i> Detalhes</button>
-                             </div>`;
-                
-                // Seção de Assinatura
-                if(isAdmin) {
-                    cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><select id="leitor-${docId}" style="flex:1; padding:8px; border-radius:8px; border:none; font-size:12px; background:rgba(255,255,255,0.9); outline:none;"><option value="">Assinar como...</option>`;
-                    listaColaboradoresGlobal.forEach(colab => { cardHtml += `<option value="${colab}">${colab}</option>`; });
-                    cardHtml += `</select><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="${colecaoNome}" style="background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i></button></div>`;
-                }
-                cardHtml += `</div>`;
-            }
             
             if (isAdmin) {
                 const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
