@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, query, orderBy, limit, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, query, orderBy, limit, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
@@ -19,13 +19,20 @@ let isAdmin = false;
 let abaAtual = 'home'; 
 const EMAIL_GESTAO = "gestao@clinica.com";
 
-// VARIÁVEIS GLOBAIS INTELIGENTES
-let listaColaboradoresGlobal = []; // Agora armazena {nome: 'Ana', setor: 'Recepção'}
+let listaColaboradoresGlobal = []; 
 let locaisGlobais = []; 
 let setoresGlobais = [];
+let motivosGlobais = [];
+
 window.todosBoletinsData = [];
+window.todosPrivadosData = [];
 window.dadosBoletins = {}; 
 window.pastaBoletimAtual = null;
+window.pastaPrivadoAtual = null;
+
+// Instâncias dos Gráficos para não bugar ao recarregar
+let chartBoletinsInst = null;
+let chartPrivadosInst = null;
 
 const paletaGradientes = [
     { valor: "#ffffff", nome: "Branco Padrão", dark: false },
@@ -43,7 +50,6 @@ const paletaGradientes = [
 
 const frases = ["O sucesso é a soma de pequenos esforços repetidos dia após dia.", "A empatia é a medicina que o mundo mais precisa.", "Juntos, fazemos a diferença na vida de cada paciente.", "Trabalho em equipe divide as tarefas e multiplica o sucesso.", "A excelência não é um ato, mas um hábito."];
 
-// O NOVO DICIONÁRIO ESTRATÉGICO
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA'] }, 
@@ -59,8 +65,8 @@ const configuracaoAbas = {
     'contatos-gerais': { titulo: 'Contato Geral', campos: ['Descrição (Lugar ou Pessoa)', 'Número'] },
     'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
     'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] },
-    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo ou Observação', 'Link do Arquivo'] },
-    'boletins-privados': { titulo: 'Informativo Direto (Privado)', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Link do Arquivo'] }
+    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] },
+    'boletins-privados': { titulo: 'Informativo Direto (Privado)', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] }
 };
 
 setInterval(() => { document.getElementById('relogio').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -108,8 +114,10 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         document.getElementById('page-title').textContent = btn.textContent.trim();
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         document.getElementById('search-box').style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
+        document.getElementById('input-pesquisa').value = ''; // Limpa pesquisa local ao trocar de aba
         
-        if(abaAtual === 'boletins') window.fecharPastaBoletim(); // Sempre que clicar no menu, volta para as pastas
+        if(abaAtual === 'boletins') window.fecharPastaBoletim(); 
+        if(abaAtual === 'boletins-privados') window.fecharPastaPrivado();
     });
 });
 
@@ -121,7 +129,6 @@ document.getElementById('btn-salvar-dados').addEventListener('click', async () =
     
     let dados = {};
     config.campos.forEach(campo => {
-        // Lógica Especial para salvar as caixinhas de setores
         if (campo === 'Para quais Setores?') {
             const checks = Array.from(document.querySelectorAll('.check-setor:checked')).map(cb => cb.value);
             if(checks.length > 0) dados[campo] = checks.join(', ');
@@ -144,10 +151,11 @@ document.getElementById('btn-salvar-ajustes').addEventListener('click', async ()
     const texto = document.getElementById('tab-input-banner').value;
     const locaisTexto = document.getElementById('tab-input-locais').value; 
     const setoresTexto = document.getElementById('tab-input-setores').value; 
+    const motivosTexto = document.getElementById('tab-input-motivos').value; 
     
     document.getElementById('btn-salvar-ajustes').textContent = "Salvando...";
     try {
-        await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, locais: locaisTexto, setores: setoresTexto });
+        await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, locais: locaisTexto, setores: setoresTexto, motivos: motivosTexto });
         alert("Configurações salvas com sucesso!");
     } catch(e) { alert("Erro ao salvar configurações."); }
     document.getElementById('btn-salvar-ajustes').innerHTML = '<i class="ri-save-line"></i> Salvar Alterações';
@@ -164,10 +172,14 @@ function carregarConfiguracoes() {
             if(document.getElementById('tab-input-banner')) document.getElementById('tab-input-banner').value = data.banner_texto || '';
             if(document.getElementById('tab-input-locais')) document.getElementById('tab-input-locais').value = data.locais || '';
             if(document.getElementById('tab-input-setores')) document.getElementById('tab-input-setores').value = data.setores || '';
+            if(document.getElementById('tab-input-motivos')) document.getElementById('tab-input-motivos').value = data.motivos || '';
             
             locaisGlobais = data.locais ? data.locais.split('\n').filter(l => l.trim() !== '') : [];
             setoresGlobais = data.setores ? data.setores.split('\n').filter(s => s.trim() !== '') : [];
+            motivosGlobais = data.motivos ? data.motivos.split('\n').filter(m => m.trim() !== '') : [];
+            
             if(abaAtual === 'boletins' && !window.pastaBoletimAtual) renderizarPastasBoletins();
+            if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual) renderizarPastasPrivados();
         }
     });
 }
@@ -189,57 +201,103 @@ async function buscarClimaAraucaria() {
     } catch(e) { document.getElementById('weather-desc').textContent = "Clima indisponível no momento"; }
 }
 
+// PESQUISA GLOBAL (Corrigida: não puxa abas de admin se for usuário comum e não puxa ajustes)
 document.getElementById('input-pesquisa-global').addEventListener('keyup', (e) => {
     const texto = e.target.value.toLowerCase();
     const areaRes = document.getElementById('resultados-globais');
     if(texto.length < 2) { areaRes.style.display = 'none'; return; }
-    areaRes.style.display = 'grid'; areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px;">Resultados da Busca:</h3>';
+    
+    areaRes.style.display = 'grid'; 
+    areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px;">Resultados da Busca:</h3>';
     let encontrou = false;
-    document.querySelectorAll('.tab-content:not(#tab-home) .card').forEach(card => {
-        if(card.innerText.toLowerCase().includes(texto)) { areaRes.appendChild(card.cloneNode(true)); encontrou = true; }
+    
+    // Varre todos os cards de abas permitidas
+    document.querySelectorAll('.tab-content:not(#tab-home):not(#tab-ajustes) .card, .mini-card').forEach(card => {
+        // Checa se a aba pai está visível para o nível do usuário
+        const abaPai = card.closest('.tab-content');
+        if(!isAdmin && abaPai && (abaPai.id === 'tab-boletins-privados' || abaPai.id === 'tab-colaboradores')) return;
+        
+        if(card.innerText.toLowerCase().includes(texto)) { 
+            let clone = card.cloneNode(true);
+            clone.style.display = 'flex'; // Garante que cards do grid fiquem visíveis
+            areaRes.appendChild(clone); 
+            encontrou = true; 
+        }
     });
     if(!encontrou) areaRes.innerHTML += '<p>Nenhum resultado encontrado.</p>';
 });
 
-// --- O CÉREBRO: CRUZAMENTO DE PÚBLICO ALVO ---
-function obterPublicoAlvo(setoresAlvoString) {
-    if (!setoresAlvoString || setoresAlvoString.includes('Geral')) {
-        return listaColaboradoresGlobal.map(c => c.nome); // Vai pra todo mundo
+// PESQUISA LOCAL NA ABA
+document.getElementById('input-pesquisa').addEventListener('keyup', (e) => {
+    const texto = e.target.value.toLowerCase();
+    const abaContainer = document.getElementById(`tab-${abaAtual}`);
+    if(!abaContainer) return;
+    
+    abaContainer.querySelectorAll('.card, .mini-card').forEach(card => {
+        // Ignora os cards de pastas para não bugar a visualização
+        if(card.classList.contains('shortcut-card')) return;
+        
+        if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
+        else card.style.display = 'none';
+    });
+});
+
+// DESFAZER ASSINATURA (Para Boletins e Privados)
+window.desfazerLeitura = async function(docId, nomeColab, colecao) {
+    if(!isAdmin) return;
+    if(!confirm(`Tem certeza que deseja remover a assinatura de ${nomeColab}?`)) return;
+    
+    const docData = window.dadosBoletins[docId];
+    if(!docData || !docData.leituras) return;
+    
+    // Procura a string exata no banco de dados (ex: "Nome (Lido em: ...)")
+    const stringExata = docData.leituras.find(txt => txt.startsWith(nomeColab));
+    if(stringExata) {
+        await updateDoc(doc(db, colecao, docId), { leituras: arrayRemove(stringExata) });
+        document.getElementById('modal-leituras').style.display = 'none';
     }
+}
+
+function obterPublicoAlvo(setoresAlvoString) {
+    if (!setoresAlvoString || setoresAlvoString.includes('Geral')) return listaColaboradoresGlobal.map(c => c.nome);
     const setoresMarcados = setoresAlvoString.split(', ');
     return listaColaboradoresGlobal.filter(c => setoresMarcados.includes(c.setor)).map(c => c.nome);
 }
 
-// --- POPUP DE DETALHES DE QUEM LEU (CORRIGIDO) ---
-window.abrirListaLeituras = function(docId) {
+window.abrirListaLeituras = function(docId, colecaoOrigem = 'boletins') {
     const data = window.dadosBoletins[docId];
     if(!data) return;
     
-    document.getElementById('modal-leitura-titulo').textContent = data['Título do Informativo'] || 'Status do Documento';
+    document.getElementById('modal-leitura-titulo').textContent = data['Título do Informativo'] || data['Título do Documento'] || 'Status';
     
-    const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+    let publicoAlvoNomes = [];
+    if(colecaoOrigem === 'boletins') publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+    else publicoAlvoNomes = [data['Para qual Colaborador?']]; // Se for privado, o alvo é só 1 pessoa.
+
     const lidosTextos = data.leituras || [];
     const lidosNomes = lidosTextos.map(txt => txt.split(' (')[0]); 
 
     let htmlLidos = '';
     let htmlNaoLidos = '';
 
-    // Verifica SOMENTE quem deveria ler (O Público Alvo)
     publicoAlvoNomes.forEach(nome => {
         const registroCompleto = lidosTextos.find(txt => txt.startsWith(nome));
-        if (registroCompleto) htmlLidos += `<div class="item-lido"><i class="ri-check-line"></i> ${registroCompleto}</div>`;
-        else htmlNaoLidos += `<div class="item-falta"><i class="ri-time-line"></i> ${nome}</div>`;
+        if (registroCompleto) {
+            let btnDesfazer = isAdmin ? `<button onclick="window.desfazerLeitura('${docId}', '${nome}', '${colecaoOrigem}')" class="btn-desfazer"><i class="ri-arrow-go-back-line"></i> Desfazer</button>` : '';
+            htmlLidos += `<div class="item-lido" style="display:flex; justify-content:space-between; align-items:center;"><span><i class="ri-check-line"></i> ${registroCompleto}</span> ${btnDesfazer}</div>`;
+        } else {
+            htmlNaoLidos += `<div class="item-falta"><i class="ri-time-line"></i> ${nome}</div>`;
+        }
     });
 
-    document.getElementById('lista-lidos-content').innerHTML = htmlLidos || '<p style="color:var(--text-muted);">Ninguém leu ainda.</p>';
-    document.getElementById('lista-falta-content').innerHTML = htmlNaoLidos || '<p style="color:#38a169;">Todos os envolvidos já leram!</p>';
+    document.getElementById('lista-lidos-content').innerHTML = htmlLidos || '<p style="color:var(--text-muted);">Ninguém assinou ainda.</p>';
+    document.getElementById('lista-falta-content').innerHTML = htmlNaoLidos || '<p style="color:#38a169;">Todos assinaram!</p>';
     document.getElementById('modal-leituras').style.display = 'flex';
 }
 
 function abrirModal(colecao, docId = null, dadosAntigos = null) {
     const config = configuracaoAbas[colecao];
     document.getElementById('modal-title').textContent = docId ? `Editar ${config.titulo}` : `Novo(a) ${config.titulo}`;
-    
     const corSalva = (dadosAntigos && dadosAntigos.corCard) ? dadosAntigos.corCard : "#ffffff";
     document.getElementById('card-color').value = corSalva;
     
@@ -250,25 +308,22 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
     });
     document.getElementById('gradient-picker').innerHTML = htmlGradientes;
     document.querySelectorAll('.color-swatch').forEach(swatch => { swatch.addEventListener('click', (e) => { document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected')); e.target.classList.add('selected'); document.getElementById('card-color').value = e.target.getAttribute('data-color'); }); });
-
     document.getElementById('modal-doc-id').value = docId || "";
 
     let htmlCampos = '';
     config.campos.forEach(campo => {
         const valorAntigo = (dadosAntigos && dadosAntigos[campo]) ? dadosAntigos[campo] : '';
         
-        // COLABORADOR: LISTA DE SETORES
         if(colecao === 'colaboradores' && campo === 'Setor da Clínica') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="Geral">Setor Padrão (Geral)</option>`;
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="Geral">Setor Padrão (Geral)</option>`;
             setoresGlobais.forEach(s => { htmlCampos += `<option value="${s}" ${valorAntigo === s ? 'selected' : ''}>${s}</option>`; });
             htmlCampos += `</select>`;
         }
         else if(colecao === 'boletins-privados' && campo === 'Para qual Colaborador?') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione o Colaborador...</option>`;
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione o Colaborador...</option>`;
             listaColaboradoresGlobal.forEach(c => { htmlCampos += `<option value="${c.nome}" ${valorAntigo === c.nome ? 'selected' : ''}>${c.nome}</option>`; });
             htmlCampos += `</select>`;
         } 
-        // BOLETINS GERAIS: CAIXINHAS MULTIPLAS
         else if(colecao === 'boletins' && campo === 'Para quais Setores?') {
             htmlCampos += `<label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Para quais setores? (Marque 1 ou mais)</label><div class="checkbox-group" style="margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">`;
             const valoresSalvos = valorAntigo ? valorAntigo.split(', ') : ['Geral'];
@@ -278,16 +333,23 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
             });
             htmlCampos += `</div>`;
         }
+        else if(campo === 'Motivo') {
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione o Motivo...</option>`;
+            motivosGlobais.forEach(m => { htmlCampos += `<option value="${m}" ${valorAntigo === m ? 'selected' : ''}>${m}</option>`; });
+            htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+        }
+        else if(campo === 'Links dos Materiais (1 por linha)') {
+            htmlCampos += `<textarea id="input-${campo}" class="form-input" style="height:80px; resize:vertical;" placeholder="Cole os links de Vídeos ou Documentos (um por linha)">${valorAntigo}</textarea>`;
+        }
         else if(colecao === 'consultas' && campo === 'Tipo') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
         } 
         else if(campo === 'Local ou Prédio') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione o Local...</option>`;
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione o Local...</option>`;
             locaisGlobais.forEach(loc => { const l = loc.trim(); if(l) htmlCampos += `<option value="${l}" ${valorAntigo === l ? 'selected' : ''}>${l}</option>`; });
             htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
         }
         else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
-        } else if (campo.includes('Link')) { htmlCampos += `<input type="url" id="input-${campo}" placeholder="Link (URL)" value="${valorAntigo}" class="form-input">`;
         } else { htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" value="${valorAntigo}" class="form-input">`; }
     });
     
@@ -299,7 +361,43 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
 document.getElementById('btn-novo').addEventListener('click', () => { let aba = abaAtual; if(aba === 'contatos') aba = document.getElementById('btn-novo').getAttribute('data-sub-aba') || alert("Abra uma categoria!"); if(aba !== 'contatos') abrirModal(aba); });
 document.getElementById('btn-fechar-modal').addEventListener('click', () => document.getElementById('modal-cadastro').style.display = 'none');
 
-// --- SISTEMA DE PASTAS E LISTA DE BOLETINS ---
+// --- GRÁFICOS CHART.JS ---
+function atualizarGrafico(canvasId, refInstancia, dados, labelGrafico) {
+    const ctx = document.getElementById(canvasId);
+    if(!ctx) return refInstancia;
+    
+    // Conta os motivos
+    const contagemMotivos = {};
+    dados.forEach(b => {
+        const m = b.data['Motivo'] || 'Sem Motivo';
+        contagemMotivos[m] = (contagemMotivos[m] || 0) + 1;
+    });
+
+    const labels = Object.keys(contagemMotivos);
+    const valores = Object.values(contagemMotivos);
+
+    if(refInstancia) refInstancia.destroy(); // Destroi o antigo para não bugar
+
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: labelGrafico,
+                data: valores,
+                backgroundColor: '#8B252C',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+}
+
+// --- PASTAS DE BOLETINS GERAIS ---
 window.abrirPastaBoletim = function(pasta) {
     window.pastaBoletimAtual = pasta;
     document.getElementById('boletins-view-folders').style.display = 'none';
@@ -307,140 +405,168 @@ window.abrirPastaBoletim = function(pasta) {
     document.getElementById('titulo-pasta-boletins').innerHTML = `<i class="ri-folder-open-line"></i> Setor: ${pasta}`;
     renderizarListaBoletins();
 }
-
 window.fecharPastaBoletim = function() {
     window.pastaBoletimAtual = null;
     document.getElementById('boletins-view-list').style.display = 'none';
     document.getElementById('boletins-view-folders').style.display = 'block';
     renderizarPastasBoletins();
 }
-
 function renderizarPastasBoletins() {
     const gridFolders = document.getElementById('grid-boletins-folders');
     if(!gridFolders) return;
     gridFolders.innerHTML = '';
-
-    const pastasParaExibir = ['Geral', ...setoresGlobais];
-
-    pastasParaExibir.forEach(pasta => {
-        // Pega só os boletins que tem essa pasta no alvo
-        const boletinsDaPasta = window.todosBoletinsData.filter(item => {
-            const alvo = item.data['Para quais Setores?'] || 'Geral';
-            return alvo.includes(pasta);
-        });
-
-        let totalLidos = 0;
-        let totalFaltam = 0;
-
+    ['Geral', ...setoresGlobais].forEach(pasta => {
+        const boletinsDaPasta = window.todosBoletinsData.filter(item => (item.data['Para quais Setores?'] || 'Geral').includes(pasta));
+        let totalLidos = 0; let totalFaltam = 0;
         boletinsDaPasta.forEach(b => {
-            const alvo = b.data['Para quais Setores?'] || 'Geral';
-            const publicoDaqui = obterPublicoAlvo(alvo);
+            const publicoDaqui = obterPublicoAlvo(b.data['Para quais Setores?'] || 'Geral');
             const lidosNames = (b.data.leituras || []).map(txt => txt.split(' (')[0]);
-            
-            // Quantos do publico alvo já leram?
             const leram = publicoDaqui.filter(n => lidosNames.includes(n)).length;
-            totalLidos += leram;
-            totalFaltam += Math.max(0, publicoDaqui.length - leram);
+            totalLidos += leram; totalFaltam += Math.max(0, publicoDaqui.length - leram);
         });
-
         const icone = pasta === 'Geral' ? 'ri-global-line' : 'ri-folder-user-line';
-        
-        gridFolders.innerHTML += `
-            <div class="shortcut-card" onclick="window.abrirPastaBoletim('${pasta}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px;">
-                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                    <div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: var(--primary-color); font-size: 24px;"><i class="${icone}"></i></div>
-                    <div style="font-size: 16px; font-weight: 600;">${pasta}</div>
-                </div>
-                <div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">
-                    <div>Boletins Ativos: <b style="color: var(--text-main);">${boletinsDaPasta.length}</b></div>
-                    <div style="margin-top: 5px; color: #38a169;">Lidos Acumulados: <b>${totalLidos}</b></div>
-                    <div style="color: #e53e3e;">Pendências: <b>${totalFaltam}</b></div>
-                </div>
-            </div>`;
+        gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaBoletim('${pasta}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: var(--primary-color); font-size: 24px;"><i class="${icone}"></i></div><div style="font-size: 16px; font-weight: 600;">${pasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Boletins Ativos: <b style="color: var(--text-main);">${boletinsDaPasta.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos Acumulados: <b>${totalLidos}</b></div><div style="color: #e53e3e;">Pendências: <b>${totalFaltam}</b></div></div></div>`;
     });
 }
-
 function renderizarListaBoletins() {
-    const grid = document.getElementById('grid-boletins');
-    grid.innerHTML = '';
+    const grid = document.getElementById('grid-boletins'); grid.innerHTML = '';
     const pasta = window.pastaBoletimAtual;
+    const boletinsExibir = window.todosBoletinsData.filter(item => (item.data['Para quais Setores?'] || 'Geral').includes(pasta));
     
-    const boletinsExibir = window.todosBoletinsData.filter(item => {
-        const alvo = item.data['Para quais Setores?'] || 'Geral';
-        return alvo.includes(pasta);
-    });
+    // Atualiza o Gráfico
+    chartBoletinsInst = atualizarGrafico('chart-boletins', chartBoletinsInst, boletinsExibir, `Motivos em ${pasta}`);
 
     const camposOrdem = configuracaoAbas['boletins'].campos;
     const campoTitulo = camposOrdem[0];
 
     boletinsExibir.forEach(item => {
-        const data = item.data;
-        const docId = item.id;
-        window.dadosBoletins[docId] = data; // Salva para o modal
-
+        const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
         const titulo = data[campoTitulo] || 'Boletim';
         const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
-        const classeUrgente = isUrgente ? 'card-urgente' : '';
         const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
         const configCor = paletaGradientes.find(p => p.valor === corSalva);
         const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
-        const bordaUrgente = isUrgente ? 'border: 2px solid #e53e3e;' : '';
-        const bordaEsqNormal = (!isUrgente && !(configCor ? configCor.dark : false)) ? 'border-left: 6px solid var(--primary-color);' : '';
-
-        let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${bordaUrgente} ${bordaEsqNormal}">`;
-        cardHtml += `<div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; line-height:1.2;">${titulo}</div>`;
+        let cardHtml = `<div class="card ${isUrgente ? 'card-urgente' : ''} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${isUrgente ? 'border: 2px solid #e53e3e;' : ''} ${(!isUrgente && !(configCor ? configCor.dark : false)) ? 'border-left: 6px solid var(--primary-color);' : ''}"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; line-height:1.2;">${titulo}</div>`;
         
         let botaoLinkHtml = '';
         camposOrdem.forEach(chave => {
             const valor = data[chave];
             if (valor && chave !== campoTitulo) {
-                if(chave.includes('Link')) {
-                    botaoLinkHtml = `<div class="boletim-media" style="margin-top: 15px;"><button onclick="abrirMidaFlutuante('${valor}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"><i class="ri-eye-line"></i> Acessar Material</button></div>`;
+                if(chave === 'Links dos Materiais (1 por linha)') {
+                    const links = valor.split('\n').filter(l => l.trim() !== '');
+                    if(links.length > 0) {
+                        botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: 0.2s;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        botaoLinkHtml += `</div>`;
+                    }
                 } else { 
-                    const corTexto = (isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''; 
-                    const pesoTexto = (isUrgente && chave.includes('Tipo')) ? '700' : '500';
-                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${corTexto};"><strong>${chave}:</strong> <span style="font-weight: ${pesoTexto};">${valor}</span></div>`; 
+                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span style="font-weight: ${(isUrgente && chave.includes('Tipo')) ? '700' : '500'};">${valor}</span></div>`; 
                 }
             }
         });
         cardHtml += botaoLinkHtml;
         
-        // CÁLCULO INTELIGENTE DE QUEM FALTA ASSINAR
         const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
         const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
-        // Pendentes = Quem está no publico e NÃO está nos lidos
         const faltamAssinar = publicoAlvoNomes.filter(n => !lidosNomes.includes(n));
         
-        const qtdLidos = publicoAlvoNomes.filter(n => lidosNomes.includes(n)).length;
-        const qtdFaltam = faltamAssinar.length;
-
-        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;">`;
-        cardHtml += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;">
-                        <div style="font-size: 11px;">Visualizações: <b style="color:#38a169; font-size:13px;">${qtdLidos}</b> <br> Faltam: <b style="color:#e53e3e; font-size:13px;">${qtdFaltam}</b></div>
-                        <button onclick="window.abrirListaLeituras('${docId}')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-team-line"></i> Detalhes</button>
-                     </div>`;
+        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 11px;">Lidos: <b style="color:#38a169; font-size:13px;">${publicoAlvoNomes.length - faltamAssinar.length}</b> | Faltam: <b style="color:#e53e3e; font-size:13px;">${faltamAssinar.length}</b></div><button onclick="window.abrirListaLeituras('${docId}', 'boletins')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-team-line"></i> Detalhes</button></div>`;
         
         if(isAdmin) {
             cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><select id="leitor-${docId}" style="flex:1; padding:8px; border-radius:8px; border:none; font-size:12px; background:rgba(255,255,255,0.9); outline:none;">`;
-            if(faltamAssinar.length === 0) {
-                cardHtml += `<option value="">Todos já leram!</option>`;
-            } else {
-                cardHtml += `<option value="">Selecionar Pendente...</option>`;
-                faltamAssinar.forEach(nome => { cardHtml += `<option value="${nome}">${nome}</option>`; });
-            }
-            cardHtml += `</select><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins" style="background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i></button></div>`;
+            if(faltamAssinar.length === 0) cardHtml += `<option value="">Todos já leram!</option>`;
+            else { cardHtml += `<option value="">Selecionar Pendente...</option>`; faltamAssinar.forEach(nome => { cardHtml += `<option value="${nome}">${nome}</option>`; }); }
+            cardHtml += `</select><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins" style="background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer;"><i class="ri-check-line"></i></button></div>`;
         }
         cardHtml += `</div>`;
-        
-        if (isAdmin) {
-            const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-            cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins" data-info="${dadosSeguros}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-        }
-        cardHtml += `</div>`; 
-        grid.innerHTML += cardHtml;
+        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+        grid.innerHTML += cardHtml + `</div>`;
     });
 }
 
+// --- PASTAS DE INFORMATIVOS PRIVADOS ---
+window.abrirPastaPrivado = function(colabNome) {
+    window.pastaPrivadoAtual = colabNome;
+    document.getElementById('privados-view-folders').style.display = 'none';
+    document.getElementById('privados-view-list').style.display = 'block';
+    document.getElementById('titulo-pasta-privados').innerHTML = `<i class="ri-folder-user-line"></i> ${colabNome}`;
+    renderizarListaPrivados();
+}
+window.fecharPastaPrivado = function() {
+    window.pastaPrivadoAtual = null;
+    document.getElementById('privados-view-list').style.display = 'none';
+    document.getElementById('privados-view-folders').style.display = 'block';
+    renderizarPastasPrivados();
+}
+function renderizarPastasPrivados() {
+    const gridFolders = document.getElementById('grid-privados-folders');
+    if(!gridFolders) return;
+    gridFolders.innerHTML = '';
+    
+    // Agrupa por colaborador
+    const colabsComPrivados = [...new Set(window.todosPrivadosData.map(i => i.data['Para qual Colaborador?']).filter(Boolean))].sort();
+    
+    colabsComPrivados.forEach(nome => {
+        const boletinsDele = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === nome);
+        let lidos = 0; let faltam = 0;
+        boletinsDele.forEach(b => {
+            const leitor = (b.data.leituras || []).find(txt => txt.startsWith(nome));
+            if(leitor) lidos++; else faltam++;
+        });
+
+        gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaPrivado('${nome}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><div style="background: #e2e8f0; padding: 15px; border-radius: 12px; color: var(--text-main); font-size: 24px;"><i class="ri-user-star-fill"></i></div><div style="font-size: 15px; font-weight: 600;">${nome}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Documentos: <b style="color: var(--text-main);">${boletinsDele.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos: <b>${lidos}</b></div><div style="color: #e53e3e;">Pendentes: <b>${faltam}</b></div></div></div>`;
+    });
+}
+
+function renderizarListaPrivados() {
+    const grid = document.getElementById('grid-boletins-privados-list'); grid.innerHTML = '';
+    const colabAtual = window.pastaPrivadoAtual;
+    const boletinsExibir = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === colabAtual);
+    
+    chartPrivadosInst = atualizarGrafico('chart-privados', chartPrivadosInst, boletinsExibir, `Motivos de ${colabAtual}`);
+
+    const camposOrdem = configuracaoAbas['boletins-privados'].campos;
+    boletinsExibir.forEach(item => {
+        const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
+        const titulo = data['Título do Documento'] || 'Documento Privado';
+        
+        const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+        const configCor = paletaGradientes.find(p => p.valor === corSalva);
+        const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
+
+        let cardHtml = `<div class="card ${gradientClass}" style="display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border-left: 6px solid var(--primary-color);"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600;">${titulo}</div>`;
+        
+        let botaoLinkHtml = '';
+        camposOrdem.forEach(chave => {
+            const valor = data[chave];
+            if (valor && chave !== 'Título do Documento' && chave !== 'Para qual Colaborador?') {
+                if(chave === 'Links dos Materiais (1 por linha)') {
+                    const links = valor.split('\n').filter(l => l.trim() !== '');
+                    if(links.length > 0) {
+                        botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: 0.2s;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        botaoLinkHtml += `</div>`;
+                    }
+                } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4;"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
+            }
+        });
+        cardHtml += botaoLinkHtml;
+        
+        const jaLeu = (data.leituras || []).find(txt => txt.startsWith(colabAtual));
+        
+        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 13px; font-weight:600; color: ${jaLeu ? '#38a169' : '#e53e3e'};">${jaLeu ? '<i class="ri-check-double-line"></i> Lido' : '<i class="ri-time-line"></i> Pendente'}</div><button onclick="window.abrirListaLeituras('${docId}', 'boletins-privados')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-list-check"></i> Detalhes</button></div>`;
+        
+        if(isAdmin && !jaLeu) {
+            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><input type="hidden" id="leitor-${docId}" value="${colabAtual}"><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins-privados" style="width:100%; background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i> Confirmar Assinatura do Colaborador</button></div>`;
+        }
+        cardHtml += `</div>`;
+        
+        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins-privados" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins-privados" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+        grid.innerHTML += cardHtml + `</div>`;
+    });
+}
+
+// RENDERIZADOR GERAL
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid) return;
@@ -452,24 +578,25 @@ function renderizarCards(colecaoNome) {
         let itens = [];
         snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() }));
 
-        // SALVA OS COLABORADORES COM SEU SETOR PARA CRUZAR DADOS DEPOIS
         if(colecaoNome === 'colaboradores') {
-            listaColaboradoresGlobal = itens.map(item => {
-                return { nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' };
-            }).filter(c => c.nome).sort((a,b) => a.nome.localeCompare(b.nome));
+            listaColaboradoresGlobal = itens.map(item => { return { nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' }; }).filter(c => c.nome).sort((a,b) => a.nome.localeCompare(b.nome));
         }
 
-        // DESVIO PARA BOLETINS (Pois agora usa o sistema de pastas)
+        // PASTAS BOLETINS GERAIS
         if(colecaoNome === 'boletins') {
             window.todosBoletinsData = itens;
-            if(abaAtual === 'boletins') {
-                if(window.pastaBoletimAtual) renderizarListaBoletins();
-                else renderizarPastasBoletins();
-            }
+            if(abaAtual === 'boletins') { if(window.pastaBoletimAtual) renderizarListaBoletins(); else renderizarPastasBoletins(); }
             return;
         }
 
-        // DESVIO PARA RAMAIS (Sistem de blocos)
+        // PASTAS BOLETINS PRIVADOS
+        if(colecaoNome === 'boletins-privados') {
+            window.todosPrivadosData = itens;
+            if(abaAtual === 'boletins-privados') { if(window.pastaPrivadoAtual) renderizarListaPrivados(); else renderizarPastasPrivados(); }
+            return;
+        }
+
+        // RAMAIS (Blocos Sanfona)
         if (colecaoNome === 'ramais') {
             grid.style.display = 'block'; 
             const locaisMap = {};
@@ -490,7 +617,7 @@ function renderizarCards(colecaoNome) {
             return; 
         }
         
-        // RENDERIZAÇÃO PADRÃO DOS OUTROS
+        // RENDER GERAL DE OUTROS CARDS
         grid.style.display = 'grid'; 
         const camposOrdem = configuracaoAbas[colecaoNome].campos;
         const campoTitulo = camposOrdem[0];
@@ -502,46 +629,22 @@ function renderizarCards(colecaoNome) {
         });
 
         itens.forEach((item) => {
-            const data = item.data;
-            const docId = item.id;
+            const data = item.data; const docId = item.id;
             const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'];
-            
-            const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
-            const classeUrgente = isUrgente ? 'card-urgente' : '';
             const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
             const configCor = paletaGradientes.find(p => p.valor === corSalva);
             const isDark = configCor ? configCor.dark : false;
             
-            const gradientClass = isDark ? 'has-gradient' : ''; 
-            const bordaUrgente = isUrgente ? 'border: 2px solid #e53e3e;' : '';
-            const bordaEsqNormal = (!isUrgente && !isDark) ? 'border-left: 6px solid var(--primary-color);' : '';
-
-            let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${bordaUrgente} ${bordaEsqNormal}">`;
-
+            let cardHtml = `<div class="card ${isDark ? 'has-gradient' : ''}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${!isDark ? 'border-left: 6px solid var(--primary-color);' : ''}">`;
             if (tituloDesteCard) cardHtml += `<div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; padding-right: 35px; line-height:1.2;">${tituloDesteCard}</div>`;
-            
-            let botaoLinkHtml = '';
             
             camposOrdem.forEach(chave => {
                 const valor = data[chave];
-                if (valor && chave !== campoTitulo) {
-                    if(typeof valor === 'string' && valor.includes('file:///')) return; 
-                    if(chave.includes('Link')) {
-                        botaoLinkHtml = `<div class="boletim-media" style="margin-top: 15px;"><button onclick="abrirMidaFlutuante('${valor}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"><i class="ri-eye-line"></i> Acessar Material</button></div>`;
-                    } else { 
-                        const corTexto = (isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''; 
-                        const pesoTexto = (isUrgente && chave.includes('Tipo')) ? '700' : '500';
-                        cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${corTexto};"><strong>${chave}:</strong> <span style="font-weight: ${pesoTexto};">${valor}</span></div>`; 
-                    }
-                }
+                if (valor && chave !== campoTitulo) cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4;"><strong>${chave}:</strong> <span style="font-weight: 500;">${valor}</span></div>`; 
             });
-            cardHtml += botaoLinkHtml;
             
-            if (isAdmin) {
-                const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-                cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${dadosSeguros}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-            }
-            cardHtml += `</div>`; grid.innerHTML += cardHtml;
+            if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+            grid.innerHTML += cardHtml + `</div>`;
         });
     });
 }
@@ -552,10 +655,11 @@ document.querySelector('.main-content').addEventListener('click', async (e) => {
     if (btnEditar && isAdmin) abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
     if (btnAssinar && isAdmin) {
         const idDoc = btnAssinar.dataset.id;
+        const col = btnAssinar.dataset.colecao;
         const nomeColaborador = document.getElementById(`leitor-${idDoc}`).value;
         if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
         const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
-        await updateDoc(doc(db, btnAssinar.dataset.colecao, idDoc), { leituras: arrayUnion(registro) });
+        await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
     }
 });
 
