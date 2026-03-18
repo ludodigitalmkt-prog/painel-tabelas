@@ -20,8 +20,8 @@ let abaAtual = 'home';
 const EMAIL_GESTAO = "gestao@clinica.com";
 let listaColaboradoresGlobal = []; 
 let logoGlobalDaClinica = ""; 
+let locaisGlobais = []; // Array para guardar os locais cadastrados!
 
-// LISTA DE CORES SÓLIDAS E GRADIENTES
 const paletaGradientes = [
     { valor: "#ffffff", nome: "Branco Padrão", dark: false },
     { valor: "#e53e3e", nome: "Vermelho Sólido", dark: true },
@@ -83,7 +83,6 @@ onAuthStateChanged(auth, (user) => {
         }
         
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
-        
         Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
         carregarHistorico();
         carregarConfiguracoes();
@@ -101,7 +100,6 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         abaAtual = btn.getAttribute('data-tab');
         document.getElementById(`tab-${abaAtual}`).style.display = 'block';
         document.getElementById('page-title').textContent = btn.textContent.trim();
-        
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         document.getElementById('search-box').style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
     });
@@ -129,14 +127,16 @@ document.getElementById('btn-salvar-dados').addEventListener('click', async () =
     } catch(e) { alert("Erro: " + e); }
 });
 
+// LÓGICA DE CONFIGURAÇÕES GLOBAIS
 document.getElementById('btn-salvar-ajustes').addEventListener('click', async () => {
     if(!isAdmin) return;
     const texto = document.getElementById('tab-input-banner').value;
     const logoUrl = document.getElementById('tab-input-logo').value;
+    const locaisTexto = document.getElementById('tab-input-locais').value; // Puxa os locais
     
     document.getElementById('btn-salvar-ajustes').textContent = "Salvando...";
     try {
-        await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, logo_url: logoUrl });
+        await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, logo_url: logoUrl, locais: locaisTexto });
         alert("Configurações salvas com sucesso!");
     } catch(e) {
         alert("Erro ao salvar configurações.");
@@ -144,7 +144,6 @@ document.getElementById('btn-salvar-ajustes').addEventListener('click', async ()
     document.getElementById('btn-salvar-ajustes').innerHTML = '<i class="ri-save-line"></i> Salvar Alterações';
 });
 
-// --- O TRADUTOR DO GOOGLE DRIVE ESTÁ AQUI ---
 function carregarConfiguracoes() {
     onSnapshot(doc(db, "configuracoes", "gerais"), (docSnap) => {
         const area = document.getElementById('banner-content');
@@ -152,21 +151,21 @@ function carregarConfiguracoes() {
             const data = docSnap.data();
             logoGlobalDaClinica = data.logo_url || '';
             
-            // INTELIGÊNCIA: Converter link do Drive em imagem pura!
             if (logoGlobalDaClinica.includes("drive.google.com")) {
                 const match = logoGlobalDaClinica.match(/\/d\/([a-zA-Z0-9_-]+)/) || logoGlobalDaClinica.match(/id=([a-zA-Z0-9_-]+)/);
-                if (match && match[1]) {
-                    logoGlobalDaClinica = `https://drive.google.com/uc?export=view&id=${match[1]}`;
-                }
+                if (match && match[1]) logoGlobalDaClinica = `https://drive.google.com/uc?export=view&id=${match[1]}`;
             }
             
-            if(data.banner_texto && data.banner_texto.trim() !== '') {
-                area.innerHTML = `<h2>${data.banner_texto.replace(/\n/g, '<br>')}</h2>`;
-            } else {
-                area.innerHTML = `<h2>Bem-vindo ao Painel CSV</h2>`;
-            }
+            if(data.banner_texto && data.banner_texto.trim() !== '') area.innerHTML = `<h2>${data.banner_texto.replace(/\n/g, '<br>')}</h2>`;
+            else area.innerHTML = `<h2>Bem-vindo ao Painel CSV</h2>`;
+            
+            // Abastece os campos se a pessoa entrar na aba
             if(document.getElementById('tab-input-banner')) document.getElementById('tab-input-banner').value = data.banner_texto || '';
             if(document.getElementById('tab-input-logo')) document.getElementById('tab-input-logo').value = data.logo_url || '';
+            if(document.getElementById('tab-input-locais')) document.getElementById('tab-input-locais').value = data.locais || '';
+            
+            // Abastece a nossa lista suspensa em tempo real!
+            locaisGlobais = data.locais ? data.locais.split('\n').filter(l => l.trim() !== '') : [];
         }
     });
 }
@@ -232,16 +231,21 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
             htmlCampos += `</select>`;
         } 
         else if(colecao === 'corpo-clinico' && campo === 'Exibir Logo do Convenio') {
-            htmlCampos += `
-            <select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;">
-                <option value="">Exibir Logo Padrão?</option>
-                <option value="Sim" ${valorAntigo === 'Sim' ? 'selected' : ''}>Sim, exibir a logo.</option>
-                <option value="Não" ${valorAntigo === 'Não' ? 'selected' : ''}>Não exibir logo.</option>
-            </select>`;
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Exibir Logo Padrão?</option><option value="Sim" ${valorAntigo === 'Sim' ? 'selected' : ''}>Sim, exibir a logo.</option><option value="Não" ${valorAntigo === 'Não' ? 'selected' : ''}>Não exibir logo.</option></select>`;
         }
         else if(colecao === 'consultas' && campo === 'Tipo') {
             htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
-        } else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
+        } 
+        // LÓGICA DO LOCAL/PRÉDIO (LISTA SUSPENSA DINÂMICA!)
+        else if(campo === 'Local ou Prédio') {
+            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione o Local...</option>`;
+            locaisGlobais.forEach(loc => {
+                const l = loc.trim();
+                if(l) htmlCampos += `<option value="${l}" ${valorAntigo === l ? 'selected' : ''}>${l}</option>`;
+            });
+            htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+        }
+        else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
         } else if (campo.includes('Link')) { htmlCampos += `<input type="url" id="input-${campo}" placeholder="Link (URL)" value="${valorAntigo}" class="form-input">`;
         } else { htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" value="${valorAntigo}" class="form-input">`; }
     });
@@ -258,6 +262,7 @@ document.getElementById('btn-novo').addEventListener('click', () => {
 });
 document.getElementById('btn-fechar-modal').addEventListener('click', () => document.getElementById('modal-cadastro').style.display = 'none');
 
+// RENDERIZADOR COM INTELIGÊNCIA DE MINI CARDS PARA RAMAIS
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid) return;
@@ -270,6 +275,66 @@ function renderizarCards(colecaoNome) {
         snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() }));
 
         if(colecaoNome === 'colaboradores') listaColaboradoresGlobal = itens.map(item => item.data['Nome Completo do Colaborador']).filter(Boolean).sort();
+
+        // -----------------------------------------------------------
+        // INTELIGÊNCIA ESPECIAL: SE FOR RAMAIS, RENDERIZA AGRUPADO!
+        // -----------------------------------------------------------
+        if (colecaoNome === 'ramais') {
+            grid.style.display = 'block'; // Tira o grid pai para permitir os blocos
+            
+            // Agrupa os ramais por "Local ou Prédio"
+            const locaisMap = {};
+            itens.forEach(item => {
+                const local = item.data['Local ou Prédio'] || 'Sem Local Definido';
+                if (!locaisMap[local]) locaisMap[local] = [];
+                locaisMap[local].push(item);
+            });
+
+            // Cria o HTML por Bloco (Matriz, Filial, etc)
+            Object.keys(locaisMap).sort().forEach(local => {
+                let groupHtml = `<div class="local-group"><h3 class="local-title"><i class="ri-map-pin-2-fill"></i> ${local}</h3><div class="mini-cards-grid">`;
+
+                // Ordena os ramais dentro do local pelo setor
+                locaisMap[local].sort((a,b) => (a.data['Setor']||'').localeCompare(b.data['Setor']||'')).forEach(item => {
+                    const data = item.data;
+                    const docId = item.id;
+                    const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+                    const configCor = paletaGradientes.find(p => p.valor === corSalva);
+                    const isDark = configCor ? configCor.dark : false;
+                    const gradientClass = isDark ? 'has-gradient' : ''; 
+
+                    let cardHtml = `<div class="mini-card ${gradientClass}" style="background: ${corSalva};">`;
+                    
+                    // Cabeçalho do Mini Card (Fica sempre visível)
+                    cardHtml += `<div class="mini-card-main">
+                                    <div class="mini-card-title">${data['Setor'] || '-'}</div>
+                                    <div class="mini-card-number"><i class="ri-phone-line"></i> ${data['Número do Ramal'] || '-'}</div>
+                                 </div>`;
+                                 
+                    // Corpo Oculto (Só aparece no Hover)
+                    cardHtml += `<div class="mini-card-details">
+                                    <p><strong>Observações:</strong> ${data['Observações'] || 'Nenhuma observação.'}</p>
+                                 </div>`;
+
+                    // Ações do Admin
+                    if (isAdmin) {
+                        const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+                        cardHtml += `<div class="mini-card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${dadosSeguros}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+                    }
+                    cardHtml += `</div>`;
+                    groupHtml += cardHtml;
+                });
+                
+                groupHtml += `</div></div>`;
+                grid.innerHTML += groupHtml;
+            });
+            return; // Encerra a função aqui para não usar o modelo padrão de cards
+        }
+        
+        // -----------------------------------------------------------
+        // RENDERIZAÇÃO PADRÃO (Para médicos, exames, etc)
+        // -----------------------------------------------------------
+        grid.style.display = 'grid'; 
 
         const camposOrdem = configuracaoAbas[colecaoNome].campos;
         const campoTitulo = camposOrdem[0];
@@ -321,9 +386,7 @@ function renderizarCards(colecaoNome) {
             camposOrdem.forEach(chave => {
                 const valor = data[chave];
                 if (valor && chave !== campoTitulo && chave !== 'Exibir Logo do Convenio' && chave !== 'Link da Logo (Ex: Unimed)') {
-                    
                     if(typeof valor === 'string' && valor.includes('file:///')) return; 
-
                     if(chave.includes('Link')) {
                         botaoLinkHtml = `<div class="boletim-media" style="margin-top: 15px;"><button onclick="abrirMidaFlutuante('${valor}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"><i class="ri-eye-line"></i> Acessar Material</button></div>`;
                     } else { 
@@ -353,7 +416,6 @@ function renderizarCards(colecaoNome) {
                 const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                 cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${dadosSeguros}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
             }
-            
             cardHtml += `</div>`;
             grid.innerHTML += cardHtml;
         });
