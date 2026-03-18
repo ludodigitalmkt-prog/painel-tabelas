@@ -19,25 +19,28 @@ let isAdmin = false;
 let abaAtual = 'home'; 
 const EMAIL_GESTAO = "gestao@clinica.com";
 let listaColaboradoresGlobal = []; 
+let logoGlobalDaClinica = ""; // Armazena a logo cadastrada nas configurações
 
-// LISTA DE GRADIENTES
+// LISTA DE CORES SÓLIDAS E GRADIENTES
 const paletaGradientes = [
-    { valor: "#ffffff", nome: "Branco Padrão" },
-    { valor: "linear-gradient(135deg, #f40076, #df98fa)", nome: "Rosa/Roxo" },
-    { valor: "linear-gradient(135deg, #f06966, #fad6a6)", nome: "Pêssego/Amarelo" },
-    { valor: "linear-gradient(135deg, #ff0076, #590fb7)", nome: "Roxo Escuro" },
-    { valor: "linear-gradient(135deg, #9055ff, #13e2da)", nome: "Azul/Ciano" },
-    { valor: "linear-gradient(135deg, #0b63f6, #003cc5)", nome: "Azul Escuro" },
-    { valor: "linear-gradient(135deg, #d6ff7f, #00b3cc)", nome: "Verde/Azul" },
-    { valor: "linear-gradient(135deg, #f6d365, #fda085)", nome: "Laranja Suave" },
-    { valor: "linear-gradient(135deg, #84fab0, #8fd3f4)", nome: "Menta/Céu" }
+    { valor: "#ffffff", nome: "Branco Padrão", dark: false },
+    { valor: "#e53e3e", nome: "Vermelho Sólido", dark: true },
+    { valor: "#3182ce", nome: "Azul Sólido", dark: true },
+    { valor: "#38a169", nome: "Verde Sólido", dark: true },
+    { valor: "#ecc94b", nome: "Amarelo Sólido", dark: false },
+    { valor: "#805ad5", nome: "Roxo Sólido", dark: true },
+    { valor: "linear-gradient(135deg, #f40076, #df98fa)", nome: "Rosa/Roxo", dark: true },
+    { valor: "linear-gradient(135deg, #f06966, #fad6a6)", nome: "Pêssego/Amarelo", dark: false },
+    { valor: "linear-gradient(135deg, #9055ff, #13e2da)", nome: "Azul/Ciano", dark: true },
+    { valor: "linear-gradient(135deg, #0b63f6, #003cc5)", nome: "Azul Escuro", dark: true },
+    { valor: "linear-gradient(135deg, #d6ff7f, #00b3cc)", nome: "Verde/Azul", dark: true }
 ];
 
 const frases = ["O sucesso é a soma de pequenos esforços repetidos dia após dia.", "A empatia é a medicina que o mundo mais precisa.", "Juntos, fazemos a diferença na vida de cada paciente.", "Trabalho em equipe divide as tarefas e multiplica o sucesso.", "A excelência não é um ato, mas um hábito."];
 
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor ou Cargo'] },
-    'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Link da Logo (Ex: Unimed)'] },
+    'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convênio (Sim/Não)?'] }, // MUDOU AQUI
     'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Código', 'Serviço', 'Observações'] },
     'ultrassom': { titulo: 'Ultrassom', campos: ['Código', 'Exame', 'Profissional', 'Restrição de Idade', 'Observação'] },
     'consultas': { titulo: 'Consulta ou Procedimento', campos: ['Código', 'Tipo', 'Descrição', 'Observações'] },
@@ -71,18 +74,19 @@ onAuthStateChanged(auth, (user) => {
             document.getElementById('user-role-badge').classList.add('admin');
             document.getElementById('btn-nav-privados').style.display = 'flex';
             document.getElementById('btn-nav-colaboradores').style.display = 'flex';
-            document.getElementById('btn-editar-banner').style.display = 'block';
+            document.getElementById('btn-abrir-config').style.display = 'block';
         } else {
             document.getElementById('user-role-badge').classList.remove('admin');
             document.getElementById('btn-nav-privados').style.display = 'none';
             document.getElementById('btn-nav-colaboradores').style.display = 'none';
-            document.getElementById('btn-editar-banner').style.display = 'none';
+            document.getElementById('btn-abrir-config').style.display = 'none';
         }
         
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home') ? 'flex' : 'none';
+        
         Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
         carregarHistorico();
-        carregarBanner();
+        carregarConfiguracoes();
     } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('dashboard-screen').style.display = 'none';
@@ -124,27 +128,31 @@ document.getElementById('btn-salvar-dados').addEventListener('click', async () =
     } catch(e) { alert("Erro: " + e); }
 });
 
-// BANNER
-document.getElementById('btn-editar-banner').addEventListener('click', () => document.getElementById('modal-banner').style.display = 'flex');
-document.getElementById('btn-fechar-banner').addEventListener('click', () => document.getElementById('modal-banner').style.display = 'none');
-document.getElementById('btn-salvar-banner').addEventListener('click', async () => {
+// LÓGICA DE CONFIGURAÇÕES GLOBAIS
+document.getElementById('btn-abrir-config').addEventListener('click', () => document.getElementById('modal-config').style.display = 'flex');
+document.getElementById('btn-fechar-config').addEventListener('click', () => document.getElementById('modal-config').style.display = 'none');
+document.getElementById('btn-salvar-config').addEventListener('click', async () => {
     if(!isAdmin) return;
     const texto = document.getElementById('input-banner-texto').value;
-    await setDoc(doc(db, "configuracoes", "banner_home"), { texto: texto });
-    document.getElementById('modal-banner').style.display = 'none';
+    const logoUrl = document.getElementById('input-logo-global').value;
+    await setDoc(doc(db, "configuracoes", "gerais"), { banner_texto: texto, logo_url: logoUrl });
+    document.getElementById('modal-config').style.display = 'none';
 });
 
-function carregarBanner() {
-    onSnapshot(doc(db, "configuracoes", "banner_home"), (docSnap) => {
+function carregarConfiguracoes() {
+    onSnapshot(doc(db, "configuracoes", "gerais"), (docSnap) => {
         const area = document.getElementById('banner-content');
         if (docSnap.exists()) {
             const data = docSnap.data();
-            if(data.texto && data.texto.trim() !== '') {
-                area.innerHTML = `<h2>${data.texto.replace(/\n/g, '<br>')}</h2>`;
+            logoGlobalDaClinica = data.logo_url || '';
+            
+            if(data.banner_texto && data.banner_texto.trim() !== '') {
+                area.innerHTML = `<h2>${data.banner_texto.replace(/\n/g, '<br>')}</h2>`;
             } else {
                 area.innerHTML = `<h2>Bem-vindo ao Painel CSV</h2>`;
             }
-            if(document.getElementById('input-banner-texto')) document.getElementById('input-banner-texto').value = data.texto || '';
+            if(document.getElementById('input-banner-texto')) document.getElementById('input-banner-texto').value = data.banner_texto || '';
+            if(document.getElementById('input-logo-global')) document.getElementById('input-logo-global').value = data.logo_url || '';
         }
     });
 }
@@ -180,7 +188,6 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
     const config = configuracaoAbas[colecao];
     document.getElementById('modal-title').textContent = docId ? `Editar ${config.titulo}` : `Novo(a) ${config.titulo}`;
     
-    // PREPARA OS GRADIENTES NO MODAL
     const corSalva = (dadosAntigos && dadosAntigos.corCard) ? dadosAntigos.corCard : "#ffffff";
     document.getElementById('card-color').value = corSalva;
     
@@ -204,11 +211,21 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
     let htmlCampos = '';
     config.campos.forEach(campo => {
         const valorAntigo = (dadosAntigos && dadosAntigos[campo]) ? dadosAntigos[campo] : '';
+        
         if(colecao === 'boletins-privados' && campo === 'Para qual Colaborador?') {
             htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione o Colaborador...</option>`;
             listaColaboradoresGlobal.forEach(nome => { htmlCampos += `<option value="${nome}" ${valorAntigo === nome ? 'selected' : ''}>${nome}</option>`; });
             htmlCampos += `</select>`;
         } 
+        // LISTA SUSPENSA PARA A LOGO
+        else if(colecao === 'corpo-clinico' && campo === 'Exibir Logo do Convênio (Sim/Não)?') {
+            htmlCampos += `
+            <select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;">
+                <option value="">Exibir Logo Padrão?</option>
+                <option value="Sim" ${valorAntigo === 'Sim' ? 'selected' : ''}>Sim, exibir a logo.</option>
+                <option value="Não" ${valorAntigo === 'Não' ? 'selected' : ''}>Não exibir logo.</option>
+            </select>`;
+        }
         else if(colecao === 'consultas' && campo === 'Tipo') {
             htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px; width:100%; padding:12px; border-radius:10px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
         } else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
@@ -228,7 +245,7 @@ document.getElementById('btn-novo').addEventListener('click', () => {
 });
 document.getElementById('btn-fechar-modal').addEventListener('click', () => document.getElementById('modal-cadastro').style.display = 'none');
 
-// --- RENDERIZADOR COM A CORREÇÃO DO ERRO ---
+// --- RENDERIZADOR COM ESCUDO ANTI-ERRO E CORES CORRIGIDAS ---
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid) return;
@@ -264,21 +281,27 @@ function renderizarCards(colecaoNome) {
                 areaNotificacoes.innerHTML += `<div class="notificacao-dia" onclick="window.irParaAba('boletins')" style="cursor:pointer;"><i class="ri-notification-3-line"></i><div><strong style="display:block; color:#2c5282;">Novo Boletim Hoje!</strong><span style="font-size:13px; color:#4a5568;">${tituloDesteCard} foi publicado. Clique para ler.</span></div></div>`;
             }
             
-            // --- A CORREÇÃO DO ERRO ESTÁ AQUI (classeUrgente definida perfeitamente) ---
             const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
             const classeUrgente = isUrgente ? 'card-urgente' : '';
             
             const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
-            const isGradient = corSalva.includes('gradient');
             
-            const gradientClass = isGradient ? 'has-gradient' : '';
+            // Procura na paleta se a cor escolhida é escura para deixar a letra branca!
+            const configCor = paletaGradientes.find(p => p.valor === corSalva);
+            const isDark = configCor ? configCor.dark : false;
+            
+            const gradientClass = isDark ? 'has-gradient' : ''; // Tem classe no CSS que deixa texto branco
             const bordaUrgente = isUrgente ? 'border: 2px solid #e53e3e;' : '';
-            const bordaEsqNormal = (!isUrgente && !isGradient) ? 'border-left: 6px solid var(--primary-color);' : '';
+            const bordaEsqNormal = (!isUrgente && !isDark) ? 'border-left: 6px solid var(--primary-color);' : '';
 
             let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${bordaUrgente} ${bordaEsqNormal}">`;
             
-            if (data['Link da Logo (Ex: Unimed)']) {
-                cardHtml += `<img src="${data['Link da Logo (Ex: Unimed)']}" onerror="this.style.display='none'" style="position:absolute; top:-15px; right:-15px; height:50px; width:50px; object-fit:contain; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.15); z-index:5; background:white; padding:4px;" alt="Logo">`;
+            // VERIFICAÇÃO DA LOGO (Com o Escudo Anti "file:///")
+            if (data['Exibir Logo do Convênio (Sim/Não)?'] === 'Sim' && logoGlobalDaClinica) {
+                // Se alguém tentar colocar um arquivo do HD na logo global, a gente bloqueia!
+                if(!logoGlobalDaClinica.includes('file:///')) {
+                    cardHtml += `<img src="${logoGlobalDaClinica}" onerror="this.style.display='none'" style="position:absolute; top:-15px; right:-15px; height:50px; width:50px; object-fit:contain; border-radius:12px; box-shadow: 0 5px 15px rgba(0,0,0,0.15); z-index:5; background:white; padding:4px;" alt="Logo">`;
+                }
             }
 
             if (tituloDesteCard) {
@@ -289,7 +312,14 @@ function renderizarCards(colecaoNome) {
             
             camposOrdem.forEach(chave => {
                 const valor = data[chave];
-                if (valor && chave !== campoTitulo && chave !== 'Link da Logo (Ex: Unimed)') {
+                // Ignora campos antigos de erro, títulos, e coisas da logo
+                if (valor && chave !== campoTitulo && chave !== 'Exibir Logo do Convênio (Sim/Não)?' && chave !== 'Link da Logo (Ex: Unimed)') {
+                    
+                    // ESCUDO CONTRA O ERRO F12: Se o texto tiver "file:///", simplesmente não exibe!
+                    if(typeof valor === 'string' && valor.includes('file:///')) {
+                        return; // Pula esse campo quebrado
+                    }
+
                     if(chave.includes('Link')) {
                         botaoLinkHtml = `<div class="boletim-media" style="margin-top: 15px;"><button onclick="abrirMidaFlutuante('${valor}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 12px 16px; border-radius: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.15);"><i class="ri-eye-line"></i> Acessar Material</button></div>`;
                     } else { 
