@@ -88,7 +88,7 @@
                     </div>
                 </div>
 
-                <div id="area-notificacoes"></div>
+                <div id="area-alertas-home"></div>
 
                 <h2 style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted); margin-top: 10px;">Acesso Rápido</h2>
                 <div class="home-grid">
@@ -112,8 +112,20 @@
                     <textarea id="tab-input-setores" class="form-input" style="height: 100px; resize: vertical;" placeholder="Recepção&#10;Enfermagem"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Motivos dos Informativos (Para os Gráficos)</label>
-                    <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Digite os motivos (um por linha) para categorizar os boletins e gerar os gráficos. (Ex: Elogio, Regra Nova, Advertência).</p>
+                    <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Digite os motivos (um por linha) para categorizar os boletins e gerar os gráficos. (Ex: Elogio, Regra Nova).</p>
                     <textarea id="tab-input-motivos" class="form-input" style="height: 100px; resize: vertical;" placeholder="Aviso Geral&#10;Nova Regra&#10;Elogio"></textarea>
+
+                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Cores de Status (Informativos)</label>
+                    <div style="display:flex; gap: 15px;">
+                        <div style="flex:1;">
+                            <span style="font-size:12px; color:var(--text-muted);">Pendente / Falta Ler:</span>
+                            <input type="color" id="tab-color-pendente" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#e53e3e">
+                        </div>
+                        <div style="flex:1;">
+                            <span style="font-size:12px; color:var(--text-muted);">Concluído / Todos Leram:</span>
+                            <input type="color" id="tab-color-concluido" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#38a169">
+                        </div>
+                    </div>
 
                     <button id="btn-salvar-ajustes" class="btn-primary" style="margin-top: 20px; width: 100%;"><i class="ri-save-line"></i> Salvar Alterações</button>
                 </div>
