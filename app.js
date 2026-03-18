@@ -74,7 +74,7 @@ onAuthStateChanged(auth, (user) => {
             document.getElementById('user-role-badge').classList.add('admin');
             document.getElementById('btn-nav-privados').style.display = 'flex';
             document.getElementById('btn-nav-colaboradores').style.display = 'flex';
-            document.getElementById('btn-nav-ajustes').style.display = 'flex'; // MOSTRA A ABA DE AJUSTES
+            document.getElementById('btn-nav-ajustes').style.display = 'flex';
         } else {
             document.getElementById('user-role-badge').classList.remove('admin');
             document.getElementById('btn-nav-privados').style.display = 'none';
@@ -102,7 +102,6 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         document.getElementById(`tab-${abaAtual}`).style.display = 'block';
         document.getElementById('page-title').textContent = btn.textContent.trim();
         
-        // Esconde o botão de "Adicionar Novo" se estiver na Home ou na Aba de Ajustes
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         document.getElementById('search-box').style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
     });
@@ -130,7 +129,6 @@ document.getElementById('btn-salvar-dados').addEventListener('click', async () =
     } catch(e) { alert("Erro: " + e); }
 });
 
-// --- LÓGICA DA NOVA ABA DE AJUSTES GLOBAIS ---
 document.getElementById('btn-salvar-ajustes').addEventListener('click', async () => {
     if(!isAdmin) return;
     const texto = document.getElementById('tab-input-banner').value;
@@ -146,12 +144,21 @@ document.getElementById('btn-salvar-ajustes').addEventListener('click', async ()
     document.getElementById('btn-salvar-ajustes').innerHTML = '<i class="ri-save-line"></i> Salvar Alterações';
 });
 
+// --- O TRADUTOR DO GOOGLE DRIVE ESTÁ AQUI ---
 function carregarConfiguracoes() {
     onSnapshot(doc(db, "configuracoes", "gerais"), (docSnap) => {
         const area = document.getElementById('banner-content');
         if (docSnap.exists()) {
             const data = docSnap.data();
             logoGlobalDaClinica = data.logo_url || '';
+            
+            // INTELIGÊNCIA: Converter link do Drive em imagem pura!
+            if (logoGlobalDaClinica.includes("drive.google.com")) {
+                const match = logoGlobalDaClinica.match(/\/d\/([a-zA-Z0-9_-]+)/) || logoGlobalDaClinica.match(/id=([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    logoGlobalDaClinica = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+                }
+            }
             
             if(data.banner_texto && data.banner_texto.trim() !== '') {
                 area.innerHTML = `<h2>${data.banner_texto.replace(/\n/g, '<br>')}</h2>`;
