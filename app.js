@@ -54,11 +54,10 @@ const paletaGradientes = [
 
 const frases = ["O sucesso é a soma de pequenos esforços repetidos dia após dia.", "A empatia é a medicina que o mundo mais precisa.", "Juntos, fazemos a diferença na vida de cada paciente.", "Trabalho em equipe divide as tarefas e multiplica o sucesso.", "A excelência não é um ato, mas um hábito."];
 
-// ADICIONADOS OS NOVOS CAMPOS DE IMAGEM E STATUS NOS DICIONÁRIOS
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'] }, 
-    'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Link da Logo do Convênio', 'Código', 'Serviço', 'Aceita o Serviço? (Sim/Não)', 'Observações'] },
+    'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Link da Logo do Convênio', 'Código', 'Serviço', 'Aceita o Servico?', 'Observações'] },
     'ultrassom': { titulo: 'Ultrassom', campos: ['Código', 'Exame', 'Profissional', 'Restrição de Idade', 'Observação', 'Link da Imagem Ilustrativa'] },
     'consultas': { titulo: 'Consulta ou Procedimento', campos: ['Código', 'Tipo', 'Descrição', 'Observações'] },
     'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que está incluso', 'Observações', 'Pacotes', 'Kit'] },
@@ -74,7 +73,6 @@ const configuracaoAbas = {
     'boletins-privados': { titulo: 'Informativo Direto (Privado)', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] }
 };
 
-// HELPER: Função que traduz link do drive para link direto de imagem automaticamente
 function formatarLinkImagem(link) {
     if (!link || link.includes('file:///')) return null;
     if (link.includes("drive.google.com")) {
@@ -377,8 +375,7 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
         else if(campo === 'Links dos Materiais (1 por linha)') {
             htmlCampos += `<textarea id="input-${campo}" class="form-input" style="height:80px; resize:vertical;" placeholder="Cole os links de Vídeos ou Documentos (um por linha)">${valorAntigo}</textarea>`;
         }
-        // NOVA LISTA SUSPENSA: Aceita Serviço?
-        else if(campo === 'Aceita o Serviço? (Sim/Não)') {
+        else if(campo === 'Aceita o Servico?') {
             htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="Sim" ${valorAntigo === 'Sim' ? 'selected' : ''}>Sim, aceita.</option><option value="Não" ${valorAntigo === 'Não' ? 'selected' : ''}>Não aceita.</option></select>`;
         }
         else if(colecao === 'consultas' && campo === 'Tipo') {
@@ -609,7 +606,7 @@ function renderizarListaPrivados() {
         cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 13px; font-weight:600; color: ${jaLeu ? '#38a169' : '#e53e3e'};">${jaLeu ? '<i class="ri-check-double-line"></i> Lido' : '<i class="ri-time-line"></i> Pendente'}</div><button onclick="window.abrirListaLeituras('${docId}', 'boletins-privados')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-list-check"></i> Detalhes</button></div>`;
         
         if(isAdmin && !jaLeu) {
-            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><input type="hidden" id="leitor-${docId}" value="${colabAtual}"><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins-privados" style="width:100%; background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i> Confirmar Assinatura do Colaborador</button></div>`;
+            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><input type="hidden" id="leitor-${docId}" value="${colabAtual}"><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins-privados" style="width:100%; background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i> Confirmar Assinatura</button></div>`;
         }
         cardHtml += `</div>`;
         
@@ -642,7 +639,6 @@ function renderizarPastasConvenios() {
         const itensConv = window.todosConveniosData.filter(i => i.data['Convênio'] === conv);
         const qtd = itensConv.length;
         
-        // Puxa a logo se alguém tiver cadastrado em algum dos serviços desse convênio
         const imgItem = itensConv.find(i => i.data['Link da Logo do Convênio'] && i.data['Link da Logo do Convênio'].trim() !== '');
         let logoUrl = imgItem ? formatarLinkImagem(imgItem.data['Link da Logo do Convênio']) : null;
         
@@ -666,7 +662,7 @@ function renderizarListaConvenios() {
         camposOrdem.forEach(chave => {
             const valor = data[chave];
             if (valor && chave !== camposOrdem[0] && chave !== 'Link da Logo do Convênio') {
-                if (chave === 'Aceita o Serviço? (Sim/Não)') {
+                if (chave === 'Aceita o Servico?') {
                     const badgeClass = valor === 'Não' ? 'status-negado' : 'status-aceito';
                     const iconClass = valor === 'Não' ? 'ri-close-circle-fill' : 'ri-checkbox-circle-fill';
                     const text = valor === 'Não' ? 'Serviço Não Coberto' : 'Serviço Coberto';
@@ -762,7 +758,6 @@ function renderizarCards(colecaoNome) {
             
             let cardHtml = `<div class="card ${isDark ? 'has-gradient' : ''}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${!isDark ? 'border-left: 6px solid var(--primary-color);' : ''}">`;
             
-            // INTEGRAÇÃO DAS IMAGENS 3D (Médico e Ultrassom)
             let hasFlexLayout = (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) || (colecaoNome === 'ultrassom' && data['Link da Imagem Ilustrativa']);
             
             if (tituloDesteCard) cardHtml += `<div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; padding-right: 35px; line-height:1.2;">${tituloDesteCard}</div>`;
@@ -794,7 +789,7 @@ function renderizarCards(colecaoNome) {
                 }
             });
             
-            if(hasFlexLayout) cardHtml += `</div></div>`; // Fecha wrapper
+            if(hasFlexLayout) cardHtml += `</div></div>`; 
             
             if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
             grid.innerHTML += cardHtml + `</div>`;
