@@ -1,4 +1,6 @@
-// --- CONFIGURAÇÃO DE CAMPOS E PASTAS DO SISTEMA ---
+// ==========================================
+// 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+// ==========================================
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'], campoAgrupador: 'Especialidade', icone: 'ri-team-fill' }, 
@@ -74,6 +76,10 @@ const paletaGradientes = [
     { valor: "linear-gradient(to right, #eb3941, #f15e64, #e14e53, #e2373f)", nome: "Vermelho HD", dark: true }
 ];
 
+// ==========================================
+// 2. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS BLINDADAS (HOISTING)
+// ==========================================
+
 function formatarLinkImagem(link) {
     if (!link || link.includes('file:///')) return null;
     if (link.includes("drive.google.com")) {
@@ -83,8 +89,7 @@ function formatarLinkImagem(link) {
     return link;
 }
 
-// DECLARAÇÃO BLINDADA DE FUNÇÕES GLOBAIS
-window.buscarClimaAraucaria = async function() {
+async function buscarClimaAraucaria() {
     try {
         const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-25.59&longitude=-49.41&current_weather=true');
         const data = await response.json();
@@ -108,8 +113,15 @@ window.buscarClimaAraucaria = async function() {
         if(wDesc) wDesc.textContent = "Clima indisponível"; 
     }
 }
+window.buscarClimaAraucaria = buscarClimaAraucaria;
 
-window.verificarUrgentesHome = function() {
+function obterPublicoAlvo(setoresAlvoString) {
+    if (!setoresAlvoString || setoresAlvoString.includes('Geral')) return listaColaboradoresGlobal.map(c => c.nome);
+    const setoresMarcados = setoresAlvoString.split(', ');
+    return listaColaboradoresGlobal.filter(c => setoresMarcados.includes(c.setor)).map(c => c.nome);
+}
+
+function verificarUrgentesHome() {
     const area = document.getElementById('area-alertas-home');
     if(!area) return;
     area.innerHTML = '';
@@ -134,95 +146,115 @@ window.verificarUrgentesHome = function() {
         area.innerHTML = `<div class="alerta-urgente-home" onclick="window.irParaAba('boletins')"><i class="ri-alarm-warning-fill"></i><div><strong>Atenção! Informativos Urgentes</strong><span>Existem <b>${totalUrgentesPendentes}</b> informativos com prioridade urgente aguardando assinatura.</span></div></div>`;
     }
 }
+window.verificarUrgentesHome = verificarUrgentesHome;
 
-// INICIA AUTENTICAÇÃO E FUNÇÕES DE ARRANQUE
-setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
-const frases = ["O sucesso é a soma de pequenos esforços.", "A empatia é a medicina que o mundo precisa.", "Trabalho em equipe multiplica o sucesso."];
-const fm = document.getElementById('frase-dia'); if(fm) fm.innerText = frases[Math.floor(Math.random() * frases.length)];
+function irParaAba(aba) { 
+    const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`); 
+    if(btn) btn.click(); 
+}
+window.irParaAba = irParaAba;
 
-const btnLogin = document.getElementById('btn-login');
-if(btnLogin) btnLogin.addEventListener('click', () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('senha').value).catch(err => alert("Erro: " + err.message)); });
-
-const btnLogout = document.getElementById('btn-logout');
-if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
-
-onAuthStateChanged(auth, (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    const dashboardScreen = document.getElementById('dashboard-screen');
-    
-    if (user) {
-        if(loginScreen) loginScreen.style.display = 'none';
-        if(dashboardScreen) dashboardScreen.style.display = 'flex';
-        isAdmin = (user.email === EMAIL_GESTAO);
-        
-        const badge = document.getElementById('user-role-badge');
-        if(badge) badge.textContent = isAdmin ? "Gestão Administrador" : "Acesso Geral";
-        
-        if(isAdmin) {
-            if(badge) badge.classList.add('admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-        } else {
-            if(badge) badge.classList.remove('admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-        }
-        
-        Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
-        carregarConfiguracoes(); 
-        window.buscarClimaAraucaria(); 
-    } else {
-        if(loginScreen) loginScreen.style.display = 'flex';
-        if(dashboardScreen) dashboardScreen.style.display = 'none';
-    }
-});
-
-// LÓGICA DE NAVEGAÇÃO ENTRE ABAS
-window.irParaAba = function(aba) { const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`); if(btn) btn.click(); };
-window.abrirSubAba = function(subAbaId) { 
+function abrirSubAba(subAbaId) { 
     const menu = document.getElementById('menu-contatos'); if(menu) menu.style.display = 'none'; 
     const sub = document.getElementById('sub-' + subAbaId); if(sub) sub.style.display = 'block'; 
-};
-window.voltarSubAba = function() { 
+}
+window.abrirSubAba = abrirSubAba;
+
+function voltarSubAba() { 
     ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas'].forEach(id => {
         const sub = document.getElementById('sub-' + id); if(sub) sub.style.display = 'none';
     }); 
     const menu = document.getElementById('menu-contatos'); if(menu) menu.style.display = 'grid'; 
-};
+}
+window.voltarSubAba = voltarSubAba;
 
-document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        btn.classList.add('active');
-        abaAtual = btn.getAttribute('data-tab');
-        const tabEl = document.getElementById(`tab-${abaAtual}`);
-        if(tabEl) tabEl.style.display = 'block';
-        
-        const titleEl = document.getElementById('page-title');
-        if(titleEl) titleEl.textContent = btn.textContent.trim();
-        
-        const searchBox = document.getElementById('search-box');
-        if(searchBox) searchBox.style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
-        
-        const inputPesq = document.getElementById('input-pesquisa');
-        if(inputPesq) inputPesq.value = ''; 
-        
-        if(abaAtual === 'boletins' && typeof window.fecharPastaBoletim === 'function') window.fecharPastaBoletim(); 
-        if(abaAtual === 'boletins-privados' && typeof window.fecharPastaPrivado === 'function') window.fecharPastaPrivado();
-        ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico'].forEach(col => {
-            if(abaAtual === col && typeof window.fecharPastaGenerica === 'function') window.fecharPastaGenerica(col);
-        });
+function abrirPastaGenerica(colecao, valorPasta) {
+    window[`pasta_${colecao}_Atual`] = valorPasta;
+    const foldEl = document.getElementById(`${colecao}-view-folders`);
+    const listEl = document.getElementById(`${colecao}-view-list`);
+    const titleEl = document.getElementById(`titulo-pasta-${colecao}`);
+    if(foldEl) foldEl.style.display = 'none';
+    if(listEl) listEl.style.display = 'block';
+    if(titleEl && configuracaoAbas[colecao]) titleEl.innerHTML = `<i class="${configuracaoAbas[colecao].icone}"></i> Pasta: ${valorPasta}`;
+    renderizarListaGenerica(colecao);
+}
+window.abrirPastaGenerica = abrirPastaGenerica;
+
+function fecharPastaGenerica(colecao) {
+    window[`pasta_${colecao}_Atual`] = null;
+    const foldEl = document.getElementById(`${colecao}-view-folders`);
+    const listEl = document.getElementById(`${colecao}-view-list`);
+    if(listEl) listEl.style.display = 'none';
+    if(foldEl) foldEl.style.display = 'block';
+    renderizarPastasGenericas(colecao);
+}
+window.fecharPastaGenerica = fecharPastaGenerica;
+
+function abrirPastaBoletim(pasta) {
+    window.pastaBoletimAtual = pasta;
+    const viewFold = document.getElementById('boletins-view-folders');
+    const viewList = document.getElementById('boletins-view-list');
+    const title = document.getElementById('titulo-pasta-boletins');
+    if(viewFold) viewFold.style.display = 'none';
+    if(viewList) viewList.style.display = 'block';
+    if(title) title.innerHTML = `<i class="ri-folder-open-line"></i> Setor: ${pasta}`;
+    renderizarListaBoletins();
+}
+window.abrirPastaBoletim = abrirPastaBoletim;
+
+function fecharPastaBoletim() {
+    window.pastaBoletimAtual = null;
+    const viewFold = document.getElementById('boletins-view-folders');
+    const viewList = document.getElementById('boletins-view-list');
+    if(viewList) viewList.style.display = 'none';
+    if(viewFold) viewFold.style.display = 'block';
+    renderizarPastasBoletins();
+}
+window.fecharPastaBoletim = fecharPastaBoletim;
+
+function abrirPastaPrivado(colabNome) {
+    window.pastaPrivadoAtual = colabNome;
+    const viewFold = document.getElementById('privados-view-folders');
+    const viewList = document.getElementById('privados-view-list');
+    const title = document.getElementById('titulo-pasta-privados');
+    if(viewFold) viewFold.style.display = 'none';
+    if(viewList) viewList.style.display = 'block';
+    if(title) title.innerHTML = `<i class="ri-folder-user-line"></i> ${colabNome}`;
+    renderizarListaPrivados();
+}
+window.abrirPastaPrivado = abrirPastaPrivado;
+
+function fecharPastaPrivado() {
+    window.pastaPrivadoAtual = null;
+    const viewFold = document.getElementById('privados-view-folders');
+    const viewList = document.getElementById('privados-view-list');
+    if(viewList) viewList.style.display = 'none';
+    if(viewFold) viewFold.style.display = 'block';
+    renderizarPastasPrivados();
+}
+window.fecharPastaPrivado = fecharPastaPrivado;
+
+function atualizarGrafico(canvasId, refInstancia, dados, labelGrafico) {
+    const ctx = document.getElementById(canvasId);
+    if(!ctx) return refInstancia;
+    const contagemMotivos = {};
+    dados.forEach(b => { const m = b.data['Motivo'] || 'Sem Motivo'; contagemMotivos[m] = (contagemMotivos[m] || 0) + 1; });
+    if(refInstancia) refInstancia.destroy(); 
+    return new Chart(ctx, {
+        type: 'bar',
+        data: { labels: Object.keys(contagemMotivos), datasets: [{ label: labelGrafico, data: Object.values(contagemMotivos), backgroundColor: '#8B252C', borderRadius: 5 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
-});
+}
+window.atualizarGrafico = atualizarGrafico;
 
-// ================= LÓGICA DO MODAL (FORMULÁRIOS) =================
-window.fecharModal = function() {
+function fecharModal() {
     const modalEl = document.getElementById('modal-cadastro');
     if(modalEl) modalEl.style.display = 'none';
 }
-const btnFecharModal = document.getElementById('btn-fechar-modal');
-if(btnFecharModal) btnFecharModal.addEventListener('click', window.fecharModal);
+window.fecharModal = fecharModal;
 
-window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
+function abrirModal(colecao, docId = null, dadosAntigos = null) {
     const config = configuracaoAbas[colecao];
     if(!config) return;
     const titleEl = document.getElementById('modal-title');
@@ -312,86 +344,68 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
     const modalEl = document.getElementById('modal-cadastro');
     if(modalEl) modalEl.style.display = 'flex';
 }
+window.abrirModal = abrirModal;
 
-// SALVAR DADOS DE CADASTRO
-const btnSalvarDados = document.getElementById('btn-salvar-dados');
-if(btnSalvarDados) {
-    btnSalvarDados.addEventListener('click', async () => {
-        if(!isAdmin) return;
-        const colecaoNome = btnSalvarDados.getAttribute('data-colecao');
-        const docId = document.getElementById('modal-doc-id').value;
-        const config = configuracaoAbas[colecaoNome];
-        if(!config) return;
-        
-        let dados = {};
-        config.campos.forEach(campo => {
-            if (campo === 'Para quais Setores?') {
-                const checks = Array.from(document.querySelectorAll('.check-setor:checked')).map(cb => cb.value);
-                if(checks.length > 0) dados[campo] = checks.join(', ');
-            } else {
-                const el = document.getElementById(`input-${campo}`);
-                if(el && el.value.trim() !== '') dados[campo] = el.value.trim();
-            }
-        });
-        dados.corCard = document.getElementById('card-color').value;
-        
-        try {
-            if (docId) await updateDoc(doc(db, colecaoNome, docId), dados);
-            else await addDoc(collection(db, colecaoNome), dados);
-            window.fecharModal();
-        } catch(e) { alert("Erro: " + e); }
-    });
+function abrirMidaFlutuante(url) {
+    let u = url;
+    if(u.includes("drive.google.com") && u.includes("/view")) u = u.replace("/view", "/preview");
+    if(u.includes("youtube.com/watch?v=")) u = `https://www.youtube.com/embed/${u.split("v=")[1].split("&")[0]}`;
+    else if (u.includes("youtu.be/")) u = `https://www.youtube.com/embed/${u.split("youtu.be/")[1].split("?")[0]}`;
+    const iframe = document.getElementById('iframe-media');
+    const modalMedia = document.getElementById('modal-media');
+    if(iframe) iframe.src = u; 
+    if(modalMedia) modalMedia.style.display = 'flex';
 }
+window.abrirMidaFlutuante = abrirMidaFlutuante;
 
-// ================= PASTAS GENÉRICAS E RENDERIZAÇÃO =================
-window.abrirPastaGenerica = function(colecao, valorPasta) {
-    window[`pasta_${colecao}_Atual`] = valorPasta;
-    const foldEl = document.getElementById(`${colecao}-view-folders`);
-    const listEl = document.getElementById(`${colecao}-view-list`);
-    const titleEl = document.getElementById(`titulo-pasta-${colecao}`);
-    if(foldEl) foldEl.style.display = 'none';
-    if(listEl) listEl.style.display = 'block';
-    if(titleEl && configuracaoAbas[colecao]) titleEl.innerHTML = `<i class="${configuracaoAbas[colecao].icone}"></i> Pasta: ${valorPasta}`;
-    renderizarListaGenerica(colecao);
-}
-
-window.fecharPastaGenerica = function(colecao) {
-    window[`pasta_${colecao}_Atual`] = null;
-    const foldEl = document.getElementById(`${colecao}-view-folders`);
-    const listEl = document.getElementById(`${colecao}-view-list`);
-    if(listEl) listEl.style.display = 'none';
-    if(foldEl) foldEl.style.display = 'block';
-    renderizarPastasGenericas(colecao);
-}
-
-function renderizarPastasGenericas(colecao) {
-    const grid = document.getElementById(`grid-${colecao}-folders`);
-    if(!grid) return; 
-    grid.innerHTML = '';
-    const config = configuracaoAbas[colecao];
-    const dadosAtuais = window.dadosGlobaisAbas[colecao] || [];
+async function desfazerLeitura(docId, nomeColab, colecao) {
+    if(!isAdmin) return;
+    if(!confirm(`Tem certeza que deseja remover a assinatura de ${nomeColab}?`)) return;
     
-    if (dadosAtuais.length === 0) {
-        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Nenhuma pasta encontrada ou os dados estão carregando...</p>';
-        return;
+    const docData = window.dadosBoletins[docId];
+    if(!docData || !docData.leituras) return;
+    
+    const stringExata = docData.leituras.find(txt => txt.startsWith(nomeColab));
+    if(stringExata) {
+        await updateDoc(doc(db, colecao, docId), { leituras: arrayRemove(stringExata) });
+        const modalLeituras = document.getElementById('modal-leituras');
+        if(modalLeituras) modalLeituras.style.display = 'none';
     }
-
-    const pastasUnicas = [...new Set(dadosAtuais.map(i => i.data[config.campoAgrupador] || 'Geral (Sem Categoria)'))].sort();
-    
-    pastasUnicas.forEach(nomePasta => {
-        const itensPasta = dadosAtuais.filter(i => (i.data[config.campoAgrupador] || 'Geral (Sem Categoria)') === nomePasta);
-        const qtd = itensPasta.length;
-        
-        const corIcone = itensPasta[0].data.corCard && itensPasta[0].data.corCard !== "transparent" ? itensPasta[0].data.corCard : "var(--primary-color)";
-        
-        let iconeHtml = `<div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: ${corIcone}; font-size: 24px;"><i class="${config.icone}"></i></div>`;
-        if (imagemPadraoPastas) {
-            iconeHtml = `<div style="background: white; padding: 10px; border-radius: 12px; box-shadow: var(--shadow-soft); display:flex; align-items:center; justify-content:center; height: 55px; width: 65px;"><img src="${imagemPadraoPastas}" style="max-height:100%; max-width:100%; object-fit:contain;" onerror="this.style.display='none'"></div>`;
-        }
-        
-        grid.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaGenerica('${colecao}', '${nomePasta}')" style="text-align: left; padding: 20px; border-left: 6px solid ${corIcone};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">${iconeHtml}<div style="font-size: 16px; font-weight: 600;">${nomePasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">Cadastros na pasta: <b style="color:var(--text-main);">${qtd}</b></div></div>`;
-    });
 }
+window.desfazerLeitura = desfazerLeitura;
+
+function abrirListaLeituras(docId, colecaoOrigem = 'boletins') {
+    const data = window.dadosBoletins[docId];
+    if(!data) return;
+    const titleEl = document.getElementById('modal-leitura-titulo');
+    if(titleEl) titleEl.textContent = data['Título do Informativo'] || data['Título do Documento'] || 'Status';
+    
+    let publicoAlvoNomes = [];
+    if(colecaoOrigem === 'boletins') publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+    else publicoAlvoNomes = [data['Para qual Colaborador?']]; 
+
+    const lidosTextos = data.leituras || [];
+    const lidosNomes = lidosTextos.map(txt => txt.split(' (')[0]); 
+
+    let htmlLidos = ''; let htmlNaoLidos = '';
+    publicoAlvoNomes.forEach(nome => {
+        const registroCompleto = lidosTextos.find(txt => txt.startsWith(nome));
+        if (registroCompleto) {
+            let btnDesfazer = isAdmin ? `<button onclick="window.desfazerLeitura('${docId}', '${nome}', '${colecaoOrigem}')" class="btn-desfazer"><i class="ri-arrow-go-back-line"></i> Desfazer</button>` : '';
+            htmlLidos += `<div class="item-lido" style="display:flex; justify-content:space-between; align-items:center;"><span><i class="ri-check-line"></i> ${registroCompleto}</span> ${btnDesfazer}</div>`;
+        } else { htmlNaoLidos += `<div class="item-falta"><i class="ri-time-line"></i> ${nome}</div>`; }
+    });
+
+    const lidosContent = document.getElementById('lista-lidos-content');
+    const faltaContent = document.getElementById('lista-falta-content');
+    
+    if(lidosContent) lidosContent.innerHTML = htmlLidos || '<p style="color:var(--text-muted);">Ninguém assinou ainda.</p>';
+    if(faltaContent) faltaContent.innerHTML = htmlNaoLidos || '<p style="color:#38a169;">Todos assinaram!</p>';
+    
+    const modalEl = document.getElementById('modal-leituras');
+    if(modalEl) modalEl.style.display = 'flex';
+}
+window.abrirListaLeituras = abrirListaLeituras;
 
 function gerarHTMLCard(colecaoNome, docId, data) {
     const config = configuracaoAbas[colecaoNome];
@@ -476,6 +490,169 @@ function renderizarListaGenerica(colecao) {
     itensExibir.forEach(item => { grid.innerHTML += gerarHTMLCard(colecao, item.id, item.data); });
 }
 
+function renderizarPastasBoletins() {
+    const gridFolders = document.getElementById('grid-boletins-folders');
+    if(!gridFolders) return;
+    gridFolders.innerHTML = '';
+    ['Geral', ...setoresGlobais].forEach(pasta => {
+        const boletinsDaPasta = window.todosBoletinsData.filter(item => (item.data['Para quais Setores?'] || 'Geral').includes(pasta));
+        let totalLidos = 0; let totalFaltam = 0;
+        boletinsDaPasta.forEach(b => {
+            const publicoDaqui = obterPublicoAlvo(b.data['Para quais Setores?'] || 'Geral');
+            const lidosNames = (b.data.leituras || []).map(txt => txt.split(' (')[0]);
+            const leram = publicoDaqui.filter(n => lidosNames.includes(n)).length;
+            totalLidos += leram; totalFaltam += Math.max(0, publicoDaqui.length - leram);
+        });
+        const icone = pasta === 'Geral' ? 'ri-global-line' : 'ri-folder-user-line';
+        const corStatusPasta = totalFaltam > 0 ? window.corStatusPendente : window.corStatusConcluido;
+
+        gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaBoletim('${pasta}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border-left: 6px solid ${corStatusPasta};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;"><div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: var(--primary-color); font-size: 24px; flex-shrink:0;"><i class="${icone}"></i></div><div style="font-size: 16px; font-weight: 600; line-height:1.2; word-wrap:break-word;">${pasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Boletins Ativos: <b style="color: var(--text-main);">${boletinsDaPasta.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos Acumulados: <b>${totalLidos}</b></div><div style="color: #e53e3e;">Pendências: <b>${totalFaltam}</b></div></div></div>`;
+    });
+}
+window.renderizarPastasBoletins = renderizarPastasBoletins;
+
+function renderizarListaBoletins() {
+    const grid = document.getElementById('grid-boletins'); 
+    if(!grid) return;
+    grid.innerHTML = '';
+    const pasta = window.pastaBoletimAtual;
+    const boletinsExibir = window.todosBoletinsData.filter(item => (item.data['Para quais Setores?'] || 'Geral').includes(pasta));
+    
+    chartBoletinsInst = atualizarGrafico('chart-boletins', chartBoletinsInst, boletinsExibir, `Motivos em ${pasta}`);
+
+    const camposOrdem = configuracaoAbas['boletins'].campos;
+    const campoTitulo = camposOrdem[0];
+
+    boletinsExibir.forEach(item => {
+        const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
+        const titulo = data[campoTitulo] || 'Boletim';
+        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
+        const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+        const configCor = paletaGradientes.find(p => p.valor === corSalva);
+        const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
+        
+        const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+        const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
+        const faltamAssinar = publicoAlvoNomes.filter(n => !lidosNomes.includes(n));
+        const qtdLidos = publicoAlvoNomes.filter(n => lidosNomes.includes(n)).length;
+        const qtdFaltam = faltamAssinar.length;
+
+        const corStatus = qtdFaltam > 0 ? window.corStatusPendente : window.corStatusConcluido;
+        const classeUrgente = (isUrgente && qtdFaltam > 0) ? 'card-urgente' : ''; 
+
+        let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border: 3px solid ${corStatus};"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; line-height:1.2;">${titulo}</div>`;
+        
+        let botaoLinkHtml = '';
+        camposOrdem.forEach(chave => {
+            const valor = data[chave];
+            if (valor && chave !== campoTitulo) {
+                if(chave === 'Links dos Materiais (1 por linha)') {
+                    const links = valor.split('\n').filter(l => l.trim() !== '');
+                    if(links.length > 0) {
+                        botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        botaoLinkHtml += `</div>`;
+                    }
+                } else { 
+                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span style="font-weight: ${(isUrgente && chave.includes('Tipo')) ? '700' : '500'};">${valor}</span></div>`; 
+                }
+            }
+        });
+        cardHtml += botaoLinkHtml;
+        
+        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 11px;">Lidos: <b style="color:#38a169; font-size:13px;">${qtdLidos}</b> | Faltam: <b style="color:#e53e3e; font-size:13px;">${qtdFaltam}</b></div><button onclick="window.abrirListaLeituras('${docId}', 'boletins')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-team-line"></i> Detalhes</button></div>`;
+        
+        if(isAdmin) {
+            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><select id="leitor-${docId}" style="flex:1; padding:8px; border-radius:8px; border:none; font-size:12px; background:rgba(255,255,255,0.9); outline:none;">`;
+            if(faltamAssinar.length === 0) cardHtml += `<option value="">Todos já leram!</option>`;
+            else { cardHtml += `<option value="">Selecionar Pendente...</option>`; faltamAssinar.forEach(nome => { cardHtml += `<option value="${nome}">${nome}</option>`; }); }
+            cardHtml += `</select><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins" style="background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer;"><i class="ri-check-line"></i></button></div>`;
+        }
+        cardHtml += `</div>`;
+        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+        grid.innerHTML += cardHtml + `</div>`;
+    });
+}
+window.renderizarListaBoletins = renderizarListaBoletins;
+
+function renderizarPastasPrivados() {
+    const gridFolders = document.getElementById('grid-privados-folders');
+    if(!gridFolders) return;
+    gridFolders.innerHTML = '';
+    
+    const todosOsNomes = listaColaboradoresGlobal.map(c => c.nome).sort();
+    
+    todosOsNomes.forEach(nome => {
+        const boletinsDele = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === nome);
+        let lidos = 0; let faltam = 0;
+        boletinsDele.forEach(b => {
+            const leitor = (b.data.leituras || []).find(txt => txt.startsWith(nome));
+            if(leitor) lidos++; else faltam++;
+        });
+
+        let corStatusPasta = "var(--border-color)";
+        if(boletinsDele.length > 0) corStatusPasta = faltam > 0 ? window.corStatusPendente : window.corStatusConcluido;
+
+        gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaPrivado('${nome}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border-left: 6px solid ${corStatusPasta};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;"><div style="background: #e2e8f0; padding: 15px; border-radius: 12px; color: var(--text-main); font-size: 24px; flex-shrink:0;"><i class="ri-user-star-fill"></i></div><div style="font-size: 16px; font-weight: 600; line-height:1.2; word-wrap:break-word;">${nome}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Documentos: <b style="color: var(--text-main);">${boletinsDele.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos: <b>${lidos}</b></div><div style="color: #e53e3e;">Pendentes: <b>${faltam}</b></div></div></div>`;
+    });
+}
+window.renderizarPastasPrivados = renderizarPastasPrivados;
+
+function renderizarListaPrivados() {
+    const grid = document.getElementById('grid-boletins-privados-list'); 
+    if(!grid) return;
+    grid.innerHTML = '';
+    const colabAtual = window.pastaPrivadoAtual;
+    const boletinsExibir = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === colabAtual);
+    
+    if(typeof atualizarGrafico === 'function') chartPrivadosInst = atualizarGrafico('chart-privados', chartPrivadosInst, boletinsExibir, `Motivos de ${colabAtual}`);
+
+    const camposOrdem = configuracaoAbas['boletins-privados'].campos;
+    boletinsExibir.forEach(item => {
+        const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
+        const titulo = data['Título do Documento'] || 'Documento Privado';
+        
+        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
+        const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+        const configCor = paletaGradientes.find(p => p.valor === corSalva);
+        const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
+
+        const jaLeu = (data.leituras || []).find(txt => txt.startsWith(colabAtual));
+        const corStatus = jaLeu ? window.corStatusConcluido : window.corStatusPendente;
+        const classeUrgente = (isUrgente && !jaLeu) ? 'card-urgente' : ''; 
+
+        let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border: 3px solid ${corStatus};"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600;">${titulo}</div>`;
+        
+        let botaoLinkHtml = '';
+        camposOrdem.forEach(chave => {
+            const valor = data[chave];
+            if (valor && chave !== 'Título do Documento' && chave !== 'Para qual Colaborador?') {
+                if(chave === 'Links dos Materiais (1 por linha)') {
+                    const links = valor.split('\n').filter(l => l.trim() !== '');
+                    if(links.length > 0) {
+                        botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        botaoLinkHtml += `</div>`;
+                    }
+                } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
+            }
+        });
+        cardHtml += botaoLinkHtml;
+        
+        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 13px; font-weight:600; color: ${jaLeu ? '#38a169' : '#e53e3e'};">${jaLeu ? '<i class="ri-check-double-line"></i> Lido' : '<i class="ri-time-line"></i> Pendente'}</div><button onclick="window.abrirListaLeituras('${docId}', 'boletins-privados')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-list-check"></i> Detalhes</button></div>`;
+        
+        if(isAdmin && !jaLeu) {
+            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><input type="hidden" id="leitor-${docId}" value="${colabAtual}"><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins-privados" style="width:100%; background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i> Confirmar Assinatura</button></div>`;
+        }
+        cardHtml += `</div>`;
+        
+        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins-privados" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins-privados" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+        grid.innerHTML += cardHtml + `</div>`;
+    });
+}
+window.renderizarListaPrivados = renderizarListaPrivados;
+
+// ================= RENDERIZADOR MASTER DO FIREBASE =================
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
@@ -498,7 +675,7 @@ function renderizarCards(colecaoNome) {
 
         if(colecaoNome === 'colaboradores') {
             listaColaboradoresGlobal = itens.map(item => { return { nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' }; }).filter(c => c.nome).sort((a,b) => a.nome.localeCompare(b.nome));
-            if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual && typeof window.renderizarPastasPrivados === 'function') window.renderizarPastasPrivados(); 
+            if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual) window.renderizarPastasPrivados(); 
         }
 
         if(colecaoNome === 'boletins') {
@@ -533,7 +710,11 @@ function renderizarCards(colecaoNome) {
                 locaisMap[local].sort((a,b) => (a.data['Setor']||'').localeCompare(b.data['Setor']||'')).forEach(item => {
                     const data = item.data; const docId = item.id;
                     const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
-                    let cardHtml = `<div class="mini-card" style="background: ${corSalva};"><div class="mini-card-main"><div class="mini-card-title" style="color:var(--text-main);">${data['Setor'] || '-'}</div><div class="mini-card-number" style="color:var(--primary-color);"><i class="ri-phone-line"></i> ${data['Número do Ramal'] || '-'}</div></div><div class="mini-card-details"><p style="color:var(--text-muted);"><strong>Observações:</strong> ${data['Observações'] || 'Nenhuma observação.'}</p></div>`;
+                    const configCor = paletaGradientes.find(p => p.valor === corSalva);
+                    const isDark = configCor ? configCor.dark : false;
+                    const gradientClass = isDark ? 'has-gradient' : ''; 
+
+                    let cardHtml = `<div class="mini-card ${gradientClass}" style="background: ${corSalva};"><div class="mini-card-main"><div class="mini-card-title">${data['Setor'] || '-'}</div><div class="mini-card-number"><i class="ri-phone-line"></i> ${data['Número do Ramal'] || '-'}</div></div><div class="mini-card-details"><p><strong>Observações:</strong> ${data['Observações'] || 'Nenhuma observação.'}</p></div>`;
                     if (isAdmin) { const dadosSeguros = JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;"); cardHtml += `<div class="mini-card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${dadosSeguros}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`; }
                     cardHtml += `</div>`; groupHtml += cardHtml;
                 });
@@ -552,53 +733,29 @@ function renderizarCards(colecaoNome) {
         itens.forEach((item) => { grid.innerHTML += gerarHTMLCard(colecaoNome, item.id, item.data); });
     });
 }
+window.renderizarCards = renderizarCards;
 
-// ================= BUSCA GLOBAL E EVENTOS GERAIS =================
-const inputPesqGlobal = document.getElementById('input-pesquisa-global');
-if(inputPesqGlobal) {
-    inputPesqGlobal.addEventListener('keyup', (e) => {
-        const texto = e.target.value.toLowerCase().trim();
-        const areaRes = document.getElementById('resultados-globais');
-        if(!areaRes) return;
-        if(texto.length < 2) { areaRes.style.display = 'none'; return; }
-        
-        areaRes.style.display = 'grid'; 
-        areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>';
-        let encontrou = false;
-        
-        const colecoesBusca = ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores'];
-        
-        colecoesBusca.forEach(colecao => {
-            const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
-            itens.forEach(item => {
-                const valoresStr = Object.values(item.data).join(' ').toLowerCase();
-                // Busca em Chaves e Valores!
-                const chavesStr = Object.keys(item.data).join(' ').toLowerCase();
-                if(valoresStr.includes(texto) || chavesStr.includes(texto)) {
-                    areaRes.innerHTML += gerarHTMLCard(colecao, item.id, item.data);
-                    encontrou = true;
-                }
-            });
-        });
-
-        if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado no sistema.</p>';
+// ================= EVENTOS DA MAIN CONTENT =================
+const mainContent = document.querySelector('.main-content');
+if(mainContent) {
+    mainContent.addEventListener('click', async (e) => {
+        const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
+        if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
+        if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+        if (btnAssinar && isAdmin) {
+            const idDoc = btnAssinar.dataset.id;
+            const col = btnAssinar.dataset.colecao;
+            const inputLeitor = document.getElementById(`leitor-${idDoc}`);
+            if(!inputLeitor) return;
+            const nomeColaborador = inputLeitor.value;
+            if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
+            const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
+            await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
+        }
     });
 }
 
-const inputPesqAba = document.getElementById('input-pesquisa');
-if(inputPesqAba) {
-    inputPesqAba.addEventListener('keyup', (e) => {
-        const texto = e.target.value.toLowerCase();
-        const abaContainer = document.getElementById(`tab-${abaAtual}`);
-        if(!abaContainer) return;
-        
-        abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
-            if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
-            else card.style.display = 'none';
-        });
-    });
-}
-
+// ================= LÓGICA DE SALVAR CONFIGURAÇÕES =================
 const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
 if(btnSalvarAjustes) {
     btnSalvarAjustes.addEventListener('click', async () => {
@@ -694,61 +851,36 @@ function carregarConfiguracoes() {
         }
     });
 }
+window.carregarConfiguracoes = carregarConfiguracoes;
 
-document.querySelector('.main-content').addEventListener('click', async (e) => {
-    const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
-    if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
-    if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
-    if (btnAssinar && isAdmin) {
-        const idDoc = btnAssinar.dataset.id;
-        const col = btnAssinar.dataset.colecao;
-        const inputLeitor = document.getElementById(`leitor-${idDoc}`);
-        if(!inputLeitor) return;
-        const nomeColaborador = inputLeitor.value;
-        if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
-        const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
-        await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
-    }
-});
-
-function obterPublicoAlvo(setoresAlvoString) {
-    if (!setoresAlvoString || setoresAlvoString.includes('Geral')) return listaColaboradoresGlobal.map(c => c.nome);
-    const setoresMarcados = setoresAlvoString.split(', ');
-    return listaColaboradoresGlobal.filter(c => setoresMarcados.includes(c.setor)).map(c => c.nome);
-}
-
-function atualizarGrafico(canvasId, refInstancia, dados, labelGrafico) {
-    const ctx = document.getElementById(canvasId);
-    if(!ctx) return refInstancia;
-    const contagemMotivos = {};
-    dados.forEach(b => { const m = b.data['Motivo'] || 'Sem Motivo'; contagemMotivos[m] = (contagemMotivos[m] || 0) + 1; });
-    if(refInstancia) refInstancia.destroy(); 
-    return new Chart(ctx, {
-        type: 'bar',
-        data: { labels: Object.keys(contagemMotivos), datasets: [{ label: labelGrafico, data: Object.values(contagemMotivos), backgroundColor: '#8B252C', borderRadius: 5 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-    });
-}
-
-// ================== CHATBOT LÓGICA AVANÇADA ==================
-window.toggleChat = function() {
+// ================== CHATBOT LÓGICA AVANÇADA BLINDADA ==================
+function toggleChat() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
+    if(!win || !fab) return;
+    
     if (win.style.display === 'none' || win.style.display === '') {
         win.style.display = 'flex';
-        document.getElementById('chat-input').focus();
+        setTimeout(() => { document.getElementById('chat-input').focus(); }, 100);
     } else {
         win.style.display = 'none';
     }
 }
+window.toggleChat = toggleChat;
 
-window.sendQuickMsg = function(texto) {
-    document.getElementById('chat-input').value = texto;
-    window.sendChat();
-}
-
-window.sendChat = function() {
+function sendQuickMsg(texto) {
     const input = document.getElementById('chat-input');
+    if(input) {
+        input.value = texto;
+        window.sendChat();
+    }
+}
+window.sendQuickMsg = sendQuickMsg;
+
+function sendChat() {
+    const input = document.getElementById('chat-input');
+    if(!input) return;
+    
     const msg = input.value.trim();
     if (!msg) return;
 
@@ -760,6 +892,7 @@ window.sendChat = function() {
         addChatBubble(resposta, 'bot');
     }, 600);
 }
+window.sendChat = sendChat;
 
 function addChatBubble(text, sender) {
     const chatArea = document.getElementById('chat-body');
@@ -775,27 +908,22 @@ function processarLogicaDoBot(mensagemUser) {
     const texto = mensagemUser.toLowerCase().trim();
     
     if (texto === 'oi' || texto === 'olá' || texto === 'ola' || texto.includes('bom dia') || texto.includes('boa tarde')) {
-        return "Olá! Sou a assistente virtual da clínica. Como posso ajudar? Busque por especialidades, convênios ou informações de médicos!";
-    }
-    if (texto.includes('obrigado') || texto.includes('valeu')) {
-        return "Por nada! Estou aqui no cantinho sempre que precisar. 😉";
+        return "Olá! Sou a assistente virtual da Clínica Médica São Vicente. Como posso ajudar? Busque por especialidades, convênios, médicos ou boletins!";
     }
 
     let resultadosUnicos = {};
-    const colecoesBusca = ['corpo-clinico', 'ultrassom', 'exames-imagem', 'consultas', 'convenios', 'ramais', 'pacotes', 'institutos'];
+    const colecoesBusca = ['corpo-clinico', 'ultrassom', 'exames-imagem', 'consultas', 'convenios', 'ramais', 'pacotes', 'institutos', 'boletins'];
     
     colecoesBusca.forEach(colecao => {
         const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
         
         itens.forEach(item => {
             let textoItem = "";
-            // Busca nas Chaves e Valores! (Resolve a busca por "Unimed")
             Object.entries(item.data).forEach(([key, val]) => { textoItem += `${key} ${val} `; });
             textoItem = textoItem.toLowerCase();
 
             let matches = false;
             
-            // Regra especial para buscar Unimed corretamente em tudo
             if (texto === 'unimed' || texto === 'convênio' || texto === 'convenio') {
                 if ((item.data['Unimed'] && item.data['Unimed'].toString().toLowerCase() !== 'não' && item.data['Unimed'].toString().toLowerCase() !== 'nao') || 
                     (item.data['Convênios Aceitos'] && item.data['Convênios Aceitos'].toLowerCase().includes('unimed')) ||
@@ -812,7 +940,8 @@ function processarLogicaDoBot(mensagemUser) {
                 let tituloItem = item.data[config.campos[0]] || 'Detalhes';
                 let detalhesStr = '';
                 
-                // Extrai informações ricas e monta um Mini-Card no chat!
+                if(colecao === 'boletins') tituloItem = `Boletim: ${item.data['Título do Informativo']}`;
+                
                 let cont = 0;
                 Object.entries(item.data).forEach(([k, v]) => {
                     if(v && k !== config.campos[0] && k !== 'corCard' && !k.includes('Link') && cont < 3) {
@@ -824,9 +953,11 @@ function processarLogicaDoBot(mensagemUser) {
                 let pastaAgrupadora = config.campoAgrupador ? item.data[config.campoAgrupador] : null;
                 let btnAction = '';
 
-                // Botão de navegação com TIMEOUT para garantir que a aba abra e depois a pasta!
                 if (pastaAgrupadora) {
-                    btnAction = `<button onclick="window.irParaAba('${colecao}'); setTimeout(() => { window.abrirPastaGenerica('${colecao}', '${pastaAgrupadora}') }, 150); window.toggleChat();" class="btn-hover color-5" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-folder-open-line"></i> Abrir Pasta</button>`;
+                    btnAction = `<button onclick="window.irParaAba('${colecao}'); setTimeout(() => { window.abrirPastaGenerica('${colecao}', '${pastaAgrupadora}') }, 200); window.toggleChat();" class="btn-hover color-5" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-folder-open-line"></i> Abrir Pasta</button>`;
+                } else if (colecao === 'boletins') {
+                    const setorBoletim = item.data['Para quais Setores?'] ? item.data['Para quais Setores?'].split(',')[0] : 'Geral';
+                    btnAction = `<button onclick="window.irParaAba('${colecao}'); setTimeout(() => { window.abrirPastaBoletim('${setorBoletim}') }, 200); window.toggleChat();" class="btn-hover color-5" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-folder-open-line"></i> Abrir Boletim</button>`;
                 } else {
                     btnAction = `<button onclick="window.irParaAba('${colecao}'); window.toggleChat();" class="btn-hover color-8" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-arrow-right-circle-line"></i> Ir para Aba</button>`;
                 }
@@ -846,7 +977,7 @@ function processarLogicaDoBot(mensagemUser) {
 
     if (resultadosEncontrados.length > 0) {
         let respostaFormatada = `Encontrei isso no sistema para <b>"${mensagemUser}"</b>:<br><br>`;
-        const limite = resultadosEncontrados.slice(0, 4); // Mostra 4 Cards ricos
+        const limite = resultadosEncontrados.slice(0, 4); 
         respostaFormatada += limite.join('');
         
         if (resultadosEncontrados.length > 4) {
@@ -856,54 +987,4 @@ function processarLogicaDoBot(mensagemUser) {
     }
 
     return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
-}
-
-window.abrirMidaFlutuante = function(url) {
-    let u = url;
-    if(u.includes("drive.google.com") && u.includes("/view")) u = u.replace("/view", "/preview");
-    if(u.includes("youtube.com/watch?v=")) u = `https://www.youtube.com/embed/${u.split("v=")[1].split("&")[0]}`;
-    else if (u.includes("youtu.be/")) u = `https://www.youtube.com/embed/${u.split("youtu.be/")[1].split("?")[0]}`;
-    const iframe = document.getElementById('iframe-media');
-    const modalMedia = document.getElementById('modal-media');
-    if(iframe) iframe.src = u; 
-    if(modalMedia) modalMedia.style.display = 'flex';
-}
-
-document.getElementById('btn-fechar-media').addEventListener('click', () => { 
-    const modalMedia = document.getElementById('modal-media');
-    const iframe = document.getElementById('iframe-media');
-    if(modalMedia) modalMedia.style.display = 'none'; 
-    if(iframe) iframe.src = ""; 
-});
-
-window.abrirListaLeituras = function(docId, colecaoOrigem = 'boletins') {
-    const data = window.dadosBoletins[docId];
-    if(!data) return;
-    const titleEl = document.getElementById('modal-leitura-titulo');
-    if(titleEl) titleEl.textContent = data['Título do Informativo'] || data['Título do Documento'] || 'Status';
-    
-    let publicoAlvoNomes = [];
-    if(colecaoOrigem === 'boletins') publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
-    else publicoAlvoNomes = [data['Para qual Colaborador?']]; 
-
-    const lidosTextos = data.leituras || [];
-    const lidosNomes = lidosTextos.map(txt => txt.split(' (')[0]); 
-
-    let htmlLidos = ''; let htmlNaoLidos = '';
-    publicoAlvoNomes.forEach(nome => {
-        const registroCompleto = lidosTextos.find(txt => txt.startsWith(nome));
-        if (registroCompleto) {
-            let btnDesfazer = isAdmin ? `<button onclick="window.desfazerLeitura('${docId}', '${nome}', '${colecaoOrigem}')" class="btn-desfazer"><i class="ri-arrow-go-back-line"></i> Desfazer</button>` : '';
-            htmlLidos += `<div class="item-lido" style="display:flex; justify-content:space-between; align-items:center;"><span><i class="ri-check-line"></i> ${registroCompleto}</span> ${btnDesfazer}</div>`;
-        } else { htmlNaoLidos += `<div class="item-falta"><i class="ri-time-line"></i> ${nome}</div>`; }
-    });
-
-    const lidosContent = document.getElementById('lista-lidos-content');
-    const faltaContent = document.getElementById('lista-falta-content');
-    
-    if(lidosContent) lidosContent.innerHTML = htmlLidos || '<p style="color:var(--text-muted);">Ninguém assinou ainda.</p>';
-    if(faltaContent) faltaContent.innerHTML = htmlNaoLidos || '<p style="color:#38a169;">Todos assinaram!</p>';
-    
-    const modalEl = document.getElementById('modal-leituras');
-    if(modalEl) modalEl.style.display = 'flex';
 }
