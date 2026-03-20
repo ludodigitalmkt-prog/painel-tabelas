@@ -113,9 +113,11 @@
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Setores da Clínica (Para os Boletins)</label>
                     <textarea id="tab-input-setores" class="form-input" style="height: 100px; resize: vertical;" placeholder="Recepção&#10;Enfermagem"></textarea>
+                    
+                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Especialidades (Corpo Clínico)</label>
+                    <textarea id="tab-input-especialidades" class="form-input" style="height: 100px; resize: vertical;" placeholder="Cardiologia&#10;Pediatria&#10;Ginecologia"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Motivos dos Informativos (Para os Gráficos)</label>
-                    <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Digite os motivos (um por linha) para categorizar os boletins. (Ex: Elogio, Regra Nova).</p>
                     <textarea id="tab-input-motivos" class="form-input" style="height: 100px; resize: vertical;" placeholder="Aviso Geral&#10;Nova Regra&#10;Elogio"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Cores de Status (Informativos)</label>
@@ -135,9 +137,13 @@
             </section>
 
             <section id="tab-colaboradores" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-colaboradores"></div></section>
-            <section id="tab-corpo-clinico" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-corpo-clinico"></div></section>
             <section id="tab-pacotes" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-pacotes"></div></section>
             <section id="tab-remocoes" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-remocoes"></div></section>
+            
+            <section id="tab-corpo-clinico" class="tab-content" style="display: none;">
+                <div id="corpo-clinico-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione a Especialidade do Médico.</p><div class="home-grid" id="grid-corpo-clinico-folders"></div></div>
+                <div id="corpo-clinico-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('corpo-clinico')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-corpo-clinico" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-corpo-clinico-list"></div></div>
+            </section>
             
             <section id="tab-convenios" class="tab-content" style="display: none;">
                 <div id="convenios-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Convênio para visualizar os serviços cobertos e regras.</p><div class="home-grid" id="grid-convenios-folders"></div></div>
@@ -162,7 +168,7 @@
 
             <section id="tab-boletins" class="tab-content" style="display: none;">
                 <div id="boletins-view-folders">
-                    <p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o setor para ver os informativos direcionados.</p>
+                    <p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o setor para ver os informativos direcionados e o gráfico de desempenho.</p>
                     <div class="home-grid" id="grid-boletins-folders"></div>
                 </div>
                 <div id="boletins-view-list" style="display:none;">
@@ -222,7 +228,7 @@
                 <input type="hidden" id="modal-doc-id">
                 <div id="modal-form-area"></div>
                 <div style="margin-top: 15px;">
-                    <label style="font-size: 13px; font-weight: 500; color: var(--text-muted);">Cor da Pasta/Card:</label>
+                    <label style="font-size: 13px; font-weight: 500; color: var(--text-muted);">Cor do Item / Cor da Pasta:</label>
                     <input type="hidden" id="card-color" value="#ffffff">
                     <div id="gradient-picker" class="gradient-picker-container"></div>
                 </div>
@@ -256,7 +262,6 @@
 
     <script type="module" src="app.js"></script>
     <script>
-      // Funções globais de navegação da UI
       window.irParaAba = function(aba) { const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`); if(btn) btn.click(); };
       window.abrirSubAba = function(subAbaId) { document.getElementById('menu-contatos').style.display = 'none'; document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId); document.getElementById('sub-' + subAbaId).style.display = 'block'; };
       window.voltarSubAba = function() { const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas']; subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none'); document.getElementById('menu-contatos').style.display = 'grid'; document.getElementById('btn-novo').removeAttribute('data-sub-aba'); };
