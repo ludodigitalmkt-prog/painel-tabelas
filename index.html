@@ -104,8 +104,11 @@
                 <div class="card" style="max-width: 600px; margin: 0 auto;">
                     <h2 style="margin-bottom: 20px; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Configurações do Sistema</h2>
                     
-                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px;">Aviso Animado na Tela Inicial (Banner)</label>
+                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px;">Aviso na Tela Inicial (Banner)</label>
                     <textarea id="tab-input-banner" class="form-input" style="height: 100px; resize: vertical;" placeholder="Ex: Campanha de Vacinação iniciada!"></textarea>
+
+                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Imagem Logo Padrão das Pastas (URL Imgur/Drive)</label>
+                    <input type="url" id="tab-input-imagem-pastas" class="form-input" placeholder="https://imgur.com/suaimagem.png">
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Locais/Prédios (Para os Contatos)</label>
                     <textarea id="tab-input-locais" class="form-input" style="height: 100px; resize: vertical;" placeholder="MATRIZ&#10;CASA DE VIDRO"></textarea>
@@ -114,26 +117,15 @@
                     <textarea id="tab-input-setores" class="form-input" style="height: 100px; resize: vertical;" placeholder="Recepção&#10;Enfermagem"></textarea>
                     
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Especialidades (Corpo Clínico)</label>
-                    <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Digite as especialidades para criar as Pastas dos Médicos.</p>
                     <textarea id="tab-input-especialidades" class="form-input" style="height: 100px; resize: vertical;" placeholder="Cardiologia&#10;Pediatria&#10;Ginecologia"></textarea>
-
-                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Ícones/Logos das Pastas (Opcional)</label>
-                    <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Para substituir o ícone da pasta por uma imagem, digite "Nome da Pasta = Link da Imagem".</p>
-                    <textarea id="tab-input-logos-pastas" class="form-input" style="height: 100px; resize: vertical;" placeholder="Unimed = https://imgur.com/logo.png&#10;Cardiologia = https://imgur.com/coracao.png"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Motivos dos Informativos (Para os Gráficos)</label>
                     <textarea id="tab-input-motivos" class="form-input" style="height: 100px; resize: vertical;" placeholder="Aviso Geral&#10;Nova Regra&#10;Elogio"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Cores de Status (Informativos)</label>
                     <div style="display:flex; gap: 15px;">
-                        <div style="flex:1;">
-                            <span style="font-size:12px; color:var(--text-muted);">Pendente / Falta Ler:</span>
-                            <input type="color" id="tab-color-pendente" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#e53e3e">
-                        </div>
-                        <div style="flex:1;">
-                            <span style="font-size:12px; color:var(--text-muted);">Concluído / Todos Leram:</span>
-                            <input type="color" id="tab-color-concluido" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#38a169">
-                        </div>
+                        <div style="flex:1;"><span style="font-size:12px; color:var(--text-muted);">Pendente:</span><input type="color" id="tab-color-pendente" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#e53e3e"></div>
+                        <div style="flex:1;"><span style="font-size:12px; color:var(--text-muted);">Concluído:</span><input type="color" id="tab-color-concluido" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#38a169"></div>
                     </div>
 
                     <button id="btn-salvar-ajustes" class="btn-hover color-5" style="margin-top: 20px; width: 100%;"><i class="ri-save-line"></i> Salvar Alterações</button>
@@ -188,7 +180,7 @@
                 <div id="convenios-view-folders">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <p style="color: var(--text-muted);">Selecione o Convênio para visualizar serviços.</p>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Serviço/Convênio</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Serviço</button>
                     </div>
                     <div class="home-grid" id="grid-convenios-folders"></div>
                 </div>
@@ -228,7 +220,7 @@
                 <div id="consultas-view-folders">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <p style="color: var(--text-muted);">Selecione a Categoria/Setor.</p>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('consultas')" style="display:none;"><i class="ri-add-line"></i> Nova Consulta/Proc.</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('consultas')" style="display:none;"><i class="ri-add-line"></i> Nova Consulta</button>
                     </div>
                     <div class="home-grid" id="grid-consultas-folders"></div>
                 </div>
@@ -238,7 +230,7 @@
                             <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('consultas')"><i class="ri-arrow-left-line"></i> Voltar</button>
                             <h2 id="titulo-pasta-consultas" style="color: var(--primary-color);">Pasta</h2>
                         </div>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('consultas')" style="display:none;"><i class="ri-add-line"></i> Novo Item</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('consultas')" style="display:none;"><i class="ri-add-line"></i> Nova Consulta</button>
                     </div>
                     <div class="cards-grid" id="grid-consultas-list"></div>
                 </div>
@@ -248,7 +240,7 @@
                 <div id="exames-imagem-view-folders">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <p style="color: var(--text-muted);">Selecione a Categoria do Exame.</p>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('exames-imagem')" style="display:none;"><i class="ri-add-line"></i> Novo Exame de Imagem</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('exames-imagem')" style="display:none;"><i class="ri-add-line"></i> Novo Exame Imagem</button>
                     </div>
                     <div class="home-grid" id="grid-exames-imagem-folders"></div>
                 </div>
@@ -268,7 +260,7 @@
                 <div id="institutos-view-folders">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <p style="color: var(--text-muted);">Selecione o Número da Tabela.</p>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('institutos')" style="display:none;"><i class="ri-add-line"></i> Novo Instituto</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('institutos')" style="display:none;"><i class="ri-add-line"></i> Nova Tabela</button>
                     </div>
                     <div class="home-grid" id="grid-institutos-folders"></div>
                 </div>
@@ -278,7 +270,7 @@
                             <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('institutos')"><i class="ri-arrow-left-line"></i> Voltar</button>
                             <h2 id="titulo-pasta-institutos" style="color: var(--primary-color);">Pasta</h2>
                         </div>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('institutos')" style="display:none;"><i class="ri-add-line"></i> Novo Instituto</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('institutos')" style="display:none;"><i class="ri-add-line"></i> Nova Tabela</button>
                     </div>
                     <div class="cards-grid" id="grid-institutos-list"></div>
                 </div>
@@ -287,7 +279,7 @@
             <section id="tab-boletins" class="tab-content" style="display: none;">
                 <div id="boletins-view-folders">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <p style="color: var(--text-muted);">Selecione o setor para ver os informativos direcionados.</p>
+                        <p style="color: var(--text-muted);">Selecione o setor para ver os informativos.</p>
                         <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins')" style="display:none;"><i class="ri-add-line"></i> Novo Boletim</button>
                     </div>
                     <div class="home-grid" id="grid-boletins-folders"></div>
@@ -311,7 +303,7 @@
                 <div id="privados-view-folders">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <p style="color: var(--text-muted);">Pastas Individuais dos Colaboradores.</p>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')" style="display:none;"><i class="ri-add-line"></i> Novo Documento Privado</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')" style="display:none;"><i class="ri-add-line"></i> Novo Doc Privado</button>
                     </div>
                     <div class="home-grid" id="grid-privados-folders"></div>
                 </div>
@@ -366,7 +358,7 @@
                 <div id="sub-contatos-convenios" style="display:none;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
                         <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('contatos-convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Contato de Convênio</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('contatos-convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Contato Convênio</button>
                     </div>
                     <div class="cards-grid" id="grid-contatos-convenios"></div>
                 </div>
@@ -382,9 +374,38 @@
         </main>
     </div>
 
+    <div id="chatbot-wrapper">
+        <div id="chatbot-button" onclick="window.toggleChat()">
+            <div class="chatbot-tooltip">Olá, eu sou a LÚCIA, Atendente Virtual. Como posso te ajudar hoje?</div>
+            <img src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png" alt="Assistente">
+        </div>
+        <div id="chatbot-panel" style="display:none;">
+            <div class="chat-header">
+                <img src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png" alt="Lúcia">
+                <div>
+                    <h4>LÚCIA (IA)</h4>
+                    <p>Buscador Inteligente do Sistema</p>
+                </div>
+                <button onclick="window.toggleChat()"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="chat-body" id="chat-body">
+                <div class="chat-msg bot">Olá! Eu vasculho todos os Exames, Médicos, Convênios e Ramais da clínica para você em segundos. O que você procura?</div>
+                <div class="chat-options">
+                    <button onclick="window.sendQuickMsg('Cardiologia')">Cardiologia</button>
+                    <button onclick="window.sendQuickMsg('Ultrassom')">Ultrassom</button>
+                    <button onclick="window.sendQuickMsg('Unimed')">Convênio Unimed</button>
+                </div>
+            </div>
+            <div class="chat-footer">
+                <input type="text" id="chat-input" placeholder="Escreva aqui..." onkeypress="window.handleChatKey(event)">
+                <button onclick="window.sendChatMsg()"><i class="ri-send-plane-fill"></i></button>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-cadastro" class="modal-overlay" style="display: none;">
         <div class="modal-box glass-effect" style="max-height: 95vh; overflow-y: auto;">
-            <header class="modal-header"><h3 id="modal-title">Cadastrar</h3><button type="button" class="btn-icon" onclick="window.fecharModalCadastro()"><i class="ri-close-line"></i></button></header>
+            <header class="modal-header"><h3 id="modal-title">Cadastrar</h3><button onclick="window.fecharModal()" class="btn-icon"><i class="ri-close-line"></i></button></header>
             <div class="modal-body" style="overflow-y: visible;">
                 <input type="hidden" id="modal-doc-id">
                 <div id="modal-form-area"></div>
@@ -394,7 +415,7 @@
                     <div id="gradient-picker" class="gradient-picker-container"></div>
                 </div>
             </div>
-            <button id="btn-salvar-dados" class="btn-hover color-9" style="width: 100%; margin-top: 20px; border-radius: 12px;"><i class="ri-save-line"></i> Salvar Dados no Servidor</button>
+            <button id="btn-salvar-dados" class="btn-hover color-9" style="width: 100%; margin-top: 20px;"><i class="ri-save-line"></i> Salvar Dados no Servidor</button>
         </div>
     </div>
 
@@ -416,43 +437,11 @@
 
     <div id="modal-media" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-box glass-effect" style="width: 95vw; height: 90vh; max-width: 1200px; padding: 20px;">
-            <header class="modal-header" style="margin-bottom: 10px;"><h3>Visualização de Material</h3><button id="btn-fechar-media" class="btn-icon"><i class="ri-close-line"></i></button></header>
+            <header class="modal-header" style="margin-bottom: 10px;"><h3>Visualização de Material</h3><button onclick="window.fecharModalMedia()" class="btn-icon"><i class="ri-close-line"></i></button></header>
             <div class="modal-body" style="height: 100%; border-radius: 15px; overflow:hidden;"><iframe id="iframe-media" src="" allowfullscreen style="width: 100%; height: 100%; border: none; background-color: #e2e8f0;"></iframe></div>
         </div>
     </div>
 
-    <div id="modern-chatbot">
-        <div id="chatbot-fab" onclick="window.toggleChatbot()">
-            <i class="ri-robot-2-fill"></i>
-        </div>
-        <div id="chatbot-panel">
-            <div class="chat-header">
-                <div style="display:flex; align-items:center; gap: 8px;">
-                    <i class="ri-robot-2-line" style="font-size: 20px;"></i>
-                    <h4 style="margin:0; font-size:15px; font-weight:600;">Assistente Clínico</h4>
-                </div>
-                <button onclick="window.toggleChatbot()"><i class="ri-close-line"></i></button>
-            </div>
-            <div class="chat-body" id="chat-body">
-                <div class="chat-bubble bot">
-                    Olá! Eu sou a Inteligência de Busca Interna. O que você procura hoje?<br><br>
-                    <button class="chat-quick-btn" onclick="window.enviarMsgRapida('Cardiologia')">Médicos</button>
-                    <button class="chat-quick-btn" onclick="window.enviarMsgRapida('Ultrassom')">Exames</button>
-                    <button class="chat-quick-btn" onclick="window.enviarMsgRapida('Unimed')">Convênios</button>
-                </div>
-            </div>
-            <div class="chat-footer">
-                <input type="text" id="chat-input" placeholder="Digite sua dúvida..." onkeypress="if(event.key==='Enter') window.enviarMsgChat()">
-                <button onclick="window.enviarMsgChat()"><i class="ri-send-plane-fill"></i></button>
-            </div>
-        </div>
-    </div>
-
     <script type="module" src="app.js"></script>
-    <script>
-      window.irParaAba = function(aba) { const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`); if(btn) btn.click(); };
-      window.abrirSubAba = function(subAbaId) { document.getElementById('menu-contatos').style.display = 'none'; document.getElementById('sub-' + subAbaId).style.display = 'block'; };
-      window.voltarSubAba = function() { const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas']; subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none'); document.getElementById('menu-contatos').style.display = 'grid'; };
-    </script>
 </body>
 </html>
