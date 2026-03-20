@@ -19,7 +19,7 @@
             <h2 style="color: var(--primary-color);">Painel de Gestão</h2>
             <div class="input-group"><i class="ri-mail-line"></i><input type="email" id="email" placeholder="E-mail" required></div>
             <div class="input-group"><i class="ri-lock-line"></i><input type="password" id="senha" placeholder="Senha" required></div>
-            <button id="btn-login" class="btn-primary">Entrar no Painel</button>
+            <button id="btn-login" class="btn-hover color-11" style="width: 100%;">Entrar no Painel</button>
         </div>
     </div>
 
@@ -61,7 +61,6 @@
                     <i class="ri-search-line"></i>
                     <input type="text" id="input-pesquisa" class="search-input" placeholder="Pesquisar nesta aba...">
                 </div>
-                <button id="btn-novo" class="btn-primary" style="display: none;"><i class="ri-add-line"></i> Adicionar Novo</button>
             </header>
 
             <section id="tab-home" class="tab-content active">
@@ -119,6 +118,7 @@
                     <textarea id="tab-input-especialidades" class="form-input" style="height: 100px; resize: vertical;" placeholder="Cardiologia&#10;Pediatria&#10;Ginecologia"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Motivos dos Informativos (Para os Gráficos)</label>
+                    <p style="font-size: 12px; margin-bottom: 10px; color: var(--text-muted);">Digite os motivos (um por linha) para categorizar os boletins. (Ex: Elogio, Regra Nova).</p>
                     <textarea id="tab-input-motivos" class="form-input" style="height: 100px; resize: vertical;" placeholder="Aviso Geral&#10;Nova Regra&#10;Elogio"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Cores de Status (Informativos)</label>
@@ -133,51 +133,169 @@
                         </div>
                     </div>
 
-                    <button id="btn-salvar-ajustes" class="btn-primary" style="margin-top: 20px; width: 100%;"><i class="ri-save-line"></i> Salvar Alterações</button>
+                    <button id="btn-salvar-ajustes" class="btn-hover color-5" style="margin-top: 20px; width: 100%;"><i class="ri-save-line"></i> Salvar Alterações</button>
                 </div>
             </section>
 
-            <section id="tab-colaboradores" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-colaboradores"></div></section>
-            <section id="tab-pacotes" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-pacotes"></div></section>
-            <section id="tab-remocoes" class="tab-content" style="display: none;"><div class="cards-grid" id="grid-remocoes"></div></section>
+            <section id="tab-colaboradores" class="tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <p style="color: var(--text-muted);">Gerenciamento da Equipe Base.</p>
+                    <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('colaboradores')" style="display:none;"><i class="ri-add-line"></i> Adicionar Colaborador</button>
+                </div>
+                <div class="cards-grid" id="grid-colaboradores"></div>
+            </section>
+            
+            <section id="tab-pacotes" class="tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <p style="color: var(--text-muted);">Gestão de Pacotes do Pronto Socorro.</p>
+                    <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('pacotes')" style="display:none;"><i class="ri-add-line"></i> Adicionar Pacote</button>
+                </div>
+                <div class="cards-grid" id="grid-pacotes"></div>
+            </section>
+            
+            <section id="tab-remocoes" class="tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <p style="color: var(--text-muted);">Contatos e informações de Remoção.</p>
+                    <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('remocoes')" style="display:none;"><i class="ri-add-line"></i> Adicionar Remoção</button>
+                </div>
+                <div class="cards-grid" id="grid-remocoes"></div>
+            </section>
             
             <section id="tab-corpo-clinico" class="tab-content" style="display: none;">
-                <div id="corpo-clinico-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione a Especialidade do Médico.</p><div class="home-grid" id="grid-corpo-clinico-folders"></div></div>
-                <div id="corpo-clinico-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('corpo-clinico')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-corpo-clinico" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-corpo-clinico-list"></div></div>
+                <div id="corpo-clinico-view-folders">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione a Especialidade do Médico.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('corpo-clinico')" style="display:none;"><i class="ri-add-line"></i> Adicionar Médico</button>
+                    </div>
+                    <div class="home-grid" id="grid-corpo-clinico-folders"></div>
+                </div>
+                <div id="corpo-clinico-view-list" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('corpo-clinico')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-corpo-clinico" style="color: var(--primary-color);">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('corpo-clinico')" style="display:none;"><i class="ri-add-line"></i> Adicionar Médico</button>
+                    </div>
+                    <div class="cards-grid" id="grid-corpo-clinico-list"></div>
+                </div>
             </section>
             
             <section id="tab-convenios" class="tab-content" style="display: none;">
-                <div id="convenios-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Convênio para visualizar os serviços cobertos e regras.</p><div class="home-grid" id="grid-convenios-folders"></div></div>
-                <div id="convenios-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('convenios')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-convenios" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-convenios-list"></div></div>
+                <div id="convenios-view-folders">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione o Convênio para visualizar serviços.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Serviço/Convênio</button>
+                    </div>
+                    <div class="home-grid" id="grid-convenios-folders"></div>
+                </div>
+                <div id="convenios-view-list" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('convenios')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-convenios" style="color: var(--primary-color);">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Serviço</button>
+                    </div>
+                    <div class="cards-grid" id="grid-convenios-list"></div>
+                </div>
             </section>
+            
             <section id="tab-ultrassom" class="tab-content" style="display: none;">
-                <div id="ultrassom-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Tipo de Exame.</p><div class="home-grid" id="grid-ultrassom-folders"></div></div>
-                <div id="ultrassom-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('ultrassom')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-ultrassom" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-ultrassom-list"></div></div>
+                <div id="ultrassom-view-folders">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione o Tipo de Exame.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ultrassom')" style="display:none;"><i class="ri-add-line"></i> Novo Ultrassom</button>
+                    </div>
+                    <div class="home-grid" id="grid-ultrassom-folders"></div>
+                </div>
+                <div id="ultrassom-view-list" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('ultrassom')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-ultrassom" style="color: var(--primary-color);">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ultrassom')" style="display:none;"><i class="ri-add-line"></i> Novo Ultrassom</button>
+                    </div>
+                    <div class="cards-grid" id="grid-ultrassom-list"></div>
+                </div>
             </section>
+            
             <section id="tab-consultas" class="tab-content" style="display: none;">
-                <div id="consultas-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione a Categoria/Setor.</p><div class="home-grid" id="grid-consultas-folders"></div></div>
-                <div id="consultas-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('consultas')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-consultas" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-consultas-list"></div></div>
+                <div id="consultas-view-folders">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione a Categoria/Setor.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('consultas')" style="display:none;"><i class="ri-add-line"></i> Nova Consulta/Proc.</button>
+                    </div>
+                    <div class="home-grid" id="grid-consultas-folders"></div>
+                </div>
+                <div id="consultas-view-list" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('consultas')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-consultas" style="color: var(--primary-color);">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('consultas')" style="display:none;"><i class="ri-add-line"></i> Novo Item</button>
+                    </div>
+                    <div class="cards-grid" id="grid-consultas-list"></div>
+                </div>
             </section>
+            
             <section id="tab-exames-imagem" class="tab-content" style="display: none;">
-                <div id="exames-imagem-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione a Categoria do Exame.</p><div class="home-grid" id="grid-exames-imagem-folders"></div></div>
-                <div id="exames-imagem-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('exames-imagem')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-exames-imagem" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-exames-imagem-list"></div></div>
+                <div id="exames-imagem-view-folders">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione a Categoria do Exame.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('exames-imagem')" style="display:none;"><i class="ri-add-line"></i> Novo Exame de Imagem</button>
+                    </div>
+                    <div class="home-grid" id="grid-exames-imagem-folders"></div>
+                </div>
+                <div id="exames-imagem-view-list" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('exames-imagem')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-exames-imagem" style="color: var(--primary-color);">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('exames-imagem')" style="display:none;"><i class="ri-add-line"></i> Novo Exame</button>
+                    </div>
+                    <div class="cards-grid" id="grid-exames-imagem-list"></div>
+                </div>
             </section>
+            
             <section id="tab-institutos" class="tab-content" style="display: none;">
-                <div id="institutos-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Número da Tabela.</p><div class="home-grid" id="grid-institutos-folders"></div></div>
-                <div id="institutos-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('institutos')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-institutos" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-institutos-list"></div></div>
+                <div id="institutos-view-folders">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione o Número da Tabela.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('institutos')" style="display:none;"><i class="ri-add-line"></i> Novo Instituto</button>
+                    </div>
+                    <div class="home-grid" id="grid-institutos-folders"></div>
+                </div>
+                <div id="institutos-view-list" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('institutos')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-institutos" style="color: var(--primary-color);">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('institutos')" style="display:none;"><i class="ri-add-line"></i> Novo Instituto</button>
+                    </div>
+                    <div class="cards-grid" id="grid-institutos-list"></div>
+                </div>
             </section>
 
             <section id="tab-boletins" class="tab-content" style="display: none;">
                 <div id="boletins-view-folders">
-                    <p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o setor para ver os informativos direcionados.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Selecione o setor para ver os informativos direcionados.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins')" style="display:none;"><i class="ri-add-line"></i> Novo Boletim</button>
+                    </div>
                     <div class="home-grid" id="grid-boletins-folders"></div>
                 </div>
                 <div id="boletins-view-list" style="display:none;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
                         <div style="display: flex; align-items: center; gap: 15px;">
-                            <button class="btn-primary" onclick="window.fecharPastaBoletim()" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <button class="btn-hover color-8" onclick="window.fecharPastaBoletim()"><i class="ri-arrow-left-line"></i> Voltar</button>
                             <h2 id="titulo-pasta-boletins" style="color: var(--primary-color);">Setor</h2>
                         </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins')" style="display:none;"><i class="ri-add-line"></i> Novo Boletim</button>
                     </div>
                     <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: var(--shadow-soft); margin-bottom: 25px; height: 300px;">
                         <canvas id="chart-boletins"></canvas>
@@ -188,15 +306,19 @@
 
             <section id="tab-boletins-privados" class="tab-content" style="display: none;">
                 <div id="privados-view-folders">
-                    <p style="margin-bottom: 20px; color: var(--text-muted);">Pastas Individuais dos Colaboradores.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <p style="color: var(--text-muted);">Pastas Individuais dos Colaboradores.</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')" style="display:none;"><i class="ri-add-line"></i> Novo Documento Privado</button>
+                    </div>
                     <div class="home-grid" id="grid-privados-folders"></div>
                 </div>
                 <div id="privados-view-list" style="display:none;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
                         <div style="display: flex; align-items: center; gap: 15px;">
-                            <button class="btn-primary" onclick="window.fecharPastaPrivado()" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <button class="btn-hover color-8" onclick="window.fecharPastaPrivado()"><i class="ri-arrow-left-line"></i> Voltar</button>
                             <h2 id="titulo-pasta-privados" style="color: var(--primary-color);">Colaborador</h2>
                         </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')" style="display:none;"><i class="ri-add-line"></i> Novo Documento</button>
                     </div>
                     <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: var(--shadow-soft); margin-bottom: 25px; height: 300px;">
                         <canvas id="chart-privados"></canvas>
@@ -213,11 +335,46 @@
                     <div class="card" onclick="window.abrirSubAba('contatos-convenios')" style="cursor:pointer; text-align:center;"><h3>Contatos Convênios</h3></div>
                     <div class="card" onclick="window.abrirSubAba('senhas')" style="cursor:pointer; text-align:center;"><h3>Senhas e Logins</h3></div>
                 </div>
-                <div id="sub-ramais" style="display:none;"><button class="btn-primary" onclick="window.voltarSubAba()" style="margin-bottom:20px; width:auto;">Voltar</button><div class="cards-grid" id="grid-ramais"></div></div>
-                <div id="sub-emails" style="display:none;"><button class="btn-primary" onclick="window.voltarSubAba()" style="margin-bottom:20px; width:auto;">Voltar</button><div class="cards-grid" id="grid-emails"></div></div>
-                <div id="sub-contatos-gerais" style="display:none;"><button class="btn-primary" onclick="window.voltarSubAba()" style="margin-bottom:20px; width:auto;">Voltar</button><div class="cards-grid" id="grid-contatos-gerais"></div></div>
-                <div id="sub-contatos-convenios" style="display:none;"><button class="btn-primary" onclick="window.voltarSubAba()" style="margin-bottom:20px; width:auto;">Voltar</button><div class="cards-grid" id="grid-contatos-convenios"></div></div>
-                <div id="sub-senhas" style="display:none;"><button class="btn-primary" onclick="window.voltarSubAba()" style="margin-bottom:20px; width:auto;">Voltar</button><div class="cards-grid" id="grid-senhas"></div></div>
+                
+                <div id="sub-ramais" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ramais')" style="display:none;"><i class="ri-add-line"></i> Novo Ramal</button>
+                    </div>
+                    <div class="cards-grid" id="grid-ramais"></div>
+                </div>
+                
+                <div id="sub-emails" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('emails')" style="display:none;"><i class="ri-add-line"></i> Novo E-mail</button>
+                    </div>
+                    <div class="cards-grid" id="grid-emails"></div>
+                </div>
+                
+                <div id="sub-contatos-gerais" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('contatos-gerais')" style="display:none;"><i class="ri-add-line"></i> Novo Contato Geral</button>
+                    </div>
+                    <div class="cards-grid" id="grid-contatos-gerais"></div>
+                </div>
+                
+                <div id="sub-contatos-convenios" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('contatos-convenios')" style="display:none;"><i class="ri-add-line"></i> Novo Contato de Convênio</button>
+                    </div>
+                    <div class="cards-grid" id="grid-contatos-convenios"></div>
+                </div>
+                
+                <div id="sub-senhas" style="display:none;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                        <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('senhas')" style="display:none;"><i class="ri-add-line"></i> Nova Senha</button>
+                    </div>
+                    <div class="cards-grid" id="grid-senhas"></div>
+                </div>
             </section>
         </main>
     </div>
@@ -234,7 +391,7 @@
                     <div id="gradient-picker" class="gradient-picker-container"></div>
                 </div>
             </div>
-            <button id="btn-salvar-dados" class="btn-primary" style="width: 100%; margin-top: 20px;">Salvar Dados no Servidor</button>
+            <button id="btn-salvar-dados" class="btn-hover color-9" style="width: 100%; margin-top: 20px;"><i class="ri-save-line"></i> Salvar Dados no Servidor</button>
         </div>
     </div>
 
@@ -264,8 +421,8 @@
     <script type="module" src="app.js"></script>
     <script>
       window.irParaAba = function(aba) { const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`); if(btn) btn.click(); };
-      window.abrirSubAba = function(subAbaId) { document.getElementById('menu-contatos').style.display = 'none'; document.getElementById('btn-novo').setAttribute('data-sub-aba', subAbaId); document.getElementById('sub-' + subAbaId).style.display = 'block'; };
-      window.voltarSubAba = function() { const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas']; subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none'); document.getElementById('menu-contatos').style.display = 'grid'; document.getElementById('btn-novo').removeAttribute('data-sub-aba'); };
+      window.abrirSubAba = function(subAbaId) { document.getElementById('menu-contatos').style.display = 'none'; document.getElementById('sub-' + subAbaId).style.display = 'block'; };
+      window.voltarSubAba = function() { const subAbas = ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas']; subAbas.forEach(id => document.getElementById('sub-' + id).style.display = 'none'); document.getElementById('menu-contatos').style.display = 'grid'; };
     </script>
 </body>
 </html>
