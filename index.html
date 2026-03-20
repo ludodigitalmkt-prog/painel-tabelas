@@ -106,9 +106,19 @@
                     
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px;">Aviso Animado na Tela Inicial (Banner)</label>
                     <textarea id="tab-input-banner" class="form-input" style="height: 80px; resize: vertical;" placeholder="Ex: Campanha de Vacinação iniciada!"></textarea>
+                    
+                    <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                        <h4 style="color: var(--primary-color); margin-bottom: 10px;"><i class="ri-robot-2-fill"></i> Personalização (Chatbot & Pastas)</h4>
+                        
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Imagem/Avatar da Assistente Virtual (Link)</label>
+                        <input type="text" id="tab-input-chat-logo" class="form-input" placeholder="Ex: https://imgur.com/avatar.png">
+                        
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Cor Temática da Assistente Virtual</label>
+                        <input type="color" id="tab-color-chat" class="form-input" style="height:50px; padding:5px; cursor:pointer;" value="#0ba360">
 
-                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Imagem Padrão para Pastas (Link Imgur/Drive)</label>
-                    <input type="text" id="tab-input-imagem-pastas" class="form-input" placeholder="Ex: https://imgur.com/sua-logo.png">
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px; margin-top: 15px;">Imagem/Logo Padrão das Pastas (Link)</label>
+                        <input type="text" id="tab-input-imagem-pastas" class="form-input" placeholder="Ex: https://imgur.com/sua-logo.png">
+                    </div>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Locais/Prédios (Para os Contatos)</label>
                     <textarea id="tab-input-locais" class="form-input" style="height: 100px; resize: vertical;" placeholder="MATRIZ&#10;CASA DE VIDRO"></textarea>
@@ -387,7 +397,7 @@
                     <div id="gradient-picker" class="gradient-picker-container"></div>
                 </div>
             </div>
-            <button id="btn-salvar-dados" class="btn-hover color-9" style="width: 100%; margin-top: 20px;">Salvar Dados no Servidor</button>
+            <button id="btn-salvar-dados" class="btn-hover color-9" style="width: 100%; margin-top: 20px;"><i class="ri-save-line"></i> Salvar Dados no Servidor</button>
         </div>
     </div>
 
@@ -415,10 +425,17 @@
     </div>
 
     <div id="chat-fab" onclick="window.toggleChat()">
-        <i class="ri-robot-2-fill"></i>
+        <img id="chat-fab-img" src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
     </div>
+    
     <div id="chat-window" style="display:none;">
-        <div class="chat-header">Assistente Clínica <button onclick="window.toggleChat()"><i class="ri-close-line"></i></button></div>
+        <div class="chat-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img id="chat-header-img" src="https://cdn-icons-png.flaticon.com/512/8943/8943377.png" style="width:30px; height:30px; border-radius:50%; object-fit:cover; background:white;">
+                <span>Assistente Clínica</span>
+            </div>
+            <button onclick="window.toggleChat()"><i class="ri-close-line"></i></button>
+        </div>
         <div class="chat-body" id="chat-body">
             <div class="chat-msg bot">Olá! Sou a inteligência virtual da clínica. Como posso ajudar? Busque por especialidades, médicos ou exames!</div>
         </div>
