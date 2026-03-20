@@ -1,15 +1,26 @@
+// --- CONFIGURAÇÃO DE CAMPOS E PASTAS DO SISTEMA ---
+const configuracaoAbas = {
+    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
+    'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'] }, 
+    'convenios': { titulo: 'Convênio', campos: ['Convênio (Nome da Pasta)', 'Código', 'Serviço', 'Aceita o Servico?', 'Observações'], campoAgrupador: 'Convênio (Nome da Pasta)', icone: 'ri-shield-cross-fill' },
+    'ultrassom': { titulo: 'Exame de Ultrassom', campos: ['Nome do Exame (Pasta)', 'Código', 'Profissional Executante', 'Restrição de Idade', 'Observações'], campoAgrupador: 'Nome do Exame (Pasta)', icone: 'ri-pulse-line' },
+    'consultas': { titulo: 'Consulta / Procedimento', campos: ['Categoria ou Setor (Pasta)', 'Tipo', 'Código', 'Descrição', 'Valor', 'Observações'], campoAgrupador: 'Categoria ou Setor (Pasta)', icone: 'ri-stethoscope-line' },
+    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que está incluso', 'Observações', 'Pacotes', 'Kit'] },
+    'exames-imagem': { titulo: 'Exame de Imagem', campos: ['Categoria do Exame (Pasta)', 'Código', 'Descrição', 'Valor', 'Prazo de Laudo', 'Onde encontrar resultado', 'Observações', 'Convênios Aceitos'], campoAgrupador: 'Categoria do Exame (Pasta)', icone: 'ri-body-scan-line' },
+    'institutos': { titulo: 'Instituto Tabela', campos: ['Número da Tabela (Pasta)', 'Valor da Tabela', 'Profissional', 'Especialidade', 'Restrição de Idade', 'CRM', 'CBO', 'URA', 'Outros'], campoAgrupador: 'Número da Tabela (Pasta)', icone: 'ri-building-line' },
+    'remocoes': { titulo: 'Remoção', campos: ['Nome do Lugar', 'Números (Separe por vírgula)', 'Local e Link Maps', 'Observações Importantes'] },
+    'ramais': { titulo: 'Ramal', campos: ['Local ou Prédio', 'Setor', 'Número do Ramal', 'Observações'] },
+    'emails': { titulo: 'E-mail', campos: ['Descrição do E-mail', 'Setor'] },
+    'contatos-gerais': { titulo: 'Contato Geral', campos: ['Descrição (Lugar ou Pessoa)', 'Número'] },
+    'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
+    'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] },
+    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] },
+    'boletins-privados': { titulo: 'Informativo Privado', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] }
+};
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, query, orderBy, limit, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
-  authDomain: "painel-tabelas.firebaseapp.com",
-  projectId: "painel-tabelas",
-  storageBucket: "painel-tabelas.firebasestorage.app",
-  messagingSenderId: "189251122569",
-  appId: "1:189251122569:web:2902e8c47235d826af9d58"
-};
+import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { localCache: persistentLocalCache() });
@@ -26,11 +37,10 @@ let motivosGlobais = [];
 
 window.todosBoletinsData = [];
 window.todosPrivadosData = [];
-window.todosConveniosData = [];
+window.dadosGlobaisAbas = {}; // Armazena dados de todas as abas para o Motor de Busca Global
 window.dadosBoletins = {}; 
 window.pastaBoletimAtual = null;
 window.pastaPrivadoAtual = null;
-window.pastaConvenioAtual = null;
 
 window.corStatusPendente = "#e53e3e";
 window.corStatusConcluido = "#38a169";
@@ -52,27 +62,6 @@ const paletaGradientes = [
     { valor: "linear-gradient(135deg, #d6ff7f, #00b3cc)", nome: "Verde/Azul", dark: true }
 ];
 
-const frases = ["O sucesso é a soma de pequenos esforços repetidos dia após dia.", "A empatia é a medicina que o mundo mais precisa.", "Juntos, fazemos a diferença na vida de cada paciente.", "Trabalho em equipe divide as tarefas e multiplica o sucesso.", "A excelência não é um ato, mas um hábito."];
-
-const configuracaoAbas = {
-    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
-    'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'] }, 
-    'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Link da Logo do Convênio', 'Código', 'Serviço', 'Aceita o Servico?', 'Observações'] },
-    'ultrassom': { titulo: 'Ultrassom', campos: ['Código', 'Exame', 'Profissional', 'Restrição de Idade', 'Observação', 'Link da Imagem Ilustrativa'] },
-    'consultas': { titulo: 'Consulta ou Procedimento', campos: ['Código', 'Tipo', 'Descrição', 'Valor', 'Observações'] }, // CAMPO VALOR ADICIONADO AQUI
-    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que está incluso', 'Observações', 'Pacotes', 'Kit'] },
-    'exames-imagem': { titulo: 'Exame de Imagem', campos: ['Código', 'Descrição', 'Valor', 'Prazo de Laudo', 'Onde encontrar resultado', 'Observações', 'Convênios'] },
-    'institutos': { titulo: 'Instituto', campos: ['Número da Tabela', 'Profissional', 'Especialidade', 'Restrição de Idade', 'CRM', 'CBO', 'URA', 'Outros'] },
-    'remocoes': { titulo: 'Remoção', campos: ['Nome do Lugar', 'Números (Separe por vírgula)', 'Local e Link Maps', 'Observações Importantes'] },
-    'ramais': { titulo: 'Ramal', campos: ['Local ou Prédio', 'Setor', 'Número do Ramal', 'Observações'] },
-    'emails': { titulo: 'E-mail', campos: ['Descrição do E-mail', 'Setor'] },
-    'contatos-gerais': { titulo: 'Contato Geral', campos: ['Descrição (Lugar ou Pessoa)', 'Número'] },
-    'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
-    'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] },
-    'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] },
-    'boletins-privados': { titulo: 'Informativo Direto (Privado)', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] }
-};
-
 function formatarLinkImagem(link) {
     if (!link || link.includes('file:///')) return null;
     if (link.includes("drive.google.com")) {
@@ -82,8 +71,9 @@ function formatarLinkImagem(link) {
     return link;
 }
 
-setInterval(() => { document.getElementById('relogio').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
-document.getElementById('frase-dia').innerText = frases[Math.floor(Math.random() * frases.length)];
+setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+const frases = ["O sucesso é a soma de pequenos esforços.", "A empatia é a medicina que o mundo precisa.", "Trabalho em equipe multiplica o sucesso."];
+const fm = document.getElementById('frase-dia'); if(fm) fm.innerText = frases[Math.floor(Math.random() * frases.length)];
 
 document.getElementById('btn-login').addEventListener('click', () => { signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('senha').value).catch(err => alert("Erro: " + err.message)); });
 document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
@@ -109,14 +99,14 @@ onAuthStateChanged(auth, (user) => {
         
         document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
-        carregarConfiguracoes();
-        buscarClimaAraucaria(); 
+        carregarConfiguracoes(); buscarClimaAraucaria(); 
     } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('dashboard-screen').style.display = 'none';
     }
 });
 
+// LÓGICA DE NAVEGAÇÃO E PASTAS GENÉRICAS
 document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
@@ -131,10 +121,149 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         
         if(abaAtual === 'boletins') window.fecharPastaBoletim(); 
         if(abaAtual === 'boletins-privados') window.fecharPastaPrivado();
-        if(abaAtual === 'convenios') window.fecharPastaConvenio();
+        ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos'].forEach(col => {
+            if(abaAtual === col) window.fecharPastaGenerica(col);
+        });
     });
 });
 
+window.abrirPastaGenerica = function(colecao, valorPasta) {
+    window[`pasta_${colecao}_Atual`] = valorPasta;
+    document.getElementById(`${colecao}-view-folders`).style.display = 'none';
+    document.getElementById(`${colecao}-view-list`).style.display = 'block';
+    document.getElementById(`titulo-pasta-${colecao}`).innerHTML = `<i class="${configuracaoAbas[colecao].icone}"></i> Pasta: ${valorPasta}`;
+    renderizarListaGenerica(colecao);
+}
+window.fecharPastaGenerica = function(colecao) {
+    window[`pasta_${colecao}_Atual`] = null;
+    document.getElementById(`${colecao}-view-list`).style.display = 'none';
+    document.getElementById(`${colecao}-view-folders`).style.display = 'block';
+    renderizarPastasGenericas(colecao);
+}
+
+function renderizarPastasGenericas(colecao) {
+    const grid = document.getElementById(`grid-${colecao}-folders`);
+    if(!grid) return; grid.innerHTML = '';
+    const config = configuracaoAbas[colecao];
+    const dadosAtuais = window.dadosGlobaisAbas[colecao] || [];
+    
+    const pastasUnicas = [...new Set(dadosAtuais.map(i => i.data[config.campoAgrupador]).filter(Boolean))].sort();
+    
+    pastasUnicas.forEach(nomePasta => {
+        const itensPasta = dadosAtuais.filter(i => i.data[config.campoAgrupador] === nomePasta);
+        const qtd = itensPasta.length;
+        const corIcone = itensPasta[0].data.corCard && itensPasta[0].data.corCard !== "transparent" ? itensPasta[0].data.corCard : "var(--primary-color)";
+        const iconeHtml = `<div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: ${corIcone}; font-size: 24px;"><i class="${config.icone}"></i></div>`;
+        
+        grid.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaGenerica('${colecao}', '${nomePasta}')" style="text-align: left; padding: 20px; border-left: 6px solid ${corIcone};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">${iconeHtml}<div style="font-size: 16px; font-weight: 600;">${nomePasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">Cadastros na pasta: <b style="color:var(--text-main);">${qtd}</b></div></div>`;
+    });
+}
+
+function gerarHTMLCard(colecaoNome, docId, data) {
+    const config = configuracaoAbas[colecaoNome];
+    const camposOrdem = config.campos;
+    let campoTitulo = camposOrdem[0];
+    
+    if(config.campoAgrupador) {
+        campoTitulo = camposOrdem.find(c => c !== config.campoAgrupador) || camposOrdem[0];
+    }
+    
+    const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes';
+    const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
+    const configCor = paletaGradientes.find(p => p.valor === corSalva);
+    const isDark = configCor ? configCor.dark : false;
+    
+    let badgeValorHtml = '';
+    camposOrdem.forEach(chave => {
+        const valor = data[chave];
+        if (valor && chave !== config.campoAgrupador && chave !== campoTitulo) {
+            if (chave.includes('Valor') || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) {
+                badgeValorHtml = `<div class="badge-valor"><i class="ri-money-dollar-circle-line"></i> ${valor}</div>`;
+            }
+        }
+    });
+
+    let cardHtml = `<div class="card ${isDark ? 'has-gradient' : ''}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border-left: 6px solid var(--primary-color);">`;
+    
+    // Tag da Pasta Pai (útil na busca global)
+    if(config.campoAgrupador && data[config.campoAgrupador]) {
+        cardHtml += `<div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px;"><i class="${config.icone}"></i> PASTA: ${data[config.campoAgrupador]}</div>`;
+    }
+
+    cardHtml += `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; gap:10px;">
+                    <div class="card-title" style="font-size:18px; font-weight:600; line-height:1.2; flex:1; margin-bottom:0;">${tituloDesteCard}</div>
+                    ${badgeValorHtml}
+                 </div>`;
+    
+    let hasFlexLayout = (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']);
+    if(hasFlexLayout) {
+        cardHtml += `<div class="medico-wrapper">`;
+        if (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) {
+            let fotoUrl = formatarLinkImagem(data['Link da Foto do Profissional']);
+            if(fotoUrl) cardHtml += `<img src="${fotoUrl}" class="medico-foto" onerror="this.style.display='none'">`;
+        }
+        cardHtml += `<div class="content-info-flex">`;
+    }
+
+    camposOrdem.forEach(chave => {
+        const valor = data[chave];
+        if (valor && chave !== config.campoAgrupador && chave !== campoTitulo) {
+            if (chave.includes('Valor') || chave === 'Link da Logo do Convênio' || chave === 'Exibir Logo do Convenio' || chave === 'Link da Foto do Profissional' || chave === 'Link da Imagem Ilustrativa') return; 
+            
+            if (chave === 'Aceita o Servico?') {
+                const badgeClass = valor === 'Não' ? 'status-negado' : 'status-aceito';
+                const iconClass = valor === 'Não' ? 'ri-close-circle-fill' : 'ri-checkbox-circle-fill';
+                const text = valor === 'Não' ? 'Serviço Não Coberto' : 'Serviço Coberto';
+                cardHtml += `<div style="margin: 8px 0;"><span class="${badgeClass}"><i class="${iconClass}"></i> ${text}</span></div>`;
+            } else if(chave === 'Local e Link Maps' && valor.includes('http')) {
+                const urlMatch = valor.match(/https?:\/\/[^\s]+/);
+                const url = urlMatch ? urlMatch[0] : valor;
+                const textoSemUrl = valor.replace(url, '').trim();
+                cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4;"><strong>${chave}:</strong> <span>${textoSemUrl}</span><br><button onclick="window.open('${url}', '_blank')" style="background: var(--bg-color); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--primary-color); transition:0.2s;"><i class="ri-map-pin-user-fill"></i> Ver no Mapa</button></div>`;
+            } else {
+                cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px;"><strong>${chave}:</strong> <span>${valor}</span></div>`; 
+            }
+        }
+    });
+    
+    if(hasFlexLayout) cardHtml += `</div></div>`; 
+    if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
+    cardHtml += `</div>`;
+    return cardHtml;
+}
+
+function renderizarListaGenerica(colecao) {
+    const grid = document.getElementById(`grid-${colecao}-list`); grid.innerHTML = '';
+    const nomePasta = window[`pasta_${colecao}_Atual`];
+    const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => i.data[configuracaoAbas[colecao].campoAgrupador] === nomePasta);
+    itensExibir.forEach(item => { grid.innerHTML += gerarHTMLCard(colecao, item.id, item.data); });
+}
+
+// MOTOR DE BUSCA GLOBAL (Procura em TODAS as abas e PASTAS)
+document.getElementById('input-pesquisa-global').addEventListener('keyup', (e) => {
+    const texto = e.target.value.toLowerCase().trim();
+    const areaRes = document.getElementById('resultados-globais');
+    if(texto.length < 2) { areaRes.style.display = 'none'; return; }
+    
+    areaRes.style.display = 'grid'; 
+    areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">Resultados encontrados em todas as pastas:</h3>';
+    let encontrou = false;
+    
+    Object.keys(window.dadosGlobaisAbas).forEach(colecaoNome => {
+        const itensDaColecao = window.dadosGlobaisAbas[colecaoNome] || [];
+        itensDaColecao.forEach(item => {
+            const strDados = JSON.stringify(item.data).toLowerCase();
+            if (strDados.includes(texto)) {
+                areaRes.innerHTML += gerarHTMLCard(colecaoNome, item.id, item.data);
+                encontrou = true;
+            }
+        });
+    });
+
+    if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px;">Nenhum resultado encontrado no sistema.</p>';
+});
+
+// LÓGICA DE SALVAMENTO
 document.getElementById('btn-salvar-dados').addEventListener('click', async () => {
     if(!isAdmin) return;
     const colecaoNome = document.getElementById('btn-salvar-dados').getAttribute('data-colecao');
@@ -222,36 +351,12 @@ async function buscarClimaAraucaria() {
     } catch(e) { document.getElementById('weather-desc').textContent = "Clima indisponível no momento"; }
 }
 
-document.getElementById('input-pesquisa-global').addEventListener('keyup', (e) => {
-    const texto = e.target.value.toLowerCase();
-    const areaRes = document.getElementById('resultados-globais');
-    if(texto.length < 2) { areaRes.style.display = 'none'; return; }
-    
-    areaRes.style.display = 'grid'; 
-    areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px;">Resultados da Busca:</h3>';
-    let encontrou = false;
-    
-    document.querySelectorAll('.tab-content:not(#tab-home):not(#tab-ajustes) .card, .mini-card').forEach(card => {
-        const abaPai = card.closest('.tab-content');
-        if(!isAdmin && abaPai && (abaPai.id === 'tab-boletins-privados' || abaPai.id === 'tab-colaboradores')) return;
-        
-        if(card.innerText.toLowerCase().includes(texto)) { 
-            let clone = card.cloneNode(true);
-            clone.style.display = 'flex'; 
-            areaRes.appendChild(clone); 
-            encontrou = true; 
-        }
-    });
-    if(!encontrou) areaRes.innerHTML += '<p>Nenhum resultado encontrado.</p>';
-});
-
 document.getElementById('input-pesquisa').addEventListener('keyup', (e) => {
     const texto = e.target.value.toLowerCase();
     const abaContainer = document.getElementById(`tab-${abaAtual}`);
     if(!abaContainer) return;
     
-    abaContainer.querySelectorAll('.card, .mini-card').forEach(card => {
-        if(card.classList.contains('shortcut-card')) return;
+    abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
         if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
         else card.style.display = 'none';
     });
@@ -387,7 +492,7 @@ function abrirModal(colecao, docId = null, dadosAntigos = null) {
             htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
         }
         else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
-        } else if (campo.includes('Link')) { htmlCampos += `<input type="url" id="input-${campo}" placeholder="Link (URL)" value="${valorAntigo}" class="form-input">`;
+        } else if (campo.includes('Link') || campo.includes('URL')) { htmlCampos += `<input type="url" id="input-${campo}" placeholder="Link ou URL" value="${valorAntigo}" class="form-input">`;
         } else { htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" value="${valorAntigo}" class="form-input">`; }
     });
     
@@ -419,18 +524,9 @@ function atualizarGrafico(canvasId, refInstancia, dados, labelGrafico) {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [{
-                label: labelGrafico,
-                data: valores,
-                backgroundColor: '#8B252C',
-                borderRadius: 5
-            }]
+            datasets: [{ label: labelGrafico, data: valores, backgroundColor: '#8B252C', borderRadius: 5 }]
         },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
 }
 
@@ -615,78 +711,19 @@ function renderizarListaPrivados() {
     });
 }
 
-// --- CONVÊNIOS (COM PASTAS E LOGOS) ---
-window.abrirPastaConvenio = function(convenio) {
-    window.pastaConvenioAtual = convenio;
-    document.getElementById('convenios-view-folders').style.display = 'none';
-    document.getElementById('convenios-view-list').style.display = 'block';
-    document.getElementById('titulo-pasta-convenios').innerHTML = `<i class="ri-shield-cross-line"></i> ${convenio}`;
-    renderizarListaConvenios();
-}
-window.fecharPastaConvenio = function() {
-    window.pastaConvenioAtual = null;
-    document.getElementById('convenios-view-list').style.display = 'none';
-    document.getElementById('convenios-view-folders').style.display = 'block';
-    renderizarPastasConvenios();
-}
-function renderizarPastasConvenios() {
-    const grid = document.getElementById('grid-convenios-folders');
-    if(!grid) return;
-    grid.innerHTML = '';
-    const conveniosUnicos = [...new Set(window.todosConveniosData.map(i => i.data['Convênio']).filter(Boolean))].sort();
-    
-    conveniosUnicos.forEach(conv => {
-        const itensConv = window.todosConveniosData.filter(i => i.data['Convênio'] === conv);
-        const qtd = itensConv.length;
-        
-        const imgItem = itensConv.find(i => i.data['Link da Logo do Convênio'] && i.data['Link da Logo do Convênio'].trim() !== '');
-        let logoUrl = imgItem ? formatarLinkImagem(imgItem.data['Link da Logo do Convênio']) : null;
-        
-        let iconeHtml = `<div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: var(--primary-color); font-size: 24px;"><i class="ri-shield-cross-fill"></i></div>`;
-        if (logoUrl) {
-            iconeHtml = `<div style="background: white; padding: 10px; border-radius: 12px; box-shadow: var(--shadow-soft); display:flex; align-items:center; justify-content:center; height: 55px; width: 65px;"><img src="${logoUrl}" class="convenio-logo-folder" onerror="this.style.display='none'"></div>`;
-        }
-
-        grid.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaConvenio('${conv}')" style="text-align: left; padding: 20px; border-left: 6px solid var(--primary-color);"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">${iconeHtml}<div style="font-size: 16px; font-weight: 600;">${conv}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">Serviços cadastrados: <b style="color:var(--text-main);">${qtd}</b></div></div>`;
-    });
-}
-function renderizarListaConvenios() {
-    const grid = document.getElementById('grid-convenios-list'); grid.innerHTML = '';
-    const itensExibir = window.todosConveniosData.filter(i => i.data['Convênio'] === window.pastaConvenioAtual);
-    const camposOrdem = configuracaoAbas['convenios'].campos;
-    
-    itensExibir.forEach(item => {
-        const data = item.data; const docId = item.id;
-        let cardHtml = `<div class="card" style="display:flex; flex-direction:column; background: #ffffff; border-left: 6px solid var(--primary-color);"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600;">${data[camposOrdem[0]] || 'Serviço'}</div>`;
-        
-        camposOrdem.forEach(chave => {
-            const valor = data[chave];
-            if (valor && chave !== camposOrdem[0] && chave !== 'Link da Logo do Convênio') {
-                if (chave === 'Aceita o Servico?') {
-                    const badgeClass = valor === 'Não' ? 'status-negado' : 'status-aceito';
-                    const iconClass = valor === 'Não' ? 'ri-close-circle-fill' : 'ri-checkbox-circle-fill';
-                    const text = valor === 'Não' ? 'Serviço Não Coberto' : 'Serviço Coberto';
-                    cardHtml += `<div style="margin: 8px 0;"><span class="${badgeClass}"><i class="${iconClass}"></i> ${text}</span></div>`;
-                } else {
-                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px;"><strong>${chave}:</strong> <span>${valor}</span></div>`; 
-                }
-            }
-        });
-        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="convenios" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="convenios" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-        grid.innerHTML += cardHtml + `</div>`;
-    });
-}
-
-// RENDERIZADOR GERAL
+// RENDERIZADOR GERAL DAS ABAS
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
-    if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && colecaoNome !== 'convenios') return;
+    if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
 
     onSnapshot(collection(db, colecaoNome), (snapshot) => {
         if(snapshot.empty) {
             if(colecaoNome === 'boletins') { window.todosBoletinsData = []; verificarUrgentesHome(); }
             if(colecaoNome === 'boletins-privados') { window.todosPrivadosData = []; verificarUrgentesHome(); }
-            if(colecaoNome === 'convenios') { window.todosConveniosData = []; }
+            if(configuracaoAbas[colecaoNome] && configuracaoAbas[colecaoNome].campoAgrupador) {
+                window.dadosGlobaisAbas[colecaoNome] = [];
+                if(abaAtual === colecaoNome) renderizarPastasGenericas(colecaoNome);
+            }
             if(grid) grid.innerHTML = '';
             return;
         }
@@ -713,10 +750,14 @@ function renderizarCards(colecaoNome) {
             return;
         }
         
-        if(colecaoNome === 'convenios') {
-            window.todosConveniosData = itens;
-            if(abaAtual === 'convenios') { if(window.pastaConvenioAtual) renderizarListaConvenios(); else renderizarPastasConvenios(); }
-            return;
+        // INTERCEPTA PASTAS GENÉRICAS E MANDA PARA O MOTOR DE BUSCA
+        if(configuracaoAbas[colecaoNome] && configuracaoAbas[colecaoNome].campoAgrupador) {
+            window.dadosGlobaisAbas[colecaoNome] = itens;
+            if(abaAtual === colecaoNome) {
+                if(window[`pasta_${colecaoNome}_Atual`]) renderizarListaGenerica(colecaoNome);
+                else renderizarPastasGenericas(colecaoNome);
+            }
+            return; 
         }
 
         if (colecaoNome === 'ramais') {
@@ -758,9 +799,8 @@ function renderizarCards(colecaoNome) {
             
             let cardHtml = `<div class="card ${isDark ? 'has-gradient' : ''}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${!isDark ? 'border-left: 6px solid var(--primary-color);' : ''}">`;
             
-            let hasFlexLayout = (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) || (colecaoNome === 'ultrassom' && data['Link da Imagem Ilustrativa']);
+            let hasFlexLayout = (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']);
             
-            // --- NOVA LÓGICA DO BADGE DE VALOR ---
             let badgeValorHtml = '';
             camposOrdem.forEach(chave => {
                 const valor = data[chave];
@@ -783,9 +823,6 @@ function renderizarCards(colecaoNome) {
                 if (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) {
                     let fotoUrl = formatarLinkImagem(data['Link da Foto do Profissional']);
                     if(fotoUrl) cardHtml += `<img src="${fotoUrl}" class="medico-foto" onerror="this.style.display='none'">`;
-                } else if (colecaoNome === 'ultrassom' && data['Link da Imagem Ilustrativa']) {
-                    let imgUrl = formatarLinkImagem(data['Link da Imagem Ilustrativa']);
-                    if(imgUrl) cardHtml += `<img src="${imgUrl}" class="ultrassom-foto" onerror="this.style.display='none'">`;
                 }
                 cardHtml += `<div class="content-info-flex">`;
             }
@@ -794,10 +831,7 @@ function renderizarCards(colecaoNome) {
                 const valor = data[chave];
                 if (valor && chave !== campoTitulo && chave !== 'Exibir Logo do Convenio' && chave !== 'Link da Logo (Ex: Unimed)' && chave !== 'Link da Foto do Profissional' && chave !== 'Link da Imagem Ilustrativa') {
                     
-                    // PULA O VALOR JÁ RENDERIZADO NO BADGE
-                    if (chave === 'Valor' || chave === 'Valor ou Informacao' || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) {
-                        return;
-                    }
+                    if (chave === 'Valor' || chave === 'Valor ou Informacao' || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) return;
 
                     if(chave === 'Local e Link Maps' && valor.includes('http')) {
                         const urlMatch = valor.match(/https?:\/\/[^\s]+/);
@@ -840,3 +874,6 @@ window.abrirMidaFlutuante = function(url) {
     document.getElementById('iframe-media').src = u; document.getElementById('modal-media').style.display = 'flex';
 }
 document.getElementById('btn-fechar-media').addEventListener('click', () => { document.getElementById('modal-media').style.display = 'none'; document.getElementById('iframe-media').src = ""; });
+</script>
+</body>
+</html>
