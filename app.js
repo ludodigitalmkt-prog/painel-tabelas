@@ -1,4 +1,6 @@
-// --- CONFIGURAÇÃO DE CAMPOS E PASTAS DO SISTEMA ---
+// ==========================================
+// 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+// ==========================================
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'], campoAgrupador: 'Especialidade', icone: 'ri-team-fill' }, 
@@ -44,6 +46,7 @@ let locaisGlobais = [];
 let setoresGlobais = [];
 let especialidadesGlobais = []; 
 let motivosGlobais = [];
+let imagemPadraoPastas = ""; 
 
 window.todosBoletinsData = [];
 window.todosPrivadosData = [];
@@ -74,8 +77,72 @@ const paletaGradientes = [
 ];
 
 // ==========================================
-// 2. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS BLINDADAS
+// 2. LÓGICA DE LOGIN CORRIGIDA (SEM RECARREGAR PÁGINA)
 // ==========================================
+
+const formLogin = document.getElementById('form-login');
+if(formLogin) {
+    formLogin.addEventListener('submit', (e) => {
+        e.preventDefault(); // <-- ESSA LINHA É A MÁGICA QUE IMPEDE A TELA DE PISCAR
+        
+        const email = document.getElementById('email').value;
+        const senha = document.getElementById('senha').value;
+        const btn = document.getElementById('btn-login');
+        const textoOriginal = btn.innerHTML;
+        
+        btn.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> Autenticando...";
+        
+        signInWithEmailAndPassword(auth, email, senha)
+            .then(() => {
+                btn.innerHTML = textoOriginal;
+            })
+            .catch(err => {
+                alert("Erro ao entrar: E-mail ou Senha incorretos.");
+                btn.innerHTML = textoOriginal;
+            });
+    });
+}
+
+const btnLogout = document.getElementById('btn-logout');
+if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    const dashboardScreen = document.getElementById('dashboard-screen');
+    
+    if (user) {
+        if(loginScreen) loginScreen.style.display = 'none';
+        if(dashboardScreen) dashboardScreen.style.display = 'flex';
+        isAdmin = (user.email === EMAIL_GESTAO);
+        
+        const badge = document.getElementById('user-role-badge');
+        if(badge) badge.textContent = isAdmin ? "Gestão Administrador" : "Acesso Geral";
+        
+        if(isAdmin) {
+            if(badge) badge.classList.add('admin');
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+        } else {
+            if(badge) badge.classList.remove('admin');
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+        }
+        
+        Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
+        carregarConfiguracoes(); 
+        window.buscarClimaAraucaria(); 
+    } else {
+        if(loginScreen) loginScreen.style.display = 'flex';
+        if(dashboardScreen) dashboardScreen.style.display = 'none';
+    }
+});
+
+
+// ==========================================
+// 3. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS BLINDADAS (HOISTING)
+// ==========================================
+
+setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+const frases = ["O sucesso é a soma de pequenos esforços.", "A empatia é a medicina que o mundo precisa.", "Trabalho em equipe multiplica o sucesso."];
+const fm = document.getElementById('frase-dia'); if(fm) fm.innerText = frases[Math.floor(Math.random() * frases.length)];
 
 function formatarLinkImagem(link) {
     if (!link || link.includes('file:///')) return null;
@@ -510,6 +577,9 @@ function renderizarPastasGenericas(colecao) {
         const corIcone = itensPasta[0].data.corCard && itensPasta[0].data.corCard !== "transparent" ? itensPasta[0].data.corCard : "var(--primary-color)";
         
         let iconeHtml = `<div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: ${corIcone}; font-size: 24px;"><i class="${config.icone}"></i></div>`;
+        if (imagemPadraoPastas) {
+            iconeHtml = `<div style="background: white; padding: 10px; border-radius: 12px; box-shadow: var(--shadow-soft); display:flex; align-items:center; justify-content:center; height: 55px; width: 65px;"><img src="${imagemPadraoPastas}" style="max-height:100%; max-width:100%; object-fit:contain;" onerror="this.style.display='none'"></div>`;
+        }
         
         grid.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaGenerica('${colecao}', '${nomePasta}')" style="text-align: left; padding: 20px; border-left: 6px solid ${corIcone};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">${iconeHtml}<div style="font-size: 16px; font-weight: 600;">${nomePasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">Cadastros na pasta: <b style="color:var(--text-main);">${qtd}</b></div></div>`;
     });
@@ -521,7 +591,6 @@ function renderizarPastasBoletins() {
     if(!gridFolders) return;
     gridFolders.innerHTML = '';
     
-    // Varredura cirúrgica para puxar TODAS as pastas de boletins que existem no banco (resolvendo o bug do apagão)
     let todosOsSetores = new Set(['Geral', ...setoresGlobais]);
     window.todosBoletinsData.forEach(b => {
         let setoresDoBoletim = b.data['Para quais Setores?'];
@@ -536,7 +605,7 @@ function renderizarPastasBoletins() {
             return s.includes(pasta);
         });
         
-        if(boletinsDaPasta.length === 0) return; // Se a pasta não tem boletim, não mostra
+        if(boletinsDaPasta.length === 0) return; 
         
         let totalLidos = 0; let totalFaltam = 0;
         boletinsDaPasta.forEach(b => {
@@ -625,7 +694,6 @@ function renderizarPastasPrivados() {
     if(!gridFolders) return;
     gridFolders.innerHTML = '';
     
-    // Traz o nome exato dos colaboradores que têm boletins para a tela
     let todosOsNomes = new Set(listaColaboradoresGlobal.map(c => c.nome));
     window.todosPrivadosData.forEach(b => {
         if(b.data['Para qual Colaborador?']) todosOsNomes.add(b.data['Para qual Colaborador?']);
@@ -633,7 +701,7 @@ function renderizarPastasPrivados() {
     
     Array.from(todosOsNomes).sort().forEach(nome => {
         const boletinsDele = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === nome);
-        if(boletinsDele.length === 0) return; // Se não tem documento, oculta a pasta
+        if(boletinsDele.length === 0) return; 
         
         let lidos = 0; let faltam = 0;
         boletinsDele.forEach(b => {
@@ -818,8 +886,12 @@ if(btnSalvarAjustes) {
         const corPend = document.getElementById('tab-color-pendente').value; 
         const corConc = document.getElementById('tab-color-concluido').value; 
         
+        const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
+        const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
+
         const chatLogoInput = document.getElementById('tab-input-chat-logo');
         const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
+        
         const chatCorInput = document.getElementById('tab-color-chat');
         const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
         
@@ -833,6 +905,7 @@ if(btnSalvarAjustes) {
                 motivos: motivosTexto, 
                 cor_pendente: corPend, 
                 cor_concluido: corConc,
+                imagem_padrao_pastas: imgPastasTexto,
                 chat_logo: chatLogoTexto,
                 chat_cor: chatCorVal
             });
