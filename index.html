@@ -9,11 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r83/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.3/TweenMax.min.js"></script>
-    <script src="https://unpkg.com/imagesloaded@4.1.4/imagesloaded.pkgd.min.js"></script>
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -81,15 +76,8 @@
                 </div>
                 <div id="resultados-globais" class="cards-grid" style="display: none; margin-bottom: 30px; padding: 15px; background: #fff; border-radius: 15px; box-shadow: var(--shadow-soft);"></div>
 
-                <div id="home-3d-slider" class="home-slider-container">
-                    <div class="slider-inner">
-                        <div id="slider-content">
-                            <h2 id="slide-title">Carregando...</h2>
-                            <div id="slide-subtitle-container"></div>
-                        </div>
-                    </div>
-                    <div id="pagination"></div>
-                    <div id="slider-images-data" style="display: none;"></div>
+                <div class="home-banner" id="banner-area">
+                    <div id="banner-content"><h2>Bem-vindo ao Painel Clínico</h2></div>
                 </div>
 
                 <div class="weather-widget">
@@ -117,15 +105,8 @@
                 <div class="card" style="max-width: 600px; margin: 0 auto;">
                     <h2 style="margin-bottom: 20px; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Configurações do Sistema</h2>
                     
-                    <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border-color);">
-                        <h4 style="color: var(--primary-color); margin-bottom: 10px;"><i class="ri-image-edit-line"></i> Banner Animado 3D (Tela Inicial)</h4>
-                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Imagens do Slider (1 Link URL por linha)</label>
-                        <textarea id="tab-input-slider-img" class="form-input" style="height: 80px; resize: vertical;" placeholder="https://imgur.com/sua-imagem1.jpg&#10;https://imgur.com/sua-imagem2.jpg"></textarea>
-                        
-                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px;">Títulos Respectivos (1 por linha)</label>
-                        <textarea id="tab-input-slider-txt" class="form-input" style="height: 80px; resize: vertical;" placeholder="Inauguração da Nova Ala&#10;Campanha de Vacinação"></textarea>
-                        <p style="font-size: 11px; color: var(--text-muted);">* As linhas de imagem e título devem coincidir. Se usar Google Drive e ficar preto, use o Imgur.com para hospedar.</p>
-                    </div>
+                    <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px;">Aviso Animado na Tela Inicial (Banner)</label>
+                    <textarea id="tab-input-banner" class="form-input" style="height: 100px; resize: vertical;" placeholder="Ex: Campanha de Vacinação iniciada!"></textarea>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Locais/Prédios (Para os Contatos)</label>
                     <textarea id="tab-input-locais" class="form-input" style="height: 100px; resize: vertical;" placeholder="MATRIZ&#10;CASA DE VIDRO"></textarea>
@@ -169,18 +150,22 @@
                 <div id="convenios-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Convênio para visualizar os serviços cobertos e regras.</p><div class="home-grid" id="grid-convenios-folders"></div></div>
                 <div id="convenios-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('convenios')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-convenios" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-convenios-list"></div></div>
             </section>
+            
             <section id="tab-ultrassom" class="tab-content" style="display: none;">
                 <div id="ultrassom-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Tipo de Exame.</p><div class="home-grid" id="grid-ultrassom-folders"></div></div>
                 <div id="ultrassom-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('ultrassom')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-ultrassom" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-ultrassom-list"></div></div>
             </section>
+            
             <section id="tab-consultas" class="tab-content" style="display: none;">
                 <div id="consultas-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione a Categoria/Setor.</p><div class="home-grid" id="grid-consultas-folders"></div></div>
                 <div id="consultas-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('consultas')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-consultas" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-consultas-list"></div></div>
             </section>
+            
             <section id="tab-exames-imagem" class="tab-content" style="display: none;">
                 <div id="exames-imagem-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione a Categoria do Exame.</p><div class="home-grid" id="grid-exames-imagem-folders"></div></div>
                 <div id="exames-imagem-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('exames-imagem')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-exames-imagem" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-exames-imagem-list"></div></div>
             </section>
+            
             <section id="tab-institutos" class="tab-content" style="display: none;">
                 <div id="institutos-view-folders"><p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o Número da Tabela.</p><div class="home-grid" id="grid-institutos-folders"></div></div>
                 <div id="institutos-view-list" style="display:none;"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;"><button class="btn-primary" onclick="window.fecharPastaGenerica('institutos')" style="width: auto; background: var(--text-muted);"><i class="ri-arrow-left-line"></i> Voltar</button><h2 id="titulo-pasta-institutos" style="color: var(--primary-color);">Pasta</h2></div><div class="cards-grid" id="grid-institutos-list"></div></div>
@@ -188,7 +173,7 @@
 
             <section id="tab-boletins" class="tab-content" style="display: none;">
                 <div id="boletins-view-folders">
-                    <p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o setor para ver os informativos direcionados e o gráfico de desempenho.</p>
+                    <p style="margin-bottom: 20px; color: var(--text-muted);">Selecione o setor para ver os informativos direcionados.</p>
                     <div class="home-grid" id="grid-boletins-folders"></div>
                 </div>
                 <div id="boletins-view-list" style="display:none;">
