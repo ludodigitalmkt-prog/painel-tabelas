@@ -22,6 +22,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+const firebaseConfig = {
+    apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
+    authDomain: "painel-tabelas.firebaseapp.com",
+    projectId: "painel-tabelas",
+    storageBucket: "painel-tabelas.firebasestorage.app",
+    messagingSenderId: "189251122569",
+    appId: "1:189251122569:web:2902e8c47235d826af9d58"
+};
+
 const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { localCache: persistentLocalCache() });
 const auth = getAuth(app);
@@ -37,7 +46,8 @@ let motivosGlobais = [];
 
 window.todosBoletinsData = [];
 window.todosPrivadosData = [];
-window.dadosGlobaisAbas = {}; // Armazena dados de todas as abas para o Motor de Busca Global
+window.dadosGlobaisAbas = {}; // Armazena dados de pastas genéricas
+window.todosOsDadosDoSistema = {}; // Armazena TODOS os dados para a busca global funcionar perfeito
 window.dadosBoletins = {}; 
 window.pastaBoletimAtual = null;
 window.pastaPrivadoAtual = null;
@@ -106,7 +116,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// LÓGICA DE NAVEGAÇÃO E PASTAS GENÉRICAS
+// LÓGICA DE NAVEGAÇÃO
 document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
@@ -168,7 +178,7 @@ function gerarHTMLCard(colecaoNome, docId, data) {
         campoTitulo = camposOrdem.find(c => c !== config.campoAgrupador) || camposOrdem[0];
     }
     
-    const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes';
+    const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes do Cadastro';
     const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
     const configCor = paletaGradientes.find(p => p.valor === corSalva);
     const isDark = configCor ? configCor.dark : false;
@@ -185,9 +195,8 @@ function gerarHTMLCard(colecaoNome, docId, data) {
 
     let cardHtml = `<div class="card ${isDark ? 'has-gradient' : ''}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border-left: 6px solid var(--primary-color);">`;
     
-    // Tag da Pasta Pai (útil na busca global)
     if(config.campoAgrupador && data[config.campoAgrupador]) {
-        cardHtml += `<div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px;"><i class="${config.icone}"></i> PASTA: ${data[config.campoAgrupador]}</div>`;
+        cardHtml += `<div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px;"><i class="${config.icone || 'ri-folder-line'}"></i> PASTA: ${data[config.campoAgrupador]}</div>`;
     }
 
     cardHtml += `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; gap:10px;">
@@ -239,31 +248,44 @@ function renderizarListaGenerica(colecao) {
     itensExibir.forEach(item => { grid.innerHTML += gerarHTMLCard(colecao, item.id, item.data); });
 }
 
-// MOTOR DE BUSCA GLOBAL (Procura em TODAS as abas e PASTAS)
+// MOTOR DE BUSCA GLOBAL ATUALIZADO
 document.getElementById('input-pesquisa-global').addEventListener('keyup', (e) => {
     const texto = e.target.value.toLowerCase().trim();
     const areaRes = document.getElementById('resultados-globais');
     if(texto.length < 2) { areaRes.style.display = 'none'; return; }
     
     areaRes.style.display = 'grid'; 
-    areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px;">Resultados encontrados em todas as pastas:</h3>';
+    areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>';
     let encontrou = false;
     
-    Object.keys(window.dadosGlobaisAbas).forEach(colecaoNome => {
-        const itensDaColecao = window.dadosGlobaisAbas[colecaoNome] || [];
-        itensDaColecao.forEach(item => {
-            const strDados = JSON.stringify(item.data).toLowerCase();
-            if (strDados.includes(texto)) {
-                areaRes.innerHTML += gerarHTMLCard(colecaoNome, item.id, item.data);
+    const colecoesBusca = ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores'];
+    
+    colecoesBusca.forEach(colecao => {
+        const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
+        itens.forEach(item => {
+            const valoresStr = Object.values(item.data).join(' ').toLowerCase();
+            if(valoresStr.includes(texto)) {
+                areaRes.innerHTML += gerarHTMLCard(colecao, item.id, item.data);
                 encontrou = true;
             }
         });
     });
 
-    if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px;">Nenhum resultado encontrado no sistema.</p>';
+    if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado. Tente outra palavra-chave.</p>';
 });
 
-// LÓGICA DE SALVAMENTO
+document.getElementById('input-pesquisa').addEventListener('keyup', (e) => {
+    const texto = e.target.value.toLowerCase();
+    const abaContainer = document.getElementById(`tab-${abaAtual}`);
+    if(!abaContainer) return;
+    
+    abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
+        if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
+        else card.style.display = 'none';
+    });
+});
+
+// LÓGICA DE SALVAMENTO E MODAL
 document.getElementById('btn-salvar-dados').addEventListener('click', async () => {
     if(!isAdmin) return;
     const colecaoNome = document.getElementById('btn-salvar-dados').getAttribute('data-colecao');
@@ -312,7 +334,7 @@ function carregarConfiguracoes() {
         if (docSnap.exists()) {
             const data = docSnap.data();
             if(data.banner_texto && data.banner_texto.trim() !== '') area.innerHTML = `<h2>${data.banner_texto.replace(/\n/g, '<br>')}</h2>`;
-            else area.innerHTML = `<h2>Bem-vindo ao Painel CSV</h2>`;
+            else area.innerHTML = `<h2>Bem-vindo ao Painel Clínico</h2>`;
             
             if(document.getElementById('tab-input-banner')) document.getElementById('tab-input-banner').value = data.banner_texto || '';
             if(document.getElementById('tab-input-locais')) document.getElementById('tab-input-locais').value = data.locais || '';
@@ -350,17 +372,6 @@ async function buscarClimaAraucaria() {
         document.getElementById('weather-desc').textContent = desc; document.getElementById('weather-icon-class').className = icon;
     } catch(e) { document.getElementById('weather-desc').textContent = "Clima indisponível no momento"; }
 }
-
-document.getElementById('input-pesquisa').addEventListener('keyup', (e) => {
-    const texto = e.target.value.toLowerCase();
-    const abaContainer = document.getElementById(`tab-${abaAtual}`);
-    if(!abaContainer) return;
-    
-    abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
-        if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
-        else card.style.display = 'none';
-    });
-});
 
 window.desfazerLeitura = async function(docId, nomeColab, colecao) {
     if(!isAdmin) return;
@@ -530,7 +541,7 @@ function atualizarGrafico(canvasId, refInstancia, dados, labelGrafico) {
     });
 }
 
-// --- PASTAS DE BOLETINS GERAIS ---
+// --- PASTAS DE BOLETINS GERAIS E PRIVADOS ---
 window.abrirPastaBoletim = function(pasta) {
     window.pastaBoletimAtual = pasta;
     document.getElementById('boletins-view-folders').style.display = 'none';
@@ -570,61 +581,12 @@ function renderizarListaBoletins() {
     
     chartBoletinsInst = atualizarGrafico('chart-boletins', chartBoletinsInst, boletinsExibir, `Motivos em ${pasta}`);
 
-    const camposOrdem = configuracaoAbas['boletins'].campos;
-    const campoTitulo = camposOrdem[0];
-
     boletinsExibir.forEach(item => {
-        const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
-        const titulo = data[campoTitulo] || 'Boletim';
-        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
-        const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
-        const configCor = paletaGradientes.find(p => p.valor === corSalva);
-        const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
-        
-        const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
-        const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
-        const faltamAssinar = publicoAlvoNomes.filter(n => !lidosNomes.includes(n));
-        const qtdLidos = publicoAlvoNomes.filter(n => lidosNomes.includes(n)).length;
-        const qtdFaltam = faltamAssinar.length;
-
-        const corStatus = qtdFaltam > 0 ? window.corStatusPendente : window.corStatusConcluido;
-        const classeUrgente = (isUrgente && qtdFaltam > 0) ? 'card-urgente' : ''; 
-
-        let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border: 3px solid ${corStatus};"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600; line-height:1.2;">${titulo}</div>`;
-        
-        let botaoLinkHtml = '';
-        camposOrdem.forEach(chave => {
-            const valor = data[chave];
-            if (valor && chave !== campoTitulo) {
-                if(chave === 'Links dos Materiais (1 por linha)') {
-                    const links = valor.split('\n').filter(l => l.trim() !== '');
-                    if(links.length > 0) {
-                        botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
-                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: 0.2s;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
-                        botaoLinkHtml += `</div>`;
-                    }
-                } else { 
-                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span style="font-weight: ${(isUrgente && chave.includes('Tipo')) ? '700' : '500'};">${valor}</span></div>`; 
-                }
-            }
-        });
-        cardHtml += botaoLinkHtml;
-        
-        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 11px;">Lidos: <b style="color:#38a169; font-size:13px;">${qtdLidos}</b> | Faltam: <b style="color:#e53e3e; font-size:13px;">${qtdFaltam}</b></div><button onclick="window.abrirListaLeituras('${docId}', 'boletins')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-team-line"></i> Detalhes</button></div>`;
-        
-        if(isAdmin) {
-            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><select id="leitor-${docId}" style="flex:1; padding:8px; border-radius:8px; border:none; font-size:12px; background:rgba(255,255,255,0.9); outline:none;">`;
-            if(faltamAssinar.length === 0) cardHtml += `<option value="">Todos já leram!</option>`;
-            else { cardHtml += `<option value="">Selecionar Pendente...</option>`; faltamAssinar.forEach(nome => { cardHtml += `<option value="${nome}">${nome}</option>`; }); }
-            cardHtml += `</select><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins" style="background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer;"><i class="ri-check-line"></i></button></div>`;
-        }
-        cardHtml += `</div>`;
-        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-        grid.innerHTML += cardHtml + `</div>`;
+        const data = item.data; window.dadosBoletins[item.id] = data;
+        grid.innerHTML += gerarHTMLCard('boletins', item.id, item.data);
     });
 }
 
-// --- PASTAS DE INFORMATIVOS PRIVADOS ---
 window.abrirPastaPrivado = function(colabNome) {
     window.pastaPrivadoAtual = colabNome;
     document.getElementById('privados-view-folders').style.display = 'none';
@@ -659,7 +621,6 @@ function renderizarPastasPrivados() {
         gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaPrivado('${nome}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border-left: 6px solid ${corStatusPasta};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><div style="background: #e2e8f0; padding: 15px; border-radius: 12px; color: var(--text-main); font-size: 24px;"><i class="ri-user-star-fill"></i></div><div style="font-size: 15px; font-weight: 600;">${nome}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Documentos: <b style="color: var(--text-main);">${boletinsDele.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos: <b>${lidos}</b></div><div style="color: #e53e3e;">Pendentes: <b>${faltam}</b></div></div></div>`;
     });
 }
-
 function renderizarListaPrivados() {
     const grid = document.getElementById('grid-boletins-privados-list'); grid.innerHTML = '';
     const colabAtual = window.pastaPrivadoAtual;
@@ -667,51 +628,13 @@ function renderizarListaPrivados() {
     
     chartPrivadosInst = atualizarGrafico('chart-privados', chartPrivadosInst, boletinsExibir, `Motivos de ${colabAtual}`);
 
-    const camposOrdem = configuracaoAbas['boletins-privados'].campos;
     boletinsExibir.forEach(item => {
-        const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
-        const titulo = data['Título do Documento'] || 'Documento Privado';
-        
-        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
-        const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
-        const configCor = paletaGradientes.find(p => p.valor === corSalva);
-        const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
-
-        const jaLeu = (data.leituras || []).find(txt => txt.startsWith(colabAtual));
-        const corStatus = jaLeu ? window.corStatusConcluido : window.corStatusPendente;
-        const classeUrgente = (isUrgente && !jaLeu) ? 'card-urgente' : ''; 
-
-        let cardHtml = `<div class="card ${classeUrgente} ${gradientClass}" style="display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border: 3px solid ${corStatus};"><div class="card-title" style="margin-bottom:15px; font-size:18px; font-weight:600;">${titulo}</div>`;
-        
-        let botaoLinkHtml = '';
-        camposOrdem.forEach(chave => {
-            const valor = data[chave];
-            if (valor && chave !== 'Título do Documento' && chave !== 'Para qual Colaborador?') {
-                if(chave === 'Links dos Materiais (1 por linha)') {
-                    const links = valor.split('\n').filter(l => l.trim() !== '');
-                    if(links.length > 0) {
-                        botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
-                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: 0.2s;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
-                        botaoLinkHtml += `</div>`;
-                    }
-                } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
-            }
-        });
-        cardHtml += botaoLinkHtml;
-        
-        cardHtml += `<div class="leituras-lista" style="margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 13px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px;"><div style="font-size: 13px; font-weight:600; color: ${jaLeu ? '#38a169' : '#e53e3e'};">${jaLeu ? '<i class="ri-check-double-line"></i> Lido' : '<i class="ri-time-line"></i> Pendente'}</div><button onclick="window.abrirListaLeituras('${docId}', 'boletins-privados')" style="background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor:pointer; font-size: 12px; font-weight: 500; color: var(--primary-color);"><i class="ri-list-check"></i> Detalhes</button></div>`;
-        
-        if(isAdmin && !jaLeu) {
-            cardHtml += `<div class="add-leitura-box" style="display: flex; gap: 8px; margin-top: 5px;"><input type="hidden" id="leitor-${docId}" value="${colabAtual}"><button class="btn-action btn-assinar" data-id="${docId}" data-colecao="boletins-privados" style="width:100%; background:#38a169; color:white; padding:8px 12px; border-radius:8px; cursor:pointer; font-size: 13px; font-weight: 500;"><i class="ri-check-line"></i> Confirmar Assinatura do Colaborador</button></div>`;
-        }
-        cardHtml += `</div>`;
-        
-        if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins-privados" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins-privados" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-        grid.innerHTML += cardHtml + `</div>`;
+        window.dadosBoletins[item.id] = item.data;
+        grid.innerHTML += gerarHTMLCard('boletins-privados', item.id, item.data);
     });
 }
 
-// RENDERIZADOR GERAL DAS ABAS
+// RENDERIZADOR GLOBAL
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
@@ -731,6 +654,9 @@ function renderizarCards(colecaoNome) {
         let itens = [];
         snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() }));
 
+        // GUARDA NO GLOBAL PARA A BUSCA NA HOME
+        window.todosOsDadosDoSistema[colecaoNome] = itens;
+
         if(colecaoNome === 'colaboradores') {
             listaColaboradoresGlobal = itens.map(item => { return { nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' }; }).filter(c => c.nome).sort((a,b) => a.nome.localeCompare(b.nome));
             if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual) renderizarPastasPrivados(); 
@@ -739,18 +665,15 @@ function renderizarCards(colecaoNome) {
         if(colecaoNome === 'boletins') {
             window.todosBoletinsData = itens;
             if(abaAtual === 'boletins') { if(window.pastaBoletimAtual) renderizarListaBoletins(); else renderizarPastasBoletins(); }
-            verificarUrgentesHome();
-            return;
+            verificarUrgentesHome(); return;
         }
 
         if(colecaoNome === 'boletins-privados') {
             window.todosPrivadosData = itens;
             if(abaAtual === 'boletins-privados') { if(window.pastaPrivadoAtual) renderizarListaPrivados(); else renderizarPastasPrivados(); }
-            verificarUrgentesHome();
-            return;
+            verificarUrgentesHome(); return;
         }
         
-        // INTERCEPTA PASTAS GENÉRICAS E MANDA PARA O MOTOR DE BUSCA
         if(configuracaoAbas[colecaoNome] && configuracaoAbas[colecaoNome].campoAgrupador) {
             window.dadosGlobaisAbas[colecaoNome] = itens;
             if(abaAtual === colecaoNome) {
@@ -781,74 +704,13 @@ function renderizarCards(colecaoNome) {
         }
         
         grid.style.display = 'grid'; grid.innerHTML = '';
-        const camposOrdem = configuracaoAbas[colecaoNome].campos;
-        const campoTitulo = camposOrdem[0];
-        
         itens.sort((a, b) => {
-            const tituloA = a.data[campoTitulo] || a.data['Nome/Médico'] || a.data['Nome'] || "";
-            const tituloB = b.data[campoTitulo] || b.data['Nome/Médico'] || b.data['Nome'] || "";
+            const tituloA = a.data[configuracaoAbas[colecaoNome].campos[0]] || a.data['Nome/Médico'] || a.data['Nome'] || "";
+            const tituloB = b.data[configuracaoAbas[colecaoNome].campos[0]] || b.data['Nome/Médico'] || b.data['Nome'] || "";
             return tituloA.toUpperCase().localeCompare(tituloB.toUpperCase());
         });
 
-        itens.forEach((item) => {
-            const data = item.data; const docId = item.id;
-            const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'];
-            const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
-            const configCor = paletaGradientes.find(p => p.valor === corSalva);
-            const isDark = configCor ? configCor.dark : false;
-            
-            let cardHtml = `<div class="card ${isDark ? 'has-gradient' : ''}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; ${!isDark ? 'border-left: 6px solid var(--primary-color);' : ''}">`;
-            
-            let hasFlexLayout = (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']);
-            
-            let badgeValorHtml = '';
-            camposOrdem.forEach(chave => {
-                const valor = data[chave];
-                if (valor && chave !== campoTitulo) {
-                    if (chave === 'Valor' || chave === 'Valor ou Informacao' || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) {
-                        badgeValorHtml = `<div class="badge-valor"><i class="ri-money-dollar-circle-line"></i> ${valor}</div>`;
-                    }
-                }
-            });
-
-            let titleSection = `<div class="card-title" style="font-size:18px; font-weight:600; line-height:1.2; flex:1; padding-right:10px; margin-bottom:0;">${tituloDesteCard || ''}</div>`;
-            
-            cardHtml += `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; gap:10px;">
-                            ${titleSection}
-                            ${badgeValorHtml}
-                         </div>`;
-            
-            if(hasFlexLayout) {
-                cardHtml += `<div class="medico-wrapper">`;
-                if (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) {
-                    let fotoUrl = formatarLinkImagem(data['Link da Foto do Profissional']);
-                    if(fotoUrl) cardHtml += `<img src="${fotoUrl}" class="medico-foto" onerror="this.style.display='none'">`;
-                }
-                cardHtml += `<div class="content-info-flex">`;
-            }
-
-            camposOrdem.forEach(chave => {
-                const valor = data[chave];
-                if (valor && chave !== campoTitulo && chave !== 'Exibir Logo do Convenio' && chave !== 'Link da Logo (Ex: Unimed)' && chave !== 'Link da Foto do Profissional' && chave !== 'Link da Imagem Ilustrativa') {
-                    
-                    if (chave === 'Valor' || chave === 'Valor ou Informacao' || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) return;
-
-                    if(chave === 'Local e Link Maps' && valor.includes('http')) {
-                        const urlMatch = valor.match(/https?:\/\/[^\s]+/);
-                        const url = urlMatch ? urlMatch[0] : valor;
-                        const textoSemUrl = valor.replace(url, '').trim();
-                        cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4;"><strong>${chave}:</strong> <span>${textoSemUrl}</span><br><button onclick="window.open('${url}', '_blank')" style="background: var(--bg-color); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--primary-color); transition:0.2s;"><i class="ri-map-pin-user-fill"></i> Ver no Mapa</button></div>`;
-                    } else {
-                        cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4;"><strong>${chave}:</strong> <span style="font-weight: 500;">${valor}</span></div>`; 
-                    }
-                }
-            });
-            
-            if(hasFlexLayout) cardHtml += `</div></div>`; 
-            
-            if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-            grid.innerHTML += cardHtml + `</div>`;
-        });
+        itens.forEach((item) => { grid.innerHTML += gerarHTMLCard(colecaoNome, item.id, item.data); });
     });
 }
 
@@ -874,6 +736,3 @@ window.abrirMidaFlutuante = function(url) {
     document.getElementById('iframe-media').src = u; document.getElementById('modal-media').style.display = 'flex';
 }
 document.getElementById('btn-fechar-media').addEventListener('click', () => { document.getElementById('modal-media').style.display = 'none'; document.getElementById('iframe-media').src = ""; });
-</script>
-</body>
-</html>
