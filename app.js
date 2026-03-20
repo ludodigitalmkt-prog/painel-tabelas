@@ -66,11 +66,11 @@ const paletaGradientes = [
     { valor: "#38a169", nome: "Verde Sólido", dark: true },
     { valor: "#ecc94b", nome: "Amarelo Sólido", dark: false },
     { valor: "#805ad5", nome: "Roxo Sólido", dark: true },
-    { valor: "linear-gradient(135deg, #f40076, #df98fa)", nome: "Rosa/Roxo", dark: true },
-    { valor: "linear-gradient(135deg, #f06966, #fad6a6)", nome: "Pêssego/Amarelo", dark: false },
-    { valor: "linear-gradient(135deg, #9055ff, #13e2da)", nome: "Azul/Ciano", dark: true },
-    { valor: "linear-gradient(135deg, #0b63f6, #003cc5)", nome: "Azul Escuro", dark: true },
-    { valor: "linear-gradient(135deg, #d6ff7f, #00b3cc)", nome: "Verde/Azul", dark: true }
+    { valor: "linear-gradient(to right, #fc6076, #ff9a44, #ef9d43, #e75516)", nome: "Laranja", dark: true },
+    { valor: "linear-gradient(to right, #0ba360, #3cba92, #30dd8a, #2bb673)", nome: "Verde Claro", dark: true },
+    { valor: "linear-gradient(to right, #6253e1, #852D91, #A3A1FF, #F24645)", nome: "Roxo/Azul", dark: true },
+    { valor: "linear-gradient(to right, #29323c, #485563, #2b5876, #4e4376)", nome: "Escuro", dark: true },
+    { valor: "linear-gradient(to right, #eb3941, #f15e64, #e14e53, #e2373f)", nome: "Vermelho HD", dark: true }
 ];
 
 function formatarLinkImagem(link) {
@@ -98,17 +98,12 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById('user-role-badge').textContent = isAdmin ? "Gestão Administrador" : "Acesso Geral";
         if(isAdmin) {
             document.getElementById('user-role-badge').classList.add('admin');
-            document.getElementById('btn-nav-privados').style.display = 'flex';
-            document.getElementById('btn-nav-colaboradores').style.display = 'flex';
-            document.getElementById('btn-nav-ajustes').style.display = 'flex';
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
         } else {
             document.getElementById('user-role-badge').classList.remove('admin');
-            document.getElementById('btn-nav-privados').style.display = 'none';
-            document.getElementById('btn-nav-colaboradores').style.display = 'none';
-            document.getElementById('btn-nav-ajustes').style.display = 'none';
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
         }
         
-        document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
         carregarConfiguracoes(); buscarClimaAraucaria(); 
     } else {
@@ -128,7 +123,6 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         if(tabEl) tabEl.style.display = 'block';
         
         document.getElementById('page-title').textContent = btn.textContent.trim();
-        document.getElementById('btn-novo').style.display = (isAdmin && abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         document.getElementById('search-box').style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
         document.getElementById('input-pesquisa').value = ''; 
         
@@ -139,6 +133,96 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         });
     });
 });
+
+window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
+    const config = configuracaoAbas[colecao];
+    if(!config) return;
+    document.getElementById('modal-title').textContent = docId ? `Editar ${config.titulo}` : `Novo(a) ${config.titulo}`;
+    const corSalva = (dadosAntigos && dadosAntigos.corCard) ? dadosAntigos.corCard : "#ffffff";
+    const colorInput = document.getElementById('card-color');
+    if(colorInput) colorInput.value = corSalva;
+    
+    let htmlGradientes = '';
+    paletaGradientes.forEach(grad => {
+        const isSelected = corSalva === grad.valor ? 'selected' : '';
+        htmlGradientes += `<div class="color-swatch ${isSelected}" style="background: ${grad.valor};" data-color="${grad.valor}" title="${grad.nome}"></div>`;
+    });
+    const picker = document.getElementById('gradient-picker');
+    if(picker) {
+        picker.innerHTML = htmlGradientes;
+        document.querySelectorAll('.color-swatch').forEach(swatch => { 
+            swatch.addEventListener('click', (e) => { 
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected')); 
+                e.target.classList.add('selected'); 
+                if(colorInput) colorInput.value = e.target.getAttribute('data-color'); 
+            }); 
+        });
+    }
+    
+    const docIdInput = document.getElementById('modal-doc-id');
+    if(docIdInput) docIdInput.value = docId || "";
+
+    let htmlCampos = '';
+    config.campos.forEach(campo => {
+        const valorAntigo = (dadosAntigos && dadosAntigos[campo]) ? dadosAntigos[campo] : '';
+        
+        if(colecao === 'colaboradores' && campo === 'Setor da Clínica') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="Geral">Setor Padrão (Geral)</option>`;
+            setoresGlobais.forEach(s => { htmlCampos += `<option value="${s}" ${valorAntigo === s ? 'selected' : ''}>${s}</option>`; });
+            htmlCampos += `</select>`;
+        }
+        else if(colecao === 'corpo-clinico' && campo === 'Especialidade') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="Geral">Selecione a Especialidade...</option>`;
+            especialidadesGlobais.forEach(s => { htmlCampos += `<option value="${s}" ${valorAntigo === s ? 'selected' : ''}>${s}</option>`; });
+            htmlCampos += `</select>`;
+        }
+        else if(colecao === 'boletins-privados' && campo === 'Para qual Colaborador?') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="">Selecione o Colaborador...</option>`;
+            listaColaboradoresGlobal.forEach(c => { htmlCampos += `<option value="${c.nome}" ${valorAntigo === c.nome ? 'selected' : ''}>${c.nome}</option>`; });
+            htmlCampos += `</select>`;
+        } 
+        else if(colecao === 'boletins' && campo === 'Para quais Setores?') {
+            htmlCampos += `<label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Para quais setores? (Marque 1 ou mais)</label><div class="checkbox-group" style="margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">`;
+            const valoresSalvos = valorAntigo ? valorAntigo.split(', ') : ['Geral'];
+            ['Geral', ...setoresGlobais].forEach(setor => {
+                const checked = valoresSalvos.includes(setor) ? 'checked' : '';
+                htmlCampos += `<label style="font-size:13px; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="check-setor" value="${setor}" ${checked}> ${setor}</label>`;
+            });
+            htmlCampos += `</div>`;
+        }
+        else if(campo === 'Motivo') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="">Selecione o Motivo...</option>`;
+            motivosGlobais.forEach(m => { htmlCampos += `<option value="${m}" ${valorAntigo === m ? 'selected' : ''}>${m}</option>`; });
+            htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+        }
+        else if(campo === 'Links dos Materiais (1 por linha)') {
+            htmlCampos += `<textarea id="input-${campo}" class="form-input" style="height:80px; resize:vertical;" placeholder="Cole os links de Vídeos ou Documentos (um por linha)">${valorAntigo}</textarea>`;
+        }
+        else if(campo === 'Aceita o Servico?') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="Sim" ${valorAntigo === 'Sim' ? 'selected' : ''}>Sim, aceita.</option><option value="Não" ${valorAntigo === 'Não' ? 'selected' : ''}>Não aceita.</option></select>`;
+        }
+        else if(colecao === 'consultas' && campo === 'Tipo') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+        } 
+        else if(campo === 'Local ou Prédio') {
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="">Selecione o Local...</option>`;
+            locaisGlobais.forEach(loc => { const l = loc.trim(); if(l) htmlCampos += `<option value="${l}" ${valorAntigo === l ? 'selected' : ''}>${l}</option>`; });
+            htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
+        }
+        else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
+        } else if (campo.includes('Link') || campo.includes('URL')) { htmlCampos += `<input type="url" id="input-${campo}" placeholder="Link ou URL" value="${valorAntigo}" class="form-input">`;
+        } else { htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" value="${valorAntigo}" class="form-input">`; }
+    });
+    
+    const formArea = document.getElementById('modal-form-area');
+    if(formArea) formArea.innerHTML = htmlCampos;
+    
+    const btnSalvar = document.getElementById('btn-salvar-dados');
+    if(btnSalvar) btnSalvar.setAttribute('data-colecao', colecao);
+    
+    const modalEl = document.getElementById('modal-cadastro');
+    if(modalEl) modalEl.style.display = 'flex';
+}
 
 window.abrirPastaGenerica = function(colecao, valorPasta) {
     window[`pasta_${colecao}_Atual`] = valorPasta;
@@ -168,7 +252,7 @@ function renderizarPastasGenericas(colecao) {
     const dadosAtuais = window.dadosGlobaisAbas[colecao] || [];
     
     if (dadosAtuais.length === 0) {
-        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Nenhuma pasta encontrada ou os dados estão carregando...</p>';
+        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Nenhuma pasta encontrada.</p>';
         return;
     }
 
@@ -194,7 +278,7 @@ function gerarHTMLCard(colecaoNome, docId, data) {
         campoTitulo = camposOrdem.find(c => c !== config.campoAgrupador) || camposOrdem[0];
     }
     
-    const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes do Cadastro';
+    const tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes';
     const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
     const configCor = paletaGradientes.find(p => p.valor === corSalva);
     const isDark = configCor ? configCor.dark : false;
@@ -341,7 +425,7 @@ document.getElementById('btn-salvar-ajustes').addEventListener('click', async ()
     const corPend = document.getElementById('tab-color-pendente').value; 
     const corConc = document.getElementById('tab-color-concluido').value; 
     
-    document.getElementById('btn-salvar-ajustes').textContent = "Salvando...";
+    document.getElementById('btn-salvar-ajustes').innerHTML = "Salvando...";
     try {
         await setDoc(doc(db, "configuracoes", "gerais"), { 
             banner_texto: texto, 
@@ -387,96 +471,6 @@ function carregarConfiguracoes() {
             if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual && typeof window.renderizarPastasPrivados === 'function') window.renderizarPastasPrivados();
         }
     });
-}
-
-function abrirModal(colecao, docId = null, dadosAntigos = null) {
-    const config = configuracaoAbas[colecao];
-    if(!config) return;
-    document.getElementById('modal-title').textContent = docId ? `Editar ${config.titulo}` : `Novo(a) ${config.titulo}`;
-    const corSalva = (dadosAntigos && dadosAntigos.corCard) ? dadosAntigos.corCard : "#ffffff";
-    const colorInput = document.getElementById('card-color');
-    if(colorInput) colorInput.value = corSalva;
-    
-    let htmlGradientes = '';
-    paletaGradientes.forEach(grad => {
-        const isSelected = corSalva === grad.valor ? 'selected' : '';
-        htmlGradientes += `<div class="color-swatch ${isSelected}" style="background: ${grad.valor};" data-color="${grad.valor}" title="${grad.nome}"></div>`;
-    });
-    const picker = document.getElementById('gradient-picker');
-    if(picker) {
-        picker.innerHTML = htmlGradientes;
-        document.querySelectorAll('.color-swatch').forEach(swatch => { 
-            swatch.addEventListener('click', (e) => { 
-                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected')); 
-                e.target.classList.add('selected'); 
-                if(colorInput) colorInput.value = e.target.getAttribute('data-color'); 
-            }); 
-        });
-    }
-    
-    const docIdInput = document.getElementById('modal-doc-id');
-    if(docIdInput) docIdInput.value = docId || "";
-
-    let htmlCampos = '';
-    config.campos.forEach(campo => {
-        const valorAntigo = (dadosAntigos && dadosAntigos[campo]) ? dadosAntigos[campo] : '';
-        
-        if(colecao === 'colaboradores' && campo === 'Setor da Clínica') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="Geral">Setor Padrão (Geral)</option>`;
-            setoresGlobais.forEach(s => { htmlCampos += `<option value="${s}" ${valorAntigo === s ? 'selected' : ''}>${s}</option>`; });
-            htmlCampos += `</select>`;
-        }
-        else if(colecao === 'corpo-clinico' && campo === 'Especialidade') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="Geral">Selecione a Especialidade...</option>`;
-            especialidadesGlobais.forEach(s => { htmlCampos += `<option value="${s}" ${valorAntigo === s ? 'selected' : ''}>${s}</option>`; });
-            htmlCampos += `</select>`;
-        }
-        else if(colecao === 'boletins-privados' && campo === 'Para qual Colaborador?') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione o Colaborador...</option>`;
-            listaColaboradoresGlobal.forEach(c => { htmlCampos += `<option value="${c.nome}" ${valorAntigo === c.nome ? 'selected' : ''}>${c.nome}</option>`; });
-            htmlCampos += `</select>`;
-        } 
-        else if(colecao === 'boletins' && campo === 'Para quais Setores?') {
-            htmlCampos += `<label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Para quais setores? (Marque 1 ou mais)</label><div class="checkbox-group" style="margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">`;
-            const valoresSalvos = valorAntigo ? valorAntigo.split(', ') : ['Geral'];
-            ['Geral', ...setoresGlobais].forEach(setor => {
-                const checked = valoresSalvos.includes(setor) ? 'checked' : '';
-                htmlCampos += `<label style="font-size:13px; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="check-setor" value="${setor}" ${checked}> ${setor}</label>`;
-            });
-            htmlCampos += `</div>`;
-        }
-        else if(campo === 'Motivo') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione o Motivo...</option>`;
-            motivosGlobais.forEach(m => { htmlCampos += `<option value="${m}" ${valorAntigo === m ? 'selected' : ''}>${m}</option>`; });
-            htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
-        }
-        else if(campo === 'Links dos Materiais (1 por linha)') {
-            htmlCampos += `<textarea id="input-${campo}" class="form-input" style="height:80px; resize:vertical;" placeholder="Cole os links de Vídeos ou Documentos (um por linha)">${valorAntigo}</textarea>`;
-        }
-        else if(campo === 'Aceita o Servico?') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="Sim" ${valorAntigo === 'Sim' ? 'selected' : ''}>Sim, aceita.</option><option value="Não" ${valorAntigo === 'Não' ? 'selected' : ''}>Não aceita.</option></select>`;
-        }
-        else if(colecao === 'consultas' && campo === 'Tipo') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione...</option><option value="Consulta" ${valorAntigo === 'Consulta' ? 'selected' : ''}>Consulta</option><option value="Exame" ${valorAntigo === 'Exame' ? 'selected' : ''}>Exame</option><option value="Pacotes" ${valorAntigo === 'Pacotes' ? 'selected' : ''}>Pacotes</option><option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
-        } 
-        else if(campo === 'Local ou Prédio') {
-            htmlCampos += `<select id="input-${campo}" class="form-input" style="margin-bottom:15px;"><option value="">Selecione o Local...</option>`;
-            locaisGlobais.forEach(loc => { const l = loc.trim(); if(l) htmlCampos += `<option value="${l}" ${valorAntigo === l ? 'selected' : ''}>${l}</option>`; });
-            htmlCampos += `<option value="Outros" ${valorAntigo === 'Outros' ? 'selected' : ''}>Outros</option></select>`;
-        }
-        else if (campo.includes('Data')) { htmlCampos += `<input type="date" id="input-${campo}" value="${valorAntigo}" class="form-input">`;
-        } else if (campo.includes('Link') || campo.includes('URL')) { htmlCampos += `<input type="url" id="input-${campo}" placeholder="Link ou URL" value="${valorAntigo}" class="form-input">`;
-        } else { htmlCampos += `<input type="text" id="input-${campo}" placeholder="${campo}" value="${valorAntigo}" class="form-input">`; }
-    });
-    
-    const formArea = document.getElementById('modal-form-area');
-    if(formArea) formArea.innerHTML = htmlCampos;
-    
-    const btnSalvar = document.getElementById('btn-salvar-dados');
-    if(btnSalvar) btnSalvar.setAttribute('data-colecao', colecao);
-    
-    const modalEl = document.getElementById('modal-cadastro');
-    if(modalEl) modalEl.style.display = 'flex';
 }
 
 async function buscarClimaAraucaria() {
@@ -663,7 +657,7 @@ window.renderizarListaBoletins = function() {
                     const links = valor.split('\n').filter(l => l.trim() !== '');
                     if(links.length > 0) {
                         botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
-                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: 0.2s;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
                         botaoLinkHtml += `</div>`;
                     }
                 } else { 
@@ -762,7 +756,7 @@ window.renderizarListaPrivados = function() {
                     const links = valor.split('\n').filter(l => l.trim() !== '');
                     if(links.length > 0) {
                         botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
-                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" style="width: 100%; background: var(--primary-color); color: white; border:none; cursor:pointer; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; transition: 0.2s;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
                         botaoLinkHtml += `</div>`;
                     }
                 } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
@@ -782,7 +776,7 @@ window.renderizarListaPrivados = function() {
     });
 }
 
-// RENDERIZADOR GLOBAL SEGURO
+// RENDERIZADOR GLOBAL
 function renderizarCards(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
