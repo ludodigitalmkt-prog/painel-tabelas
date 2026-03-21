@@ -260,3 +260,24 @@ textarea.form-input { min-height:110px; resize:vertical; }
 @media (max-width: 900px) {
   .home-grid, .status-columns { grid-template-columns: 1fr; }
 }
+/* =======================================================
+   MÁGICA DO CONTRASTE PARA CARDS E RAMAIS ESCUROS 
+   ======================================================= */
+
+/* 1. Clareia o texto nos Cards Normais Escuros (Contatos, Emails, Senhas) */
+.card.has-gradient .card-title { color: #ffffff !important; text-shadow: 0 2px 4px rgba(0,0,0,0.2) !important; }
+.card.has-gradient .card-info, 
+.card.has-gradient .card-info p { color: rgba(255,255,255,0.9) !important; }
+.card.has-gradient .card-info strong, 
+.card.has-gradient .card-info span { color: #ffffff !important; }
+.card.has-gradient .badge-valor { background: rgba(255,255,255,0.25) !important; color: #ffffff !important; border-color: rgba(255,255,255,0.3) !important; }
+
+/* 2. Clareia o texto nos Mini-Cards Escuros (Aba de Ramais) */
+.mini-card.has-gradient .mini-card-title { color: #ffffff !important; }
+.mini-card.has-gradient .mini-card-details,
+.mini-card.has-gradient .mini-card-details p { color: rgba(255,255,255,0.9) !important; }
+.mini-card.has-gradient .mini-card-details strong { color: #ffffff !important; }
+.mini-card.has-gradient .mini-card-number { color: #ffffff !important; background: rgba(255,255,255,0.2) !important; }
+.mini-card.has-gradient .mini-card-number i { color: #ffffff !important; }
+.mini-card.has-gradient .mini-card-actions .btn-action { color: #ffffff !important; background: rgba(255,255,255,0.2) !important; }
+.mini-card.has-gradient .mini-card-actions .btn-action:hover { background: rgba(255,255,255,0.4) !important; }
