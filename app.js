@@ -1,5 +1,25 @@
 // ==========================================
-// 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+// 1. IMPORTS E CONFIGURAÇÕES DO FIREBASE
+// ==========================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
+    authDomain: "painel-tabelas.firebaseapp.com",
+    projectId: "painel-tabelas",
+    storageBucket: "painel-tabelas.firebasestorage.app",
+    messagingSenderId: "189251122569",
+    appId: "1:189251122569:web:2902e8c47235d826af9d58"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+const auth = getAuth(app);
+
+// ==========================================
+// 2. VARIÁVEIS GLOBAIS E CONFIGURAÇÕES
 // ==========================================
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
@@ -19,23 +39,6 @@ const configuracaoAbas = {
     'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] },
     'boletins-privados': { titulo: 'Informativo Privado', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] }
 };
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
-    authDomain: "painel-tabelas.firebaseapp.com",
-    projectId: "painel-tabelas",
-    storageBucket: "painel-tabelas.firebasestorage.app",
-    messagingSenderId: "189251122569",
-    appId: "1:189251122569:web:2902e8c47235d826af9d58"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { localCache: persistentLocalCache() });
-const auth = getAuth(app);
 
 let isAdmin = false;
 let abaAtual = 'home'; 
@@ -77,74 +80,8 @@ const paletaGradientes = [
 ];
 
 // ==========================================
-// 2. LÓGICA DE LOGIN BLINDADA
+// 3. TODAS AS FUNÇÕES GLOBAIS NO TOPO (ISSO EVITA AS TELAS BRANCAS)
 // ==========================================
-
-window.efetuarLogin = function(e) {
-    if(e) e.preventDefault(); 
-    
-    const email = document.getElementById('email').value.trim();
-    const senha = document.getElementById('senha').value.trim();
-    const btn = document.getElementById('btn-login');
-    
-    if(!email || !senha) {
-        alert("Por favor, preencha o e-mail e a senha.");
-        return;
-    }
-    
-    const textoOriginal = btn.innerHTML;
-    btn.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> Autenticando...";
-    
-    signInWithEmailAndPassword(auth, email, senha)
-        .then(() => {
-            btn.innerHTML = textoOriginal;
-        })
-        .catch(err => {
-            alert("Erro ao entrar: Verifique seu e-mail e senha.");
-            btn.innerHTML = textoOriginal;
-        });
-};
-
-const btnLogout = document.getElementById('btn-logout');
-if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
-
-onAuthStateChanged(auth, (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    const dashboardScreen = document.getElementById('dashboard-screen');
-    
-    if (user) {
-        if(loginScreen) loginScreen.style.display = 'none';
-        if(dashboardScreen) dashboardScreen.style.display = 'flex';
-        isAdmin = (user.email === EMAIL_GESTAO);
-        
-        const badge = document.getElementById('user-role-badge');
-        if(badge) badge.textContent = isAdmin ? "Gestão Administrador" : "Acesso Geral";
-        
-        if(isAdmin) {
-            if(badge) badge.classList.add('admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-        } else {
-            if(badge) badge.classList.remove('admin');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-        }
-        
-        Object.keys(configuracaoAbas).forEach(idColecao => window.renderizarCards(idColecao));
-        window.carregarConfiguracoes(); 
-        window.buscarClimaAraucaria(); 
-    } else {
-        if(loginScreen) loginScreen.style.display = 'flex';
-        if(dashboardScreen) dashboardScreen.style.display = 'none';
-    }
-});
-
-
-// ==========================================
-// 3. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS BLINDADAS (HOISTING)
-// ==========================================
-
-setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
-const frases = ["O sucesso é a soma de pequenos esforços.", "A empatia é a medicina que o mundo precisa.", "Trabalho em equipe multiplica o sucesso."];
-const fm = document.getElementById('frase-dia'); if(fm) fm.innerText = frases[Math.floor(Math.random() * frases.length)];
 
 window.formatarLinkImagem = function(link) {
     if (!link || link.includes('file:///')) return null;
@@ -182,7 +119,7 @@ window.buscarClimaAraucaria = async function() {
 
 window.obterPublicoAlvo = function(setoresAlvoString) {
     if (!setoresAlvoString || setoresAlvoString.includes('Geral')) return listaColaboradoresGlobal.map(c => c.nome);
-    const setoresMarcados = setoresAlvoString.split(',').map(s => s.trim());
+    const setoresMarcados = String(setoresAlvoString).split(',').map(s => s.trim());
     return listaColaboradoresGlobal.filter(c => setoresMarcados.includes(c.setor)).map(c => c.nome);
 };
 
@@ -195,7 +132,7 @@ window.verificarUrgentesHome = function() {
     const verificarItens = (lista, ehPrivado) => {
         lista.forEach(item => {
             const data = item.data;
-            const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
+            const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && String(data['Tipo (Urgente, Norma, Regra, etc)']).toLowerCase().includes('urgente');
             if(!isUrgente) return;
             const publico = ehPrivado ? [data['Para qual Colaborador?']] : window.obterPublicoAlvo(data['Para quais Setores?']);
             const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
@@ -357,7 +294,7 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
         } 
         else if(colecao === 'boletins' && campo === 'Para quais Setores?') {
             htmlCampos += `<label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Para quais setores? (Marque 1 ou mais)</label><div class="checkbox-group" style="margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">`;
-            const valoresSalvos = valorAntigo ? valorAntigo.split(', ') : ['Geral'];
+            const valoresSalvos = valorAntigo ? String(valorAntigo).split(', ') : ['Geral'];
             ['Geral', ...setoresGlobais].forEach(setor => {
                 const checked = valoresSalvos.includes(setor) ? 'checked' : '';
                 htmlCampos += `<label style="font-size:13px; display:flex; align-items:center; gap:5px;"><input type="checkbox" class="check-setor" value="${setor}" ${checked}> ${setor}</label>`;
@@ -475,7 +412,7 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     camposOrdem.forEach(chave => {
         const valor = data[chave];
         if (valor && chave !== config.campoAgrupador && chave !== campoTitulo) {
-            if (chave.includes('Valor') || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) {
+            if (String(chave).includes('Valor') || (chave === 'Descrição' && typeof valor === 'string' && (valor.toUpperCase().includes('REAIS') || valor.toUpperCase().includes('R$')))) {
                 badgeValorHtml = `<div class="badge-valor"><i class="ri-money-dollar-circle-line"></i> ${valor}</div>`;
             }
         }
@@ -506,17 +443,17 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     camposOrdem.forEach(chave => {
         const valor = data[chave];
         if (valor && chave !== config.campoAgrupador && chave !== campoTitulo) {
-            if (chave.includes('Valor') || chave === 'Link da Logo do Convênio' || chave === 'Exibir Logo do Convenio' || chave === 'Link da Foto do Profissional' || chave === 'Link da Imagem Ilustrativa') return; 
+            if (String(chave).includes('Valor') || chave === 'Link da Logo do Convênio' || chave === 'Exibir Logo do Convenio' || chave === 'Link da Foto do Profissional' || chave === 'Link da Imagem Ilustrativa') return; 
             
             if (chave === 'Aceita o Servico?') {
                 const badgeClass = valor === 'Não' ? 'status-negado' : 'status-aceito';
                 const iconClass = valor === 'Não' ? 'ri-close-circle-fill' : 'ri-checkbox-circle-fill';
                 const text = valor === 'Não' ? 'Serviço Não Coberto' : 'Serviço Coberto';
                 cardHtml += `<div style="margin: 8px 0;"><span class="${badgeClass}"><i class="${iconClass}"></i> ${text}</span></div>`;
-            } else if(chave === 'Local e Link Maps' && valor.includes('http')) {
-                const urlMatch = valor.match(/https?:\/\/[^\s]+/);
+            } else if(chave === 'Local e Link Maps' && String(valor).includes('http')) {
+                const urlMatch = String(valor).match(/https?:\/\/[^\s]+/);
                 const url = urlMatch ? urlMatch[0] : valor;
-                const textoSemUrl = valor.replace(url, '').trim();
+                const textoSemUrl = String(valor).replace(url, '').trim();
                 cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4;"><strong>${chave}:</strong> <span>${textoSemUrl}</span><br><button onclick="window.open('${url}', '_blank')" class="btn-hover color-5" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 5px;"><i class="ri-map-pin-user-fill"></i> Ver no Mapa</button></div>`;
             } else {
                 cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px;"><strong>${chave}:</strong> <span>${valor}</span></div>`; 
@@ -577,13 +514,13 @@ window.renderizarPastasBoletins = function() {
     window.todosBoletinsData.forEach(b => {
         let setoresDoBoletim = b.data['Para quais Setores?'];
         if(setoresDoBoletim) {
-            setoresDoBoletim.split(',').forEach(s => todosOsSetores.add(s.trim()));
+            String(setoresDoBoletim).split(',').forEach(s => todosOsSetores.add(s.trim()));
         }
     });
 
     Array.from(todosOsSetores).sort().forEach(pasta => {
         const boletinsDaPasta = window.todosBoletinsData.filter(item => {
-            let s = item.data['Para quais Setores?'] || 'Geral';
+            let s = String(item.data['Para quais Setores?'] || 'Geral');
             return s.includes(pasta);
         });
         
@@ -609,7 +546,7 @@ window.renderizarListaBoletins = function() {
     grid.innerHTML = '';
     const pasta = window.pastaBoletimAtual;
     const boletinsExibir = window.todosBoletinsData.filter(item => {
-        let s = item.data['Para quais Setores?'] || 'Geral';
+        let s = String(item.data['Para quais Setores?'] || 'Geral');
         return s.includes(pasta);
     });
     
@@ -621,7 +558,7 @@ window.renderizarListaBoletins = function() {
     boletinsExibir.forEach(item => {
         const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
         const titulo = data[campoTitulo] || 'Boletim';
-        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
+        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && String(data['Tipo (Urgente, Norma, Regra, etc)']).toLowerCase().includes('urgente');
         const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
         const configCor = paletaGradientes.find(p => p.valor === corSalva);
         const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
@@ -642,14 +579,14 @@ window.renderizarListaBoletins = function() {
             const valor = data[chave];
             if (valor && chave !== campoTitulo) {
                 if(chave === 'Links dos Materiais (1 por linha)') {
-                    const links = valor.split('\n').filter(l => l.trim() !== '');
+                    const links = String(valor).split('\n').filter(l => l.trim() !== '');
                     if(links.length > 0) {
                         botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
                         links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
                         botaoLinkHtml += `</div>`;
                     }
                 } else { 
-                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span style="font-weight: ${(isUrgente && chave.includes('Tipo')) ? '700' : '500'};">${valor}</span></div>`; 
+                    cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && String(chave).includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span style="font-weight: ${(isUrgente && String(chave).includes('Tipo')) ? '700' : '500'};">${valor}</span></div>`; 
                 }
             }
         });
@@ -676,7 +613,7 @@ window.renderizarPastasPrivados = function() {
     
     let todosOsNomes = new Set(listaColaboradoresGlobal.map(c => c.nome));
     window.todosPrivadosData.forEach(b => {
-        if(b.data['Para qual Colaborador?']) todosOsNomes.add(b.data['Para qual Colaborador?']);
+        if(b.data['Para qual Colaborador?']) todosOsNomes.add(String(b.data['Para qual Colaborador?']));
     });
     
     Array.from(todosOsNomes).sort().forEach(nome => {
@@ -709,7 +646,7 @@ window.renderizarListaPrivados = function() {
         const data = item.data; const docId = item.id; window.dadosBoletins[docId] = data;
         const titulo = data['Título do Documento'] || 'Documento Privado';
         
-        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
+        const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && String(data['Tipo (Urgente, Norma, Regra, etc)']).toLowerCase().includes('urgente');
         const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
         const configCor = paletaGradientes.find(p => p.valor === corSalva);
         const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
@@ -725,13 +662,13 @@ window.renderizarListaPrivados = function() {
             const valor = data[chave];
             if (valor && chave !== 'Título do Documento' && chave !== 'Para qual Colaborador?') {
                 if(chave === 'Links dos Materiais (1 por linha)') {
-                    const links = valor.split('\n').filter(l => l.trim() !== '');
+                    const links = String(valor).split('\n').filter(l => l.trim() !== '');
                     if(links.length > 0) {
                         botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
                         links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
                         botaoLinkHtml += `</div>`;
                     }
-                } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && chave.includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
+                } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && String(chave).includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
             }
         });
         cardHtml += botaoLinkHtml;
@@ -802,7 +739,7 @@ window.renderizarCards = function(colecaoNome) {
             itens.forEach(item => { const local = item.data['Local ou Prédio'] || 'Sem Local Definido'; if (!locaisMap[local]) locaisMap[local] = []; locaisMap[local].push(item); });
             Object.keys(locaisMap).sort().forEach(local => {
                 let groupHtml = `<div class="local-group"><h3 class="local-title"><i class="ri-map-pin-2-fill"></i> ${local}</h3><div class="mini-cards-grid">`;
-                locaisMap[local].sort((a,b) => (a.data['Setor']||'').localeCompare(b.data['Setor']||'')).forEach(item => {
+                locaisMap[local].sort((a,b) => (String(a.data['Setor'])||'').localeCompare(String(b.data['Setor'])||'')).forEach(item => {
                     const data = item.data; const docId = item.id;
                     const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
                     const configCor = paletaGradientes.find(p => p.valor === corSalva);
@@ -820,8 +757,8 @@ window.renderizarCards = function(colecaoNome) {
         
         grid.style.display = 'grid'; grid.innerHTML = '';
         itens.sort((a, b) => {
-            const tituloA = a.data[configuracaoAbas[colecaoNome].campos[0]] || a.data['Nome/Médico'] || a.data['Nome'] || "";
-            const tituloB = b.data[configuracaoAbas[colecaoNome].campos[0]] || b.data['Nome/Médico'] || b.data['Nome'] || "";
+            const tituloA = String(a.data[configuracaoAbas[colecaoNome].campos[0]] || a.data['Nome/Médico'] || a.data['Nome'] || "");
+            const tituloB = String(b.data[configuracaoAbas[colecaoNome].campos[0]] || b.data['Nome/Médico'] || b.data['Nome'] || "");
             return tituloA.toUpperCase().localeCompare(tituloB.toUpperCase());
         });
 
@@ -880,7 +817,6 @@ window.carregarConfiguracoes = function() {
     });
 };
 
-// ================== CHATBOT LÓGICA AVANÇADA BLINDADA ==================
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -952,8 +888,8 @@ window.processarLogicaDoBot = function(mensagemUser) {
             
             if (texto === 'unimed' || texto === 'convênio' || texto === 'convenio') {
                 if ((item.data['Unimed'] && item.data['Unimed'].toString().toLowerCase() !== 'não' && item.data['Unimed'].toString().toLowerCase() !== 'nao') || 
-                    (item.data['Convênios Aceitos'] && item.data['Convênios Aceitos'].toLowerCase().includes('unimed')) ||
-                    (item.data['Convênios'] && item.data['Convênios'].toLowerCase().includes('unimed')) ||
+                    (item.data['Convênios Aceitos'] && String(item.data['Convênios Aceitos']).toLowerCase().includes('unimed')) ||
+                    (item.data['Convênios'] && String(item.data['Convênios']).toLowerCase().includes('unimed')) ||
                     colecao === 'convenios') {
                     matches = true;
                 }
@@ -970,7 +906,7 @@ window.processarLogicaDoBot = function(mensagemUser) {
                 
                 let cont = 0;
                 Object.entries(item.data).forEach(([k, v]) => {
-                    if(v && k !== config.campos[0] && k !== 'corCard' && !k.includes('Link') && cont < 3) {
+                    if(v && k !== config.campos[0] && k !== 'corCard' && !String(k).includes('Link') && cont < 3) {
                         detalhesStr += `<b>${k}:</b> ${v}<br>`;
                         cont++;
                     }
@@ -982,7 +918,7 @@ window.processarLogicaDoBot = function(mensagemUser) {
                 if (pastaAgrupadora) {
                     btnAction = `<button onclick="window.irParaAba('${colecao}'); setTimeout(() => { window.abrirPastaGenerica('${colecao}', '${pastaAgrupadora}') }, 200); window.toggleChat();" class="btn-hover color-5" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-folder-open-line"></i> Abrir Pasta</button>`;
                 } else if (colecao === 'boletins') {
-                    const setorBoletim = item.data['Para quais Setores?'] ? item.data['Para quais Setores?'].split(',')[0] : 'Geral';
+                    const setorBoletim = item.data['Para quais Setores?'] ? String(item.data['Para quais Setores?']).split(',')[0] : 'Geral';
                     btnAction = `<button onclick="window.irParaAba('${colecao}'); setTimeout(() => { window.abrirPastaBoletim('${setorBoletim}') }, 200); window.toggleChat();" class="btn-hover color-5" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-folder-open-line"></i> Abrir Boletim</button>`;
                 } else {
                     btnAction = `<button onclick="window.irParaAba('${colecao}'); window.toggleChat();" class="btn-hover color-8" style="height: 30px; font-size: 11px; padding: 0 15px; margin-top: 8px; width: 100%; border-radius: 6px;"><i class="ri-arrow-right-circle-line"></i> Ir para Aba</button>`;
@@ -1015,138 +951,144 @@ window.processarLogicaDoBot = function(mensagemUser) {
     return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
 };
 
+
 // ==========================================
-// 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE E NAVEGAÇÃO
+// 4. ATRIBUIÇÃO DE EVENTOS (RODAPÉ DO ARQUIVO)
 // ==========================================
 
-const mainContent = document.querySelector('.main-content');
-if(mainContent) {
-    mainContent.addEventListener('click', async (e) => {
-        const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
-        if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
-        if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
-        if (btnAssinar && isAdmin) {
-            const idDoc = btnAssinar.dataset.id;
-            const col = btnAssinar.dataset.colecao;
-            const inputLeitor = document.getElementById(`leitor-${idDoc}`);
-            if(!inputLeitor) return;
-            const nomeColaborador = inputLeitor.value;
-            if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
-            const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
-            await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
-        }
-    });
-}
+window.addEventListener('DOMContentLoaded', () => {
+    const mainContent = document.querySelector('.main-content');
+    if(mainContent) {
+        mainContent.addEventListener('click', async (e) => {
+            const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
+            if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
+            if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+            if (btnAssinar && isAdmin) {
+                const idDoc = btnAssinar.dataset.id;
+                const col = btnAssinar.dataset.colecao;
+                const inputLeitor = document.getElementById(`leitor-${idDoc}`);
+                if(!inputLeitor) return;
+                const nomeColaborador = inputLeitor.value;
+                if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
+                const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
+                await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
+            }
+        });
+    }
 
-const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
-if(btnSalvarAjustes) {
-    btnSalvarAjustes.addEventListener('click', async () => {
-        if(!isAdmin) return;
-        const texto = document.getElementById('tab-input-banner').value;
-        const locaisTexto = document.getElementById('tab-input-locais').value; 
-        const setoresTexto = document.getElementById('tab-input-setores').value; 
-        const especialidadesTexto = document.getElementById('tab-input-especialidades').value; 
-        const motivosTexto = document.getElementById('tab-input-motivos').value; 
-        const corPend = document.getElementById('tab-color-pendente').value; 
-        const corConc = document.getElementById('tab-color-concluido').value; 
-        
-        const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
-        const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
+    const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
+    if(btnSalvarAjustes) {
+        btnSalvarAjustes.addEventListener('click', async () => {
+            if(!isAdmin) return;
+            const texto = document.getElementById('tab-input-banner').value;
+            const locaisTexto = document.getElementById('tab-input-locais').value; 
+            const setoresTexto = document.getElementById('tab-input-setores').value; 
+            const especialidadesTexto = document.getElementById('tab-input-especialidades').value; 
+            const motivosTexto = document.getElementById('tab-input-motivos').value; 
+            const corPend = document.getElementById('tab-color-pendente').value; 
+            const corConc = document.getElementById('tab-color-concluido').value; 
+            
+            const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
+            const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
 
-        const chatLogoInput = document.getElementById('tab-input-chat-logo');
-        const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
-        
-        const chatCorInput = document.getElementById('tab-color-chat');
-        const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
-        
-        btnSalvarAjustes.innerHTML = "Salvando...";
-        try {
-            await setDoc(doc(db, "configuracoes", "gerais"), { 
-                banner_texto: texto, 
-                locais: locaisTexto, 
-                setores: setoresTexto, 
-                especialidades: especialidadesTexto,
-                motivos: motivosTexto, 
-                cor_pendente: corPend, 
-                cor_concluido: corConc,
-                imagem_padrao_pastas: imgPastasTexto,
-                chat_logo: chatLogoTexto,
-                chat_cor: chatCorVal
+            const chatLogoInput = document.getElementById('tab-input-chat-logo');
+            const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
+            
+            const chatCorInput = document.getElementById('tab-color-chat');
+            const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
+            
+            btnSalvarAjustes.innerHTML = "Salvando...";
+            try {
+                await setDoc(doc(db, "configuracoes", "gerais"), { 
+                    banner_texto: texto, 
+                    locais: locaisTexto, 
+                    setores: setoresTexto, 
+                    especialidades: especialidadesTexto,
+                    motivos: motivosTexto, 
+                    cor_pendente: corPend, 
+                    cor_concluido: corConc,
+                    imagem_padrao_pastas: imgPastasTexto,
+                    chat_logo: chatLogoTexto,
+                    chat_cor: chatCorVal
+                });
+                alert("Configurações salvas com sucesso!");
+            } catch(e) { alert("Erro ao salvar configurações."); }
+            btnSalvarAjustes.innerHTML = 'Salvar Alterações';
+        });
+    }
+
+    const inputPesqGlobal = document.getElementById('input-pesquisa-global');
+    if(inputPesqGlobal) {
+        inputPesqGlobal.addEventListener('keyup', (e) => {
+            const texto = e.target.value.toLowerCase().trim();
+            const areaRes = document.getElementById('resultados-globais');
+            if(!areaRes) return;
+            if(texto.length < 2) { areaRes.style.display = 'none'; return; }
+            
+            areaRes.style.display = 'grid'; 
+            areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>';
+            let encontrou = false;
+            
+            const colecoesBusca = ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores'];
+            
+            colecoesBusca.forEach(colecao => {
+                const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
+                itens.forEach(item => {
+                    const valoresStr = Object.values(item.data).join(' ').toLowerCase();
+                    const chavesStr = Object.keys(item.data).join(' ').toLowerCase();
+                    if(valoresStr.includes(texto) || chavesStr.includes(texto)) {
+                        areaRes.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data);
+                        encontrou = true;
+                    }
+                });
             });
-            alert("Configurações salvas com sucesso!");
-        } catch(e) { alert("Erro ao salvar configurações."); }
-        btnSalvarAjustes.innerHTML = 'Salvar Alterações';
-    });
-}
 
-const inputPesqGlobal = document.getElementById('input-pesquisa-global');
-if(inputPesqGlobal) {
-    inputPesqGlobal.addEventListener('keyup', (e) => {
-        const texto = e.target.value.toLowerCase().trim();
-        const areaRes = document.getElementById('resultados-globais');
-        if(!areaRes) return;
-        if(texto.length < 2) { areaRes.style.display = 'none'; return; }
-        
-        areaRes.style.display = 'grid'; 
-        areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>';
-        let encontrou = false;
-        
-        const colecoesBusca = ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores'];
-        
-        colecoesBusca.forEach(colecao => {
-            const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
-            itens.forEach(item => {
-                const valoresStr = Object.values(item.data).join(' ').toLowerCase();
-                const chavesStr = Object.keys(item.data).join(' ').toLowerCase();
-                if(valoresStr.includes(texto) || chavesStr.includes(texto)) {
-                    areaRes.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data);
-                    encontrou = true;
-                }
+            if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado no sistema.</p>';
+        });
+    }
+
+    const inputPesqAba = document.getElementById('input-pesquisa');
+    if(inputPesqAba) {
+        inputPesqAba.addEventListener('keyup', (e) => {
+            const texto = e.target.value.toLowerCase();
+            const abaContainer = document.getElementById(`tab-${abaAtual}`);
+            if(!abaContainer) return;
+            
+            abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
+                if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
+                else card.style.display = 'none';
             });
         });
+    }
 
-        if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado no sistema.</p>';
-    });
-}
-
-const inputPesqAba = document.getElementById('input-pesquisa');
-if(inputPesqAba) {
-    inputPesqAba.addEventListener('keyup', (e) => {
-        const texto = e.target.value.toLowerCase();
-        const abaContainer = document.getElementById(`tab-${abaAtual}`);
-        if(!abaContainer) return;
-        
-        abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
-            if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
-            else card.style.display = 'none';
-        });
-    });
-}
-
-// O CORAÇÃO DO SISTEMA: NAVEGAÇÃO DE ABAS
-document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-        btn.classList.add('active');
-        abaAtual = btn.getAttribute('data-tab');
-        const tabEl = document.getElementById(`tab-${abaAtual}`);
-        if(tabEl) tabEl.style.display = 'block';
-        
-        const titleEl = document.getElementById('page-title');
-        if(titleEl) titleEl.textContent = btn.textContent.trim();
-        
-        const searchBox = document.getElementById('search-box');
-        if(searchBox) searchBox.style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
-        
-        const inputPesq = document.getElementById('input-pesquisa');
-        if(inputPesq) inputPesq.value = ''; 
-        
-        if(abaAtual === 'boletins' && typeof window.fecharPastaBoletim === 'function') window.fecharPastaBoletim(); 
-        if(abaAtual === 'boletins-privados' && typeof window.fecharPastaPrivado === 'function') window.fecharPastaPrivado();
-        ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico'].forEach(col => {
-            if(abaAtual === col && typeof window.fecharPastaGenerica === 'function') window.fecharPastaGenerica(col);
+    document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+            btn.classList.add('active');
+            abaAtual = btn.getAttribute('data-tab');
+            const tabEl = document.getElementById(`tab-${abaAtual}`);
+            if(tabEl) tabEl.style.display = 'block';
+            
+            const titleEl = document.getElementById('page-title');
+            if(titleEl) titleEl.textContent = btn.textContent.trim();
+            
+            const searchBox = document.getElementById('search-box');
+            if(searchBox) searchBox.style.display = (abaAtual !== 'home' && abaAtual !== 'ajustes') ? 'flex' : 'none';
+            
+            const inputPesqLocal = document.getElementById('input-pesquisa');
+            if(inputPesqLocal) inputPesqLocal.value = ''; 
+            
+            if(abaAtual === 'boletins' && typeof window.fecharPastaBoletim === 'function') window.fecharPastaBoletim(); 
+            if(abaAtual === 'boletins-privados' && typeof window.fecharPastaPrivado === 'function') window.fecharPastaPrivado();
+            ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico'].forEach(col => {
+                if(abaAtual === col && typeof window.fecharPastaGenerica === 'function') window.fecharPastaGenerica(col);
+            });
+            
+            // Força renderizar Home tab widgets ao clicar no Início:
+            if(abaAtual === 'home') {
+                window.verificarUrgentesHome();
+            }
         });
     });
 });
-                                                                                                                                                                 
