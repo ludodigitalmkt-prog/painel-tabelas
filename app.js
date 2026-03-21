@@ -154,6 +154,7 @@ function formatarLinkImagem(link) {
     }
     return link;
 }
+window.formatarLinkImagem = formatarLinkImagem; // A CORREÇÃO ESTÁ AQUI!
 
 window.buscarClimaAraucaria = async function() {
     try {
@@ -829,69 +830,67 @@ window.renderizarCards = function(colecaoNome) {
     });
 }
 
-// ================= LÓGICA DE SALVAR CONFIGURAÇÕES E CADASTRAR =================
-function logarEventosDoBotao() {
-    const mainContent = document.querySelector('.main-content');
-    if(mainContent) {
-        mainContent.addEventListener('click', async (e) => {
-            const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
-            if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
-            if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
-            if (btnAssinar && isAdmin) {
-                const idDoc = btnAssinar.dataset.id;
-                const col = btnAssinar.dataset.colecao;
-                const inputLeitor = document.getElementById(`leitor-${idDoc}`);
-                if(!inputLeitor) return;
-                const nomeColaborador = inputLeitor.value;
-                if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
-                const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
-                await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
-            }
-        });
-    }
-
-    const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
-    if(btnSalvarAjustes) {
-        btnSalvarAjustes.addEventListener('click', async () => {
-            if(!isAdmin) return;
-            const texto = document.getElementById('tab-input-banner').value;
-            const locaisTexto = document.getElementById('tab-input-locais').value; 
-            const setoresTexto = document.getElementById('tab-input-setores').value; 
-            const especialidadesTexto = document.getElementById('tab-input-especialidades').value; 
-            const motivosTexto = document.getElementById('tab-input-motivos').value; 
-            const corPend = document.getElementById('tab-color-pendente').value; 
-            const corConc = document.getElementById('tab-color-concluido').value; 
-            
-            const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
-            const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
-
-            const chatLogoInput = document.getElementById('tab-input-chat-logo');
-            const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
-            
-            const chatCorInput = document.getElementById('tab-color-chat');
-            const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
-            
-            btnSalvarAjustes.innerHTML = "Salvando...";
-            try {
-                await setDoc(doc(db, "configuracoes", "gerais"), { 
-                    banner_texto: texto, 
-                    locais: locaisTexto, 
-                    setores: setoresTexto, 
-                    especialidades: especialidadesTexto,
-                    motivos: motivosTexto, 
-                    cor_pendente: corPend, 
-                    cor_concluido: corConc,
-                    imagem_padrao_pastas: imgPastasTexto,
-                    chat_logo: chatLogoTexto,
-                    chat_cor: chatCorVal
-                });
-                alert("Configurações salvas com sucesso!");
-            } catch(e) { alert("Erro ao salvar configurações."); }
-            btnSalvarAjustes.innerHTML = 'Salvar Alterações';
-        });
-    }
+// ================= EVENTOS DA MAIN CONTENT =================
+const mainContent = document.querySelector('.main-content');
+if(mainContent) {
+    mainContent.addEventListener('click', async (e) => {
+        const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
+        if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
+        if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+        if (btnAssinar && isAdmin) {
+            const idDoc = btnAssinar.dataset.id;
+            const col = btnAssinar.dataset.colecao;
+            const inputLeitor = document.getElementById(`leitor-${idDoc}`);
+            if(!inputLeitor) return;
+            const nomeColaborador = inputLeitor.value;
+            if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
+            const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
+            await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
+        }
+    });
 }
-logarEventosDoBotao();
+
+// ================= LÓGICA DE SALVAR CONFIGURAÇÕES =================
+const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
+if(btnSalvarAjustes) {
+    btnSalvarAjustes.addEventListener('click', async () => {
+        if(!isAdmin) return;
+        const texto = document.getElementById('tab-input-banner').value;
+        const locaisTexto = document.getElementById('tab-input-locais').value; 
+        const setoresTexto = document.getElementById('tab-input-setores').value; 
+        const especialidadesTexto = document.getElementById('tab-input-especialidades').value; 
+        const motivosTexto = document.getElementById('tab-input-motivos').value; 
+        const corPend = document.getElementById('tab-color-pendente').value; 
+        const corConc = document.getElementById('tab-color-concluido').value; 
+        
+        const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
+        const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
+
+        const chatLogoInput = document.getElementById('tab-input-chat-logo');
+        const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
+        
+        const chatCorInput = document.getElementById('tab-color-chat');
+        const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
+        
+        btnSalvarAjustes.innerHTML = "Salvando...";
+        try {
+            await setDoc(doc(db, "configuracoes", "gerais"), { 
+                banner_texto: texto, 
+                locais: locaisTexto, 
+                setores: setoresTexto, 
+                especialidades: especialidadesTexto,
+                motivos: motivosTexto, 
+                cor_pendente: corPend, 
+                cor_concluido: corConc,
+                imagem_padrao_pastas: imgPastasTexto,
+                chat_logo: chatLogoTexto,
+                chat_cor: chatCorVal
+            });
+            alert("Configurações salvas com sucesso!");
+        } catch(e) { alert("Erro ao salvar configurações."); }
+        btnSalvarAjustes.innerHTML = 'Salvar Alterações';
+    });
+}
 
 window.carregarConfiguracoes = function() {
     onSnapshot(doc(db, "configuracoes", "gerais"), (docSnap) => {
@@ -942,9 +941,9 @@ window.carregarConfiguracoes = function() {
             if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual && typeof window.renderizarPastasPrivados === 'function') window.renderizarPastasPrivados();
         }
     });
-};
+}
 
-// ================== CHATBOT LÓGICA ==================
+// ================== CHATBOT LÓGICA AVANÇADA BLINDADA ==================
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -958,7 +957,7 @@ window.toggleChat = function() {
     } else {
         win.style.display = 'none';
     }
-};
+}
 
 window.sendQuickMsg = function(texto) {
     const input = document.getElementById('chat-input');
@@ -966,7 +965,7 @@ window.sendQuickMsg = function(texto) {
         input.value = texto;
         window.sendChat();
     }
-};
+}
 
 window.sendChat = function() {
     const input = document.getElementById('chat-input');
@@ -982,7 +981,7 @@ window.sendChat = function() {
         const resposta = window.processarLogicaDoBot(msg);
         window.addChatBubble(resposta, 'bot');
     }, 600);
-};
+}
 
 window.addChatBubble = function(text, sender) {
     const chatArea = document.getElementById('chat-body');
@@ -992,7 +991,7 @@ window.addChatBubble = function(text, sender) {
     div.innerHTML = text; 
     chatArea.appendChild(div);
     chatArea.scrollTop = chatArea.scrollHeight;
-};
+}
 
 window.processarLogicaDoBot = function(mensagemUser) {
     const texto = mensagemUser.toLowerCase().trim();
@@ -1077,7 +1076,7 @@ window.processarLogicaDoBot = function(mensagemUser) {
     }
 
     return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
-};
+}
 
 const inputPesqGlobal = document.getElementById('input-pesquisa-global');
 if(inputPesqGlobal) {
