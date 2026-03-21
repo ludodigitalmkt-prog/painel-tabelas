@@ -880,6 +880,7 @@ window.carregarConfiguracoes = function() {
     });
 };
 
+// ================== CHATBOT LÓGICA AVANÇADA BLINDADA ==================
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -1014,12 +1015,10 @@ window.processarLogicaDoBot = function(mensagemUser) {
     return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
 };
 
-
 // ==========================================
-// 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE GERAIS E EVENT LISTNERS (FIM DO ARQUIVO)
+// 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE E NAVEGAÇÃO
 // ==========================================
 
-// --- Eventos de Clicks (Excluir, Editar, Assinar) ---
 const mainContent = document.querySelector('.main-content');
 if(mainContent) {
     mainContent.addEventListener('click', async (e) => {
@@ -1039,7 +1038,6 @@ if(mainContent) {
     });
 }
 
-// --- Salvar Ajustes ---
 const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
 if(btnSalvarAjustes) {
     btnSalvarAjustes.addEventListener('click', async () => {
@@ -1081,7 +1079,6 @@ if(btnSalvarAjustes) {
     });
 }
 
-// --- Busca Global ---
 const inputPesqGlobal = document.getElementById('input-pesquisa-global');
 if(inputPesqGlobal) {
     inputPesqGlobal.addEventListener('keyup', (e) => {
@@ -1112,7 +1109,6 @@ if(inputPesqGlobal) {
     });
 }
 
-// --- Busca Específica da Aba ---
 const inputPesqAba = document.getElementById('input-pesquisa');
 if(inputPesqAba) {
     inputPesqAba.addEventListener('keyup', (e) => {
@@ -1127,7 +1123,7 @@ if(inputPesqAba) {
     });
 }
 
-// --- Navegação das Abas do Menu (O CORAÇÃO DO SISTEMA) ---
+// O CORAÇÃO DO SISTEMA: NAVEGAÇÃO DE ABAS
 document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
@@ -1153,3 +1149,4 @@ document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
         });
     });
 });
+                                                                                                                                                                 
