@@ -1,23 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
 // ==========================================
 // 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 // ==========================================
-const firebaseConfig = {
-    apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
-    authDomain: "painel-tabelas.firebaseapp.com",
-    projectId: "painel-tabelas",
-    storageBucket: "painel-tabelas.firebasestorage.app",
-    messagingSenderId: "189251122569",
-    appId: "1:189251122569:web:2902e8c47235d826af9d58"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { localCache: persistentLocalCache() });
-const auth = getAuth(app);
-
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'], campoAgrupador: 'Especialidade', icone: 'ri-team-fill' }, 
@@ -36,6 +19,23 @@ const configuracaoAbas = {
     'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] },
     'boletins-privados': { titulo: 'Informativo Privado', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] }
 };
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
+    authDomain: "painel-tabelas.firebaseapp.com",
+    projectId: "painel-tabelas",
+    storageBucket: "painel-tabelas.firebasestorage.app",
+    messagingSenderId: "189251122569",
+    appId: "1:189251122569:web:2902e8c47235d826af9d58"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+const auth = getAuth(app);
 
 let isAdmin = false;
 let abaAtual = 'home'; 
@@ -76,29 +76,9 @@ const paletaGradientes = [
     { valor: "linear-gradient(to right, #eb3941, #f15e64, #e14e53, #e2373f)", nome: "Vermelho HD", dark: true }
 ];
 
-
 // ==========================================
-// 2. FUNÇÕES GLOBAIS BLINDADAS (HOISTING)
+// 2. FUNÇÕES GLOBAIS (HOISTING)
 // ==========================================
-
-window.efetuarLogin = function() {
-    const email = document.getElementById('email').value;
-    const senha = document.getElementById('senha').value;
-    const btn = document.getElementById('btn-login');
-    if(!email || !senha) return;
-    
-    const textoOriginal = btn.innerHTML;
-    btn.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> Autenticando...";
-    
-    signInWithEmailAndPassword(auth, email, senha)
-        .then(() => {
-            btn.innerHTML = textoOriginal;
-        })
-        .catch(err => {
-            alert("Erro ao entrar: E-mail ou Senha incorretos.");
-            btn.innerHTML = textoOriginal;
-        });
-};
 
 function formatarLinkImagem(link) {
     if (!link || link.includes('file:///')) return null;
@@ -702,6 +682,42 @@ window.renderizarListaPrivados = function() {
     });
 };
 
+// ================= LÓGICA DE LOGIN (BLINDADA VIA JS) =================
+function logarSistema() {
+    const email = document.getElementById('email').value;
+    const senha = document.getElementById('senha').value;
+    const btn = document.getElementById('btn-login');
+    if(!email || !senha) return;
+    
+    const textoOriginal = btn.innerHTML;
+    btn.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> Autenticando...";
+    
+    signInWithEmailAndPassword(auth, email, senha)
+        .then(() => {
+            btn.innerHTML = textoOriginal;
+        })
+        .catch(err => {
+            alert("Erro ao entrar: E-mail ou Senha incorretos.");
+            btn.innerHTML = textoOriginal;
+        });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const btnLoginNode = document.getElementById('btn-login');
+    if(btnLoginNode) btnLoginNode.addEventListener('click', logarSistema);
+    
+    const inputSenhaNode = document.getElementById('senha');
+    if(inputSenhaNode) {
+        inputSenhaNode.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') {
+                e.preventDefault();
+                logarSistema();
+            }
+        });
+    }
+});
+
+// ================= RENDERIZADOR MASTER DO FIREBASE =================
 window.renderizarCards = function(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
     if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
@@ -783,6 +799,68 @@ window.renderizarCards = function(colecaoNome) {
     });
 };
 
+// ================= EVENTOS DA MAIN CONTENT =================
+const mainContent = document.querySelector('.main-content');
+if(mainContent) {
+    mainContent.addEventListener('click', async (e) => {
+        const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
+        if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
+        if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+        if (btnAssinar && isAdmin) {
+            const idDoc = btnAssinar.dataset.id;
+            const col = btnAssinar.dataset.colecao;
+            const inputLeitor = document.getElementById(`leitor-${idDoc}`);
+            if(!inputLeitor) return;
+            const nomeColaborador = inputLeitor.value;
+            if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
+            const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
+            await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
+        }
+    });
+}
+
+// ================= LÓGICA DE SALVAR CONFIGURAÇÕES =================
+const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
+if(btnSalvarAjustes) {
+    btnSalvarAjustes.addEventListener('click', async () => {
+        if(!isAdmin) return;
+        const texto = document.getElementById('tab-input-banner').value;
+        const locaisTexto = document.getElementById('tab-input-locais').value; 
+        const setoresTexto = document.getElementById('tab-input-setores').value; 
+        const especialidadesTexto = document.getElementById('tab-input-especialidades').value; 
+        const motivosTexto = document.getElementById('tab-input-motivos').value; 
+        const corPend = document.getElementById('tab-color-pendente').value; 
+        const corConc = document.getElementById('tab-color-concluido').value; 
+        
+        const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
+        const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
+
+        const chatLogoInput = document.getElementById('tab-input-chat-logo');
+        const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
+        
+        const chatCorInput = document.getElementById('tab-color-chat');
+        const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
+        
+        btnSalvarAjustes.innerHTML = "Salvando...";
+        try {
+            await setDoc(doc(db, "configuracoes", "gerais"), { 
+                banner_texto: texto, 
+                locais: locaisTexto, 
+                setores: setoresTexto, 
+                especialidades: especialidadesTexto,
+                motivos: motivosTexto, 
+                cor_pendente: corPend, 
+                cor_concluido: corConc,
+                imagem_padrao_pastas: imgPastasTexto,
+                chat_logo: chatLogoTexto,
+                chat_cor: chatCorVal
+            });
+            alert("Configurações salvas com sucesso!");
+        } catch(e) { alert("Erro ao salvar configurações."); }
+        btnSalvarAjustes.innerHTML = 'Salvar Alterações';
+    });
+}
+
 window.carregarConfiguracoes = function() {
     onSnapshot(doc(db, "configuracoes", "gerais"), (docSnap) => {
         const area = document.getElementById('banner-content');
@@ -834,6 +912,7 @@ window.carregarConfiguracoes = function() {
     });
 };
 
+// ================== CHATBOT LÓGICA AVANÇADA BLINDADA ==================
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -967,70 +1046,6 @@ window.processarLogicaDoBot = function(mensagemUser) {
 
     return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
 };
-
-// ==========================================
-// 4. ATRIBUIÇÃO DE EVENTOS DE CLIQUE GERAIS E INÍCIO DE FLUXO
-// ==========================================
-
-const mainContent = document.querySelector('.main-content');
-if(mainContent) {
-    mainContent.addEventListener('click', async (e) => {
-        const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit'); const btnAssinar = e.target.closest('.btn-assinar');
-        if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await deleteDoc(doc(db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
-        if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
-        if (btnAssinar && isAdmin) {
-            const idDoc = btnAssinar.dataset.id;
-            const col = btnAssinar.dataset.colecao;
-            const inputLeitor = document.getElementById(`leitor-${idDoc}`);
-            if(!inputLeitor) return;
-            const nomeColaborador = inputLeitor.value;
-            if(!nomeColaborador) return alert("Selecione um colaborador na lista!");
-            const registro = `${nomeColaborador} (Lido em: ${new Date().toLocaleString('pt-BR')})`;
-            await updateDoc(doc(db, col, idDoc), { leituras: arrayUnion(registro) });
-        }
-    });
-}
-
-const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
-if(btnSalvarAjustes) {
-    btnSalvarAjustes.addEventListener('click', async () => {
-        if(!isAdmin) return;
-        const texto = document.getElementById('tab-input-banner').value;
-        const locaisTexto = document.getElementById('tab-input-locais').value; 
-        const setoresTexto = document.getElementById('tab-input-setores').value; 
-        const especialidadesTexto = document.getElementById('tab-input-especialidades').value; 
-        const motivosTexto = document.getElementById('tab-input-motivos').value; 
-        const corPend = document.getElementById('tab-color-pendente').value; 
-        const corConc = document.getElementById('tab-color-concluido').value; 
-        
-        const imgPastaInput = document.getElementById('tab-input-imagem-pastas');
-        const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
-
-        const chatLogoInput = document.getElementById('tab-input-chat-logo');
-        const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
-        
-        const chatCorInput = document.getElementById('tab-color-chat');
-        const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
-        
-        btnSalvarAjustes.innerHTML = "Salvando...";
-        try {
-            await setDoc(doc(db, "configuracoes", "gerais"), { 
-                banner_texto: texto, 
-                locais: locaisTexto, 
-                setores: setoresTexto, 
-                especialidades: especialidadesTexto,
-                motivos: motivosTexto, 
-                cor_pendente: corPend, 
-                cor_concluido: corConc,
-                imagem_padrao_pastas: imgPastasTexto,
-                chat_logo: chatLogoTexto,
-                chat_cor: chatCorVal
-            });
-            alert("Configurações salvas com sucesso!");
-        } catch(e) { alert("Erro ao salvar configurações."); }
-        btnSalvarAjustes.innerHTML = 'Salvar Alterações';
-    });
-}
 
 const inputPesqGlobal = document.getElementById('input-pesquisa-global');
 if(inputPesqGlobal) {
