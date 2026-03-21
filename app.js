@@ -77,8 +77,17 @@ const paletaGradientes = [
 ];
 
 // ==========================================
-// 2. LÓGICA DE LOGIN BLINDADA
+// 2. DECLARAÇÃO DE FUNÇÕES GLOBAIS BLINDADAS (HOISTING TOTAL)
 // ==========================================
+
+window.formatarLinkImagem = function(link) {
+    if (!link || link.includes('file:///')) return null;
+    if (link.includes("drive.google.com")) {
+        const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/) || link.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+    return link;
+};
 
 window.efetuarLogin = function(e) {
     if(e) e.preventDefault(); 
@@ -103,7 +112,7 @@ window.efetuarLogin = function(e) {
             alert("Erro ao entrar: Verifique seu e-mail e senha.");
             btn.innerHTML = textoOriginal;
         });
-}
+};
 
 const btnLogout = document.getElementById('btn-logout');
 if(btnLogout) btnLogout.addEventListener('click', () => signOut(auth));
@@ -128,8 +137,8 @@ onAuthStateChanged(auth, (user) => {
             document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
         }
         
-        Object.keys(configuracaoAbas).forEach(idColecao => renderizarCards(idColecao));
-        carregarConfiguracoes(); 
+        Object.keys(configuracaoAbas).forEach(idColecao => window.renderizarCards(idColecao));
+        window.carregarConfiguracoes(); 
         window.buscarClimaAraucaria(); 
     } else {
         if(loginScreen) loginScreen.style.display = 'flex';
@@ -137,24 +146,9 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-
-// ==========================================
-// 3. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS BLINDADAS (HOISTING)
-// ==========================================
-
 setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 const frases = ["O sucesso é a soma de pequenos esforços.", "A empatia é a medicina que o mundo precisa.", "Trabalho em equipe multiplica o sucesso."];
 const fm = document.getElementById('frase-dia'); if(fm) fm.innerText = frases[Math.floor(Math.random() * frases.length)];
-
-function formatarLinkImagem(link) {
-    if (!link || link.includes('file:///')) return null;
-    if (link.includes("drive.google.com")) {
-        const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/) || link.match(/id=([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
-    }
-    return link;
-}
-window.formatarLinkImagem = formatarLinkImagem; // A CORREÇÃO ESTÁ AQUI!
 
 window.buscarClimaAraucaria = async function() {
     try {
@@ -179,13 +173,13 @@ window.buscarClimaAraucaria = async function() {
         const wDesc = document.getElementById('weather-desc');
         if(wDesc) wDesc.textContent = "Clima indisponível"; 
     }
-}
+};
 
-function obterPublicoAlvo(setoresAlvoString) {
+window.obterPublicoAlvo = function(setoresAlvoString) {
     if (!setoresAlvoString || setoresAlvoString.includes('Geral')) return listaColaboradoresGlobal.map(c => c.nome);
     const setoresMarcados = setoresAlvoString.split(',').map(s => s.trim());
     return listaColaboradoresGlobal.filter(c => setoresMarcados.includes(c.setor)).map(c => c.nome);
-}
+};
 
 window.verificarUrgentesHome = function() {
     const area = document.getElementById('area-alertas-home');
@@ -198,7 +192,7 @@ window.verificarUrgentesHome = function() {
             const data = item.data;
             const isUrgente = data['Tipo (Urgente, Norma, Regra, etc)'] && data['Tipo (Urgente, Norma, Regra, etc)'].toLowerCase().includes('urgente');
             if(!isUrgente) return;
-            const publico = ehPrivado ? [data['Para qual Colaborador?']] : obterPublicoAlvo(data['Para quais Setores?']);
+            const publico = ehPrivado ? [data['Para qual Colaborador?']] : window.obterPublicoAlvo(data['Para quais Setores?']);
             const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
             const faltam = publico.filter(n => !lidosNomes.includes(n)).length;
             if (faltam > 0) totalUrgentesPendentes++;
@@ -211,24 +205,24 @@ window.verificarUrgentesHome = function() {
     if(totalUrgentesPendentes > 0) {
         area.innerHTML = `<div class="alerta-urgente-home" onclick="window.irParaAba('boletins')"><i class="ri-alarm-warning-fill"></i><div><strong>Atenção! Informativos Urgentes</strong><span>Existem <b>${totalUrgentesPendentes}</b> informativos com prioridade urgente aguardando assinatura.</span></div></div>`;
     }
-}
+};
 
 window.irParaAba = function(aba) { 
     const btn = document.querySelector(`.nav-btn[data-tab='${aba}']`); 
     if(btn) btn.click(); 
-}
+};
 
 window.abrirSubAba = function(subAbaId) { 
     const menu = document.getElementById('menu-contatos'); if(menu) menu.style.display = 'none'; 
     const sub = document.getElementById('sub-' + subAbaId); if(sub) sub.style.display = 'block'; 
-}
+};
 
 window.voltarSubAba = function() { 
     ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas'].forEach(id => {
         const sub = document.getElementById('sub-' + id); if(sub) sub.style.display = 'none';
     }); 
     const menu = document.getElementById('menu-contatos'); if(menu) menu.style.display = 'grid'; 
-}
+};
 
 window.abrirPastaGenerica = function(colecao, valorPasta) {
     window[`pasta_${colecao}_Atual`] = valorPasta;
@@ -238,8 +232,8 @@ window.abrirPastaGenerica = function(colecao, valorPasta) {
     if(foldEl) foldEl.style.display = 'none';
     if(listEl) listEl.style.display = 'block';
     if(titleEl && configuracaoAbas[colecao]) titleEl.innerHTML = `<i class="${configuracaoAbas[colecao].icone}"></i> Pasta: ${valorPasta}`;
-    renderizarListaGenerica(colecao);
-}
+    window.renderizarListaGenerica(colecao);
+};
 
 window.fecharPastaGenerica = function(colecao) {
     window[`pasta_${colecao}_Atual`] = null;
@@ -247,8 +241,8 @@ window.fecharPastaGenerica = function(colecao) {
     const listEl = document.getElementById(`${colecao}-view-list`);
     if(listEl) listEl.style.display = 'none';
     if(foldEl) foldEl.style.display = 'block';
-    renderizarPastasGenericas(colecao);
-}
+    window.renderizarPastasGenericas(colecao);
+};
 
 window.abrirPastaBoletim = function(pasta) {
     window.pastaBoletimAtual = pasta;
@@ -258,8 +252,8 @@ window.abrirPastaBoletim = function(pasta) {
     if(viewFold) viewFold.style.display = 'none';
     if(viewList) viewList.style.display = 'block';
     if(title) title.innerHTML = `<i class="ri-folder-open-line"></i> Setor: ${pasta}`;
-    renderizarListaBoletins();
-}
+    window.renderizarListaBoletins();
+};
 
 window.fecharPastaBoletim = function() {
     window.pastaBoletimAtual = null;
@@ -267,8 +261,8 @@ window.fecharPastaBoletim = function() {
     const viewList = document.getElementById('boletins-view-list');
     if(viewList) viewList.style.display = 'none';
     if(viewFold) viewFold.style.display = 'block';
-    renderizarPastasBoletins();
-}
+    window.renderizarPastasBoletins();
+};
 
 window.abrirPastaPrivado = function(colabNome) {
     window.pastaPrivadoAtual = colabNome;
@@ -278,8 +272,8 @@ window.abrirPastaPrivado = function(colabNome) {
     if(viewFold) viewFold.style.display = 'none';
     if(viewList) viewList.style.display = 'block';
     if(title) title.innerHTML = `<i class="ri-folder-user-line"></i> ${colabNome}`;
-    renderizarListaPrivados();
-}
+    window.renderizarListaPrivados();
+};
 
 window.fecharPastaPrivado = function() {
     window.pastaPrivadoAtual = null;
@@ -287,8 +281,8 @@ window.fecharPastaPrivado = function() {
     const viewList = document.getElementById('privados-view-list');
     if(viewList) viewList.style.display = 'none';
     if(viewFold) viewFold.style.display = 'block';
-    renderizarPastasPrivados();
-}
+    window.renderizarPastasPrivados();
+};
 
 window.atualizarGrafico = function(canvasId, refInstancia, dados, labelGrafico) {
     const ctx = document.getElementById(canvasId);
@@ -301,12 +295,12 @@ window.atualizarGrafico = function(canvasId, refInstancia, dados, labelGrafico) 
         data: { labels: Object.keys(contagemMotivos), datasets: [{ label: labelGrafico, data: Object.values(contagemMotivos), backgroundColor: '#8B252C', borderRadius: 5 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
-}
+};
 
 window.fecharModal = function() {
     const modalEl = document.getElementById('modal-cadastro');
     if(modalEl) modalEl.style.display = 'none';
-}
+};
 
 window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
     const config = configuracaoAbas[colecao];
@@ -397,7 +391,7 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
     
     const modalEl = document.getElementById('modal-cadastro');
     if(modalEl) modalEl.style.display = 'flex';
-}
+};
 
 window.abrirMidaFlutuante = function(url) {
     let u = url;
@@ -408,7 +402,7 @@ window.abrirMidaFlutuante = function(url) {
     const modalMedia = document.getElementById('modal-media');
     if(iframe) iframe.src = u; 
     if(modalMedia) modalMedia.style.display = 'flex';
-}
+};
 
 window.desfazerLeitura = async function(docId, nomeColab, colecao) {
     if(!isAdmin) return;
@@ -423,7 +417,7 @@ window.desfazerLeitura = async function(docId, nomeColab, colecao) {
         const modalLeituras = document.getElementById('modal-leituras');
         if(modalLeituras) modalLeituras.style.display = 'none';
     }
-}
+};
 
 window.abrirListaLeituras = function(docId, colecaoOrigem = 'boletins') {
     const data = window.dadosBoletins[docId];
@@ -432,7 +426,7 @@ window.abrirListaLeituras = function(docId, colecaoOrigem = 'boletins') {
     if(titleEl) titleEl.textContent = data['Título do Informativo'] || data['Título do Documento'] || 'Status';
     
     let publicoAlvoNomes = [];
-    if(colecaoOrigem === 'boletins') publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+    if(colecaoOrigem === 'boletins') publicoAlvoNomes = window.obterPublicoAlvo(data['Para quais Setores?']);
     else publicoAlvoNomes = [data['Para qual Colaborador?']]; 
 
     const lidosTextos = data.leituras || [];
@@ -455,7 +449,7 @@ window.abrirListaLeituras = function(docId, colecaoOrigem = 'boletins') {
     
     const modalEl = document.getElementById('modal-leituras');
     if(modalEl) modalEl.style.display = 'flex';
-}
+};
 
 window.gerarHTMLCard = function(colecaoNome, docId, data) {
     const config = configuracaoAbas[colecaoNome];
@@ -498,7 +492,7 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     if(hasFlexLayout) {
         cardHtml += `<div class="medico-wrapper">`;
         if (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) {
-            let fotoUrl = formatarLinkImagem(data['Link da Foto do Profissional']);
+            let fotoUrl = window.formatarLinkImagem(data['Link da Foto do Profissional']);
             if(fotoUrl) cardHtml += `<img src="${fotoUrl}" class="medico-foto" onerror="this.style.display='none'">`;
         }
         cardHtml += `<div class="content-info-flex">`;
@@ -529,7 +523,7 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
     cardHtml += `</div>`;
     return cardHtml;
-}
+};
 
 window.renderizarListaGenerica = function(colecao) {
     const grid = document.getElementById(`grid-${colecao}-list`); 
@@ -538,7 +532,7 @@ window.renderizarListaGenerica = function(colecao) {
     const nomePasta = window[`pasta_${colecao}_Atual`];
     const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => (i.data[configuracaoAbas[colecao].campoAgrupador] || 'Geral (Sem Categoria)') === nomePasta);
     itensExibir.forEach(item => { grid.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data); });
-}
+};
 
 window.renderizarPastasGenericas = function(colecao) {
     const grid = document.getElementById(`grid-${colecao}-folders`);
@@ -567,7 +561,7 @@ window.renderizarPastasGenericas = function(colecao) {
         
         grid.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaGenerica('${colecao}', '${nomePasta}')" style="text-align: left; padding: 20px; border-left: 6px solid ${corIcone};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">${iconeHtml}<div style="font-size: 16px; font-weight: 600;">${nomePasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;">Cadastros na pasta: <b style="color:var(--text-main);">${qtd}</b></div></div>`;
     });
-}
+};
 
 window.renderizarPastasBoletins = function() {
     const gridFolders = document.getElementById('grid-boletins-folders');
@@ -592,7 +586,7 @@ window.renderizarPastasBoletins = function() {
         
         let totalLidos = 0; let totalFaltam = 0;
         boletinsDaPasta.forEach(b => {
-            const publicoDaqui = obterPublicoAlvo(b.data['Para quais Setores?'] || 'Geral');
+            const publicoDaqui = window.obterPublicoAlvo(b.data['Para quais Setores?'] || 'Geral');
             const lidosNames = (b.data.leituras || []).map(txt => txt.split(' (')[0]);
             const leram = publicoDaqui.filter(n => lidosNames.includes(n)).length;
             totalLidos += leram; totalFaltam += Math.max(0, publicoDaqui.length - leram);
@@ -602,7 +596,7 @@ window.renderizarPastasBoletins = function() {
 
         gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaBoletim('${pasta}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border-left: 6px solid ${corStatusPasta};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><div style="background: var(--bg-color); padding: 15px; border-radius: 12px; color: var(--primary-color); font-size: 24px; flex-shrink:0;"><i class="${icone}"></i></div><div style="font-size: 16px; font-weight: 600; line-height:1.2; word-wrap:break-word;">${pasta}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Boletins Ativos: <b style="color: var(--text-main);">${boletinsDaPasta.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos Acumulados: <b>${totalLidos}</b></div><div style="color: #e53e3e;">Pendências: <b>${totalFaltam}</b></div></div></div>`;
     });
-}
+};
 
 window.renderizarListaBoletins = function() {
     const grid = document.getElementById('grid-boletins'); 
@@ -627,7 +621,7 @@ window.renderizarListaBoletins = function() {
         const configCor = paletaGradientes.find(p => p.valor === corSalva);
         const gradientClass = (configCor ? configCor.dark : false) ? 'has-gradient' : ''; 
         
-        const publicoAlvoNomes = obterPublicoAlvo(data['Para quais Setores?']);
+        const publicoAlvoNomes = window.obterPublicoAlvo(data['Para quais Setores?']);
         const lidosNomes = (data.leituras || []).map(txt => txt.split(' (')[0]);
         const faltamAssinar = publicoAlvoNomes.filter(n => !lidosNomes.includes(n));
         const qtdLidos = publicoAlvoNomes.filter(n => lidosNomes.includes(n)).length;
@@ -668,7 +662,7 @@ window.renderizarListaBoletins = function() {
         if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
         grid.innerHTML += cardHtml + `</div>`;
     });
-}
+};
 
 window.renderizarPastasPrivados = function() {
     const gridFolders = document.getElementById('grid-privados-folders');
@@ -694,7 +688,7 @@ window.renderizarPastasPrivados = function() {
 
         gridFolders.innerHTML += `<div class="shortcut-card" onclick="window.abrirPastaPrivado('${nome}')" style="text-align: left; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border-left: 6px solid ${corStatusPasta};"><div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;"><div style="background: #e2e8f0; padding: 15px; border-radius: 12px; color: var(--text-main); font-size: 24px; flex-shrink:0;"><i class="ri-user-star-fill"></i></div><div style="font-size: 16px; font-weight: 600; line-height:1.2; word-wrap:break-word;">${nome}</div></div><div style="font-size: 12px; color: var(--text-muted); background: #f8fafc; padding: 10px; border-radius: 8px;"><div>Documentos: <b style="color: var(--text-main);">${boletinsDele.length}</b></div><div style="margin-top: 5px; color: #38a169;">Lidos: <b>${lidos}</b></div><div style="color: #e53e3e;">Pendentes: <b>${faltam}</b></div></div></div>`;
     });
-}
+};
 
 window.renderizarListaPrivados = function() {
     const grid = document.getElementById('grid-boletins-privados-list'); 
@@ -747,7 +741,7 @@ window.renderizarListaPrivados = function() {
         if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="boletins-privados" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="boletins-privados" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
         grid.innerHTML += cardHtml + `</div>`;
     });
-}
+};
 
 window.renderizarCards = function(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
@@ -828,9 +822,8 @@ window.renderizarCards = function(colecaoNome) {
 
         itens.forEach((item) => { grid.innerHTML += window.gerarHTMLCard(colecaoNome, item.id, item.data); });
     });
-}
+};
 
-// ================= EVENTOS DA MAIN CONTENT =================
 const mainContent = document.querySelector('.main-content');
 if(mainContent) {
     mainContent.addEventListener('click', async (e) => {
@@ -850,7 +843,6 @@ if(mainContent) {
     });
 }
 
-// ================= LÓGICA DE SALVAR CONFIGURAÇÕES =================
 const btnSalvarAjustes = document.getElementById('btn-salvar-ajustes');
 if(btnSalvarAjustes) {
     btnSalvarAjustes.addEventListener('click', async () => {
@@ -941,9 +933,8 @@ window.carregarConfiguracoes = function() {
             if(abaAtual === 'boletins-privados' && !window.pastaPrivadoAtual && typeof window.renderizarPastasPrivados === 'function') window.renderizarPastasPrivados();
         }
     });
-}
+};
 
-// ================== CHATBOT LÓGICA AVANÇADA BLINDADA ==================
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -957,7 +948,7 @@ window.toggleChat = function() {
     } else {
         win.style.display = 'none';
     }
-}
+};
 
 window.sendQuickMsg = function(texto) {
     const input = document.getElementById('chat-input');
@@ -965,7 +956,7 @@ window.sendQuickMsg = function(texto) {
         input.value = texto;
         window.sendChat();
     }
-}
+};
 
 window.sendChat = function() {
     const input = document.getElementById('chat-input');
@@ -981,7 +972,7 @@ window.sendChat = function() {
         const resposta = window.processarLogicaDoBot(msg);
         window.addChatBubble(resposta, 'bot');
     }, 600);
-}
+};
 
 window.addChatBubble = function(text, sender) {
     const chatArea = document.getElementById('chat-body');
@@ -991,7 +982,7 @@ window.addChatBubble = function(text, sender) {
     div.innerHTML = text; 
     chatArea.appendChild(div);
     chatArea.scrollTop = chatArea.scrollHeight;
-}
+};
 
 window.processarLogicaDoBot = function(mensagemUser) {
     const texto = mensagemUser.toLowerCase().trim();
@@ -1076,7 +1067,7 @@ window.processarLogicaDoBot = function(mensagemUser) {
     }
 
     return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
-}
+};
 
 const inputPesqGlobal = document.getElementById('input-pesquisa-global');
 if(inputPesqGlobal) {
