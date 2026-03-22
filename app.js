@@ -1,5 +1,5 @@
 // ==========================================
-// BLOQUEIO CONTRA PISCADAS DE TELA
+// BLOQUEIO NUCLEAR CONTRA PISCADAS DE TELA
 // ==========================================
 window.addEventListener('submit', function(e) {
     e.preventDefault(); 
@@ -108,7 +108,7 @@ window.tentarLogar = function(e) {
         })
         .catch(err => {
             console.error(err);
-            alert("Erro ao entrar: E-mail ou Senha incorretos.");
+            alert("Erro ao entrar: E-mail ou Senha incorretos.\nDetalhe: " + err.message);
             if(btn) btn.innerHTML = textoOriginal;
         });
 }
@@ -167,7 +167,7 @@ onAuthStateChanged(auth, (user) => {
 
 
 // ==========================================
-// 3. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS (O MOTOR DA UI)
+// 3. DECLARAÇÃO DE TODAS AS FUNÇÕES GLOBAIS
 // ==========================================
 
 setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
@@ -935,6 +935,8 @@ window.carregarConfiguracoes = function() {
     });
 };
 
+// ================== CHATBOT LÓGICA AVANÇADA (DICAS E BOLETINS) ==================
+
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -944,6 +946,20 @@ window.toggleChat = function() {
         win.style.display = 'flex';
         const tooltip = fab.querySelector('.chatbot-tooltip');
         if(tooltip) tooltip.style.display = 'none';
+
+        // 1. SORTEIO DAS PESQUISAS RÁPIDAS
+        const termosPopulares = ['Cardiologia', 'Ultrassom', 'Unimed', 'Raio-X', 'Pediatria', 'Ortopedia', 'Consulta', 'Boletim'];
+        termosPopulares.sort(() => 0.5 - Math.random());
+        const top3 = termosPopulares.slice(0, 3);
+        
+        const quickRepliesDiv = document.querySelector('.chat-quick-replies');
+        if(quickRepliesDiv) {
+            quickRepliesDiv.innerHTML = '';
+            top3.forEach(termo => {
+                quickRepliesDiv.innerHTML += `<button onclick="window.sendQuickMsg('${termo}')">${termo}</button>`;
+            });
+        }
+
         setTimeout(() => { document.getElementById('chat-input').focus(); }, 100);
     } else {
         win.style.display = 'none';
@@ -984,6 +1000,25 @@ window.addChatBubble = function(text, sender) {
     chatArea.scrollTop = chatArea.scrollHeight;
 };
 
+// 3. O BOTÃO DE SIM OU NÃO
+window.handleChatFollowUp = function(resposta, btnElement) {
+    if(btnElement && btnElement.parentElement) {
+        btnElement.parentElement.innerHTML = `<span style="color: var(--text-muted); font-size: 11px;">Opção selecionada: ${resposta === 'sim' ? 'Sim' : 'Não'}</span>`;
+    }
+
+    if (resposta === 'sim') {
+        window.addChatBubble("Pode escrever aqui abaixo que estou aqui para te ajudar! 😊", 'bot');
+    } else {
+        const frasesMotivacionais = [
+            "Ter uma inteligência artificial para ajudar é ótimo, mas lembre-se: conte sempre com o seu colega ao lado. O trabalho em equipe nos leva mais longe! 🚀",
+            "Que você tenha um excelente turno! A tecnologia agiliza, mas é o calor humano da nossa equipe que faz a clínica brilhar. 💙",
+            "Agradeço a consulta! Juntos somos mais fortes. O sucesso é a soma do esforço de toda a equipe. Um abraço virtual! 🤖"
+        ];
+        const fraseAleatoria = frasesMotivacionais[Math.floor(Math.random() * frasesMotivacionais.length)];
+        window.addChatBubble(fraseAleatoria, 'bot');
+    }
+};
+
 window.processarLogicaDoBot = function(mensagemUser) {
     const texto = mensagemUser.toLowerCase().trim();
     
@@ -1012,6 +1047,15 @@ window.processarLogicaDoBot = function(mensagemUser) {
                     matches = true;
                 }
             } else if (textoItem.includes(texto)) {
+                matches = true;
+            }
+
+            // 4. BUSCA PROFUNDA NOS BOLETINS
+            if(colecao === 'boletins' && (
+                String(item.data['Título do Informativo'] || '').toLowerCase().includes(texto) ||
+                String(item.data['Motivo'] || '').toLowerCase().includes(texto) ||
+                String(item.data['Para quais Setores?'] || '').toLowerCase().includes(texto)
+            )) {
                 matches = true;
             }
 
@@ -1057,20 +1101,40 @@ window.processarLogicaDoBot = function(mensagemUser) {
 
     if (resultadosEncontrados.length > 0) {
         let respostaFormatada = `Encontrei isso no sistema para <b>"${mensagemUser}"</b>:<br><br>`;
-        const limite = resultadosEncontrados.slice(0, 4); 
+        const limite = resultadosEncontrados.slice(0, 3); 
         respostaFormatada += limite.join('');
         
-        if (resultadosEncontrados.length > 4) {
-            respostaFormatada += `<div style="text-align:center; font-size:11px; color:var(--text-muted); margin-top:5px;">+${resultadosEncontrados.length - 4} resultados ocultos.<br>Seja mais específico se não achou o que procura!</div>`;
+        if (resultadosEncontrados.length > 3) {
+            respostaFormatada += `<div style="text-align:center; font-size:11px; color:var(--text-muted); margin-top:5px;">+${resultadosEncontrados.length - 3} resultados ocultos.</div><br>`;
         }
+
+        // 2. DICAS INTELIGENTES
+        const dicas = [
+            "Você sabia que pode pesquisar por nomes de médicos específicos ou especialidades (ex: Ortopedia)?",
+            "Dica: Se o paciente precisar de exames, tente pesquisar por 'Ultrassom' ou 'Raio-X'.",
+            "Você também pode pesquisar por Convênios para ver as regras de atendimento!",
+            "Lembre-se: Na aba de 'Boletins Gerais' estão os avisos mais importantes da semana."
+        ];
+        const dicaAleatoria = dicas[Math.floor(Math.random() * dicas.length)];
+        respostaFormatada += `<div style="background: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 11px; margin-top: 10px; border-left: 3px solid var(--primary-color);">💡 <b>Dica:</b> ${dicaAleatoria}</div>`;
+
+        // 3. A PERGUNTA "PRECISA DE ALGO MAIS?" (Botão Sim ou Não)
+        respostaFormatada += `<div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 10px; text-align: center;">
+            <p style="margin-bottom: 8px; font-weight: 600;">Precisa de algo mais?</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="window.handleChatFollowUp('sim', this)" style="flex: 1; padding: 8px; border: none; background: #38a169; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">Sim</button>
+                <button onclick="window.handleChatFollowUp('nao', this)" style="flex: 1; padding: 8px; border: none; background: #e53e3e; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">Não</button>
+            </div>
+        </div>`;
+
         return respostaFormatada;
     }
 
-    return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar pelo nome de um exame ou especialidade!";
+    return "Desculpe, não localizei nenhuma informação no sistema sobre isso. 🤔<br><br>Tente pesquisar por uma palavra-chave mais simples, como o nome de um exame ou especialidade!";
 };
 
 // ==========================================
-// 4. ATRIBUIÇÃO DE EVENTOS E NAVEGAÇÃO
+// 5. ATRIBUIÇÃO DE EVENTOS E NAVEGAÇÃO
 // ==========================================
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -1094,7 +1158,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // A MÁGICA QUE SALVA OS NOVOS DADOS VOLTOU!
     const btnSalvar = document.getElementById('btn-salvar-dados');
     if(btnSalvar) {
         btnSalvar.addEventListener('click', async () => {
