@@ -11,11 +11,10 @@ window.addEventListener('submit', function(e) {
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica', 'PIN de Acesso (Treinamentos)'] },
     
-    // 👇 A MÁGICA DE HOJE: Pastas, Módulos, Provas e Tarefas no Painel Admin!
     'treinamentos': { 
         titulo: 'Material de Ensino', 
         campos: ['Título da Atividade', 'Pasta / Módulo', 'Tipo (Vídeo, PDF, Tarefa, Prova)', 'Link do Material (Se houver)', 'Enunciado ou Perguntas (Provas/Tarefas)', 'Para quais Setores?', 'Pontos Valendo'], 
-        campoAgrupador: 'Pasta / Módulo', // ISSO AQUI CRIA AS PASTAS AUTOMATICAMENTE!
+        campoAgrupador: 'Pasta / Módulo', 
         icone: 'ri-book-read-fill' 
     },
 
@@ -1061,8 +1060,6 @@ window.carregarConfiguracoes = function() {
     });
 };
 
-// ================== CHATBOT LÓGICA AVANÇADA (DICAS E BOLETINS) ==================
-
 window.toggleChat = function() {
     const win = document.getElementById('chat-window');
     const fab = document.getElementById('chat-fab');
@@ -1255,7 +1252,7 @@ window.processarLogicaDoBot = function(mensagemUser) {
 };
 
 // ==========================================
-// 6. LÓGICA DA JORNADA DE APRENDIZADO (ENSINO)
+// 6. LÓGICA DA JORNADA DE APRENDIZADO (ENSINO) - FASE 3
 // ==========================================
 
 window.sairPortalAluno = function() {
@@ -1264,6 +1261,60 @@ window.sairPortalAluno = function() {
     document.getElementById('ensino-login-area').style.display = 'block';
     document.getElementById('login-aluno-pin').value = '';
 };
+
+// 💡 CONSTRUTOR DINÂMICO DOS MODAIS DO ALUNO (Protege o seu HTML!)
+if (!document.getElementById('modal-resposta-aluno')) {
+    const modalDiv = document.createElement('div');
+    modalDiv.id = 'modal-resposta-aluno';
+    modalDiv.className = 'modal-overlay';
+    modalDiv.style.display = 'none';
+    modalDiv.style.zIndex = '10001';
+    modalDiv.innerHTML = `
+        <div class="modal-box glass-effect" style="max-width: 600px; max-height: 90vh; display:flex; flex-direction:column;">
+            <header class="modal-header">
+                <h3 id="resposta-titulo">Responder Atividade</h3>
+                <button onclick="document.getElementById('modal-resposta-aluno').style.display='none'" class="btn-icon"><i class="ri-close-line"></i></button>
+            </header>
+            <div class="modal-body" style="overflow-y: auto; flex:1;">
+                <div style="background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px;">
+                    <strong>Enunciado/Perguntas:</strong><br>
+                    <span id="resposta-enunciado" style="white-space: pre-wrap; display:block; margin-top:5px;"></span>
+                </div>
+                <label style="font-size:13px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:8px;">Sua Resposta:</label>
+                <textarea id="resposta-texto" class="form-input" style="height: 150px; resize: vertical;" placeholder="Digite sua resposta aqui..."></textarea>
+                <input type="hidden" id="resposta-docid">
+            </div>
+            <button onclick="window.enviarRespostaTreinamento()" class="btn-hover color-11" style="width: 100%; margin-top: 15px; background: #3182ce; color:white; border:none;"><i class="ri-send-plane-fill"></i> Enviar Resposta para Correção</button>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+}
+
+if (!document.getElementById('modal-feedback-aluno')) {
+    const fbDiv = document.createElement('div');
+    fbDiv.id = 'modal-feedback-aluno';
+    fbDiv.className = 'modal-overlay';
+    fbDiv.style.display = 'none';
+    fbDiv.style.zIndex = '10002';
+    fbDiv.innerHTML = `
+        <div class="modal-box glass-effect" style="max-width: 500px;">
+            <header class="modal-header">
+                <h3>Feedback do Supervisor</h3>
+                <button onclick="document.getElementById('modal-feedback-aluno').style.display='none'" class="btn-icon"><i class="ri-close-line"></i></button>
+            </header>
+            <div class="modal-body">
+                <div style="text-align:center; margin-bottom:15px;">
+                    <div style="font-size:40px; color:#38a169;"><i class="ri-award-fill"></i></div>
+                    <h2 style="color:var(--primary-color);">Nota: <span id="feedback-nota"></span></h2>
+                </div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; font-size: 14px; color: var(--text-main); border-left: 4px solid var(--primary-color);">
+                    <span id="feedback-texto" style="white-space: pre-wrap;"></span>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(fbDiv);
+}
 
 window.renderizarTrilhaAluno = function() {
     if(!window.alunoLogado) return;
@@ -1289,16 +1340,57 @@ window.renderizarTrilhaAluno = function() {
     treinamentosAluno.forEach(item => {
         const d = item.data;
         const docId = item.id;
+        
+        // 1. Verifica se é Prova/Tarefa e se o aluno já respondeu
+        const respostas = d.respostas_alunos || [];
+        let minhaResposta = null;
+        respostas.forEach(r => {
+            try { 
+                let obj = JSON.parse(r); 
+                if(obj.nome === nomeAluno) minhaResposta = obj;
+            } catch(e){}
+        });
+
+        // 2. Verifica se é Vídeo/PDF e se o aluno já leu
         const concluidos = d.leituras || [];
-        const jaFez = concluidos.some(txt => txt.startsWith(nomeAluno));
+        const jaLeu = concluidos.some(txt => txt.startsWith(nomeAluno));
+
+        const tipo = d['Tipo (Vídeo, PDF, Tarefa, Prova)'] || 'Vídeo';
+        const precisaResponder = tipo.includes('Tarefa') || tipo.includes('Prova');
         const pontosItem = parseInt(d['Pontos Valendo']) || 0;
+        
+        let jaFez = false;
+        let statusTexto = 'Pendente';
+        let corStatus = '#e53e3e';
+        let iconeStatus = 'ri-time-line';
 
-        if(jaFez) pontos += pontosItem;
-        else pendentes++;
-
-        const corStatus = jaFez ? '#38a169' : '#e53e3e';
-        const iconeStatus = jaFez ? 'ri-checkbox-circle-fill' : 'ri-time-line';
-        const textoStatus = jaFez ? 'Concluído' : 'Pendente';
+        if(precisaResponder) {
+            if(minhaResposta) {
+                jaFez = true;
+                if(minhaResposta.nota && minhaResposta.nota !== "") {
+                    statusTexto = `Corrigido (Nota: ${minhaResposta.nota})`;
+                    corStatus = '#38a169';
+                    iconeStatus = 'ri-award-fill';
+                    pontos += parseInt(minhaResposta.nota) || 0; 
+                } else {
+                    statusTexto = 'Aguardando Correção';
+                    corStatus = '#ecc94b'; 
+                    iconeStatus = 'ri-hourglass-line';
+                }
+            } else {
+                pendentes++;
+            }
+        } else {
+            if(jaLeu) {
+                jaFez = true;
+                statusTexto = 'Concluído';
+                corStatus = '#38a169';
+                iconeStatus = 'ri-check-double-line';
+                pontos += pontosItem;
+            } else {
+                pendentes++;
+            }
+        }
 
         let btnAcao = '';
         if(d['Link do Material (Se houver)']) {
@@ -1306,16 +1398,23 @@ window.renderizarTrilhaAluno = function() {
         }
 
         if(!jaFez) {
-            btnAcao += `<button onclick="window.concluirTreinamento('${docId}')" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #38a169; color:white; border:none;"><i class="ri-check-double-line"></i> Marcar como Concluído</button>`;
+            if(precisaResponder) {
+                const enunciado = d['Enunciado ou Perguntas (Provas/Tarefas)'] || 'Sem enunciado.';
+                btnAcao += `<button onclick="window.abrirModalResposta('${docId}', \`${enunciado.replace(/'/g, "&apos;").replace(/"/g, "&quot;")}\`)" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #3182ce; color:white; border:none;"><i class="ri-pencil-fill"></i> Responder Atividade</button>`;
+            } else {
+                btnAcao += `<button onclick="window.concluirTreinamento('${docId}')" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #38a169; color:white; border:none;"><i class="ri-check-double-line"></i> Marcar como LIDO</button>`;
+            }
+        } else if (precisaResponder && minhaResposta && minhaResposta.nota !== "") {
+            btnAcao += `<button onclick="window.verFeedback('${minhaResposta.nota}', \`${(minhaResposta.feedback || 'Sem comentários.').replace(/'/g, "&apos;")}\`)" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; margin-top:8px;"><i class="ri-message-3-line"></i> Ver Correção</button>`;
         }
 
         let cardHtml = `
             <div class="card" style="border: 2px solid ${corStatus}; display:flex; flex-direction:column; background: white; border-radius: 10px; padding: 15px;">
-                <div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px; color: var(--primary-color);"><i class="ri-book-open-line"></i> MÓDULO: ${d['Pasta / Módulo']} | TIPO: ${d['Tipo (Vídeo, PDF, Tarefa, Prova)']}</div>
+                <div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px; color: var(--primary-color);"><i class="ri-book-open-line"></i> MÓDULO: ${d['Pasta / Módulo']} | TIPO: ${tipo}</div>
                 <div style="font-size:16px; font-weight:600; margin-bottom:10px; line-height: 1.2;">${d['Título da Atividade']}</div>
                 <div style="font-size:12px; color:var(--text-muted); margin-bottom:15px; flex:1;">
-                    <b>Pontos Valendo:</b> <span style="color:#e75516; font-weight:700;">+${pontosItem} XP</span><br>
-                    <b>Status:</b> <span style="color:${corStatus}; font-weight:600;"><i class="${iconeStatus}"></i> ${textoStatus}</span>
+                    <b>Pontos Base:</b> <span style="color:#e75516; font-weight:700;">+${pontosItem} XP</span><br>
+                    <b>Status:</b> <span style="color:${corStatus}; font-weight:600;"><i class="${iconeStatus}"></i> ${statusTexto}</span>
                 </div>
                 ${btnAcao}
             </div>
@@ -1337,35 +1436,51 @@ window.concluirTreinamento = async function(docId) {
     const registro = `${nomeAluno} (Concluído em: ${new Date().toLocaleString('pt-BR')})`;
     try {
         await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { leituras: window.arrayUnion(registro) });
-        alert("Treinamento concluído com sucesso! +XP 🎉");
+        alert("Material concluído com sucesso! +XP 🎉");
     } catch(e) {
         alert("Erro ao salvar: " + e.message);
     }
 };
 
-window.entrarPortalAluno = function() {
-    const nomeDigitado = document.getElementById('login-aluno-nome').value.trim().toLowerCase();
-    const pinDigitado = document.getElementById('login-aluno-pin').value.trim();
+window.abrirModalResposta = function(docId, enunciado) {
+    document.getElementById('resposta-docid').value = docId;
+    document.getElementById('resposta-enunciado').textContent = enunciado;
+    document.getElementById('resposta-texto').value = '';
+    document.getElementById('modal-resposta-aluno').style.display = 'flex';
+};
 
-    if(!nomeDigitado || !pinDigitado) return alert("Preencha Nome e PIN!");
+window.enviarRespostaTreinamento = async function() {
+    if(!window.alunoLogado) return;
+    const docId = document.getElementById('resposta-docid').value;
+    const respostaTexto = document.getElementById('resposta-texto').value.trim();
+    const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
 
-    const dadosColaboradores = window.todosOsDadosDoSistema['colaboradores'] || [];
-    
-    const colaboradorEncontrado = dadosColaboradores.find(item => {
-        const nomeBanco = String(item.data['Nome Completo do Colaborador'] || "").toLowerCase();
-        const pinBanco = String(item.data['PIN de Acesso (Treinamentos)'] || "");
-        return nomeBanco === nomeDigitado && pinBanco === pinDigitado;
-    });
+    if(!respostaTexto) return alert("Digite sua resposta antes de enviar!");
 
-    if(colaboradorEncontrado) {
-        window.alunoLogado = colaboradorEncontrado.data;
-        document.getElementById('ensino-login-area').style.display = 'none';
-        document.getElementById('ensino-dashboard-area').style.display = 'block';
-        document.getElementById('nome-aluno-logado').textContent = window.alunoLogado['Nome Completo do Colaborador'];
+    const respostaObj = {
+        nome: nomeAluno,
+        data: new Date().toLocaleString('pt-BR'),
+        resposta: respostaTexto,
+        nota: "",
+        feedback: ""
+    };
+
+    try {
+        await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { 
+            respostas_alunos: window.arrayUnion(JSON.stringify(respostaObj)) 
+        });
+        alert("Sua resposta foi enviada para correção do supervisor! 🚀");
+        document.getElementById('modal-resposta-aluno').style.display = 'none';
         window.renderizarTrilhaAluno(); 
-    } else {
-        alert("Nome ou PIN incorretos. Verifique com a Gestão.");
+    } catch(e) {
+        alert("Erro ao enviar resposta: " + e.message);
     }
+};
+
+window.verFeedback = function(nota, feedback) {
+    document.getElementById('feedback-nota').textContent = nota;
+    document.getElementById('feedback-texto').textContent = feedback;
+    document.getElementById('modal-feedback-aluno').style.display = 'flex';
 };
 
 // ==========================================
