@@ -8,9 +8,13 @@ window.addEventListener('submit', function(e) {
 // ==========================================
 // 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 // ==========================================
+// ==========================================
+// 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+// ==========================================
 const configuracaoAbas = {
-    // Substitua apenas a linha 'colaboradores' dentro de configuracaoAbas
-    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica', 'PIN de Acesso (Treinamentos)'], campoAgrupador: 'Setor da Clínica', icone: 'ri-user-smile-line' },
+    // 👇 AQUI ESTÁ A CORREÇÃO: Tiramos a regra de pastas, mas mantivemos o campo de PIN!
+    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica', 'PIN de Acesso (Treinamentos)'] },
+    
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'], campoAgrupador: 'Especialidade', icone: 'ri-team-fill' }, 
     'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Código', 'Serviço', 'Aceita o Servico?', 'Observações'], campoAgrupador: 'Convênio', icone: 'ri-shield-cross-fill' },
     'ultrassom': { titulo: 'Exame de Ultrassom', campos: ['Exame', 'Código', 'Profissional', 'Restrição de Idade', 'Observação'], campoAgrupador: 'Exame', icone: 'ri-pulse-line' },
