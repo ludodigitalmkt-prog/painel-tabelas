@@ -9,7 +9,8 @@ window.addEventListener('submit', function(e) {
 // 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 // ==========================================
 const configuracaoAbas = {
-    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica'] },
+    // Substitua apenas a linha 'colaboradores' dentro de configuracaoAbas
+    'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica', 'PIN de Acesso (Treinamentos)'], campoAgrupador: 'Setor da Clínica', icone: 'ri-user-smile-line' },
     'corpo-clinico': { titulo: 'Médico', campos: ['Nome do Médico', 'Segmento', 'Especialidade', 'Unimed', 'CRM', 'CBO', 'URA', 'Exibir Logo do Convenio', 'Link da Foto do Profissional'], campoAgrupador: 'Especialidade', icone: 'ri-team-fill' }, 
     'convenios': { titulo: 'Convênio', campos: ['Convênio', 'Código', 'Serviço', 'Aceita o Servico?', 'Observações'], campoAgrupador: 'Convênio', icone: 'ri-shield-cross-fill' },
     'ultrassom': { titulo: 'Exame de Ultrassom', campos: ['Exame', 'Código', 'Profissional', 'Restrição de Idade', 'Observação'], campoAgrupador: 'Exame', icone: 'ri-pulse-line' },
@@ -1412,3 +1413,27 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+// COLE NO FINAL DO SEU app.js
+window.entrarPortalAluno = function() {
+    const nomeDigitado = document.getElementById('login-aluno-nome').value.trim().toLowerCase();
+    const pinDigitado = document.getElementById('login-aluno-pin').value.trim();
+
+    if(!nomeDigitado || !pinDigitado) return alert("Preencha Nome e PIN!");
+
+    // Procura na lista global que o sistema já carrega automaticamente!
+    const dadosColaboradores = window.todosOsDadosDoSistema['colaboradores'] || [];
+    
+    const colaboradorEncontrado = dadosColaboradores.find(item => {
+        const nomeBanco = (item.data['Nome Completo do Colaborador'] || "").toLowerCase();
+        const pinBanco = item.data['PIN de Acesso (Treinamentos)'] || "";
+        return nomeBanco === nomeDigitado && pinBanco === pinDigitado;
+    });
+
+    if(colaboradorEncontrado) {
+        document.getElementById('ensino-login-area').style.display = 'none';
+        document.getElementById('ensino-dashboard-area').style.display = 'block';
+        document.getElementById('nome-aluno-logado').textContent = colaboradorEncontrado.data['Nome Completo do Colaborador'];
+    } else {
+        alert("Nome ou PIN incorretos. Verifique com a Gestão.");
+    }
+};
