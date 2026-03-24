@@ -1061,8 +1061,26 @@ window.renderizarListaPrivados = function() {
     });
 };
 
+
+window.obterGridColecao = function(colecaoNome) {
+    let grid = document.getElementById(`grid-${colecaoNome}`) || document.getElementById(`grid-${colecaoNome}-list`);
+    if (grid) return grid;
+
+    const tab = document.getElementById(`tab-${colecaoNome}`);
+    if (!tab) return null;
+
+    grid = tab.querySelector(`#grid-${colecaoNome}`) || tab.querySelector(`#grid-${colecaoNome}-list`) || tab.querySelector('.cards-grid');
+    if (grid) return grid;
+
+    const novoGrid = document.createElement('div');
+    novoGrid.id = `grid-${colecaoNome}`;
+    novoGrid.className = 'cards-grid';
+    tab.appendChild(novoGrid);
+    return novoGrid;
+};
+
 window.renderizarCards = function(colecaoNome) {
-    const grid = document.getElementById(`grid-${colecaoNome}`);
+    const grid = window.obterGridColecao(colecaoNome);
     if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
 
     onSnapshot(collection(db, colecaoNome), (snapshot) => {
