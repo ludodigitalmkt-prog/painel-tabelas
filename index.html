@@ -92,6 +92,21 @@
 
                 <div id="area-alertas-home"></div>
 
+                <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: var(--shadow-soft); margin-top: 20px; margin-bottom: 20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                        <h3 style="color:var(--primary-color); margin:0;"><i class="ri-bar-chart-box-fill"></i> Visão Geral (Boletins da Clínica)</h3>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="date" id="home-data-inicio" class="form-input" style="width:130px; height:35px; margin:0;">
+                            <span style="font-size:12px; color:var(--text-muted);">até</span>
+                            <input type="date" id="home-data-fim" class="form-input" style="width:130px; height:35px; margin:0;">
+                            <button onclick="window.renderizarGraficoHome()" class="btn-hover color-5" style="height:35px; padding:0 15px; font-size:12px;"><i class="ri-filter-3-line"></i> Filtrar</button>
+                        </div>
+                    </div>
+                    <div style="height: 300px;">
+                        <canvas id="chart-home"></canvas>
+                    </div>
+                </div>
+
                 <h2 style="margin-bottom: 20px; font-weight: 500; color: var(--text-muted); margin-top: 10px;">Acesso Rápido</h2>
                 <div class="home-grid">
                     <div class="shortcut-card" onclick="window.irParaAba('boletins')"><div class="shortcut-icon"><i class="ri-alarm-warning-line"></i></div><div class="shortcut-title">Boletins Gerais</div></div>
@@ -312,6 +327,21 @@
 
             <section id="tab-boletins-privados" class="tab-content" style="display: none;">
                 <div id="privados-view-folders">
+                    <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: var(--shadow-soft); margin-bottom: 25px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+                            <h3 style="color:var(--primary-color); margin:0;"><i class="ri-bar-chart-box-fill"></i> Visão Geral (Problemas Individuais)</h3>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <input type="date" id="privado-data-inicio" class="form-input" style="width:130px; height:35px; margin:0;">
+                                <span style="font-size:12px; color:var(--text-muted);">até</span>
+                                <input type="date" id="privado-data-fim" class="form-input" style="width:130px; height:35px; margin:0;">
+                                <button onclick="window.renderizarGraficoPrivadosGeral()" class="btn-hover color-5" style="height:35px; padding:0 15px; font-size:12px;"><i class="ri-filter-3-line"></i> Filtrar</button>
+                            </div>
+                        </div>
+                        <div style="height: 300px;">
+                            <canvas id="chart-privados-geral"></canvas>
+                        </div>
+                    </div>
+
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <p style="color: var(--text-muted);">Pastas Individuais dos Colaboradores.</p>
                         <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')" style="display:none;"><i class="ri-add-line"></i> Novo Doc Privado</button>
