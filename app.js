@@ -316,16 +316,47 @@ window.fecharPastaPrivado = function() {
     window.renderizarPastasPrivados();
 };
 
+// 🎨 GRÁFICO COLORIDO AQUI!
 window.atualizarGrafico = function(canvasId, refInstancia, dados, labelGrafico) {
     const ctx = document.getElementById(canvasId);
     if(!ctx) return refInstancia;
     const contagemMotivos = {};
     dados.forEach(b => { const m = b.data['Motivo'] || 'Sem Motivo'; contagemMotivos[m] = (contagemMotivos[m] || 0) + 1; });
+    
+    // Paleta de Cores Moderna e Vibrante
+    const paletaGrafico = [
+        '#3182ce', // Azul
+        '#38a169', // Verde
+        '#ecc94b', // Amarelo
+        '#e53e3e', // Vermelho
+        '#805ad5', // Roxo
+        '#38b2ac', // Turquesa
+        '#dd6b20', // Laranja
+        '#ed64a6', // Rosa
+        '#4a5568', // Cinza
+        '#667eea', // Lilás
+        '#48bb78', // Verde Claro
+        '#ed8936'  // Laranja Claro
+    ];
+
     if(refInstancia) refInstancia.destroy(); 
     return new Chart(ctx, {
         type: 'bar',
-        data: { labels: Object.keys(contagemMotivos), datasets: [{ label: labelGrafico, data: Object.values(contagemMotivos), backgroundColor: '#8B252C', borderRadius: 5 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        data: { 
+            labels: Object.keys(contagemMotivos), 
+            datasets: [{ 
+                label: labelGrafico, 
+                data: Object.values(contagemMotivos), 
+                backgroundColor: paletaGrafico, 
+                borderRadius: 5 
+            }] 
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { display: false } }, 
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
+        }
     });
 };
 
@@ -903,7 +934,6 @@ window.carregarConfiguracoes = function() {
                 if(el) el.value = data[dataKeys[idx]] || '';
             });
 
-            // CHATBOT SETTINGS
             const chatLogo = data.chat_logo || "https://cdn-icons-png.flaticon.com/512/8943/8943377.png";
             const chatCor = data.chat_cor || "#0ba360";
             
@@ -949,7 +979,6 @@ window.toggleChat = function() {
         const tooltip = fab.querySelector('.chatbot-tooltip');
         if(tooltip) tooltip.style.display = 'none';
 
-        // 1. SORTEIO DAS PESQUISAS RÁPIDAS
         const termosPopulares = ['Cardiologia', 'Ultrassom', 'Unimed', 'Raio-X', 'Pediatria', 'Ortopedia', 'Consulta', 'Boletim'];
         termosPopulares.sort(() => 0.5 - Math.random());
         const top3 = termosPopulares.slice(0, 3);
@@ -1002,7 +1031,6 @@ window.addChatBubble = function(text, sender) {
     chatArea.scrollTop = chatArea.scrollHeight;
 };
 
-// 3. O BOTÃO DE SIM OU NÃO
 window.handleChatFollowUp = function(resposta, btnElement) {
     if(btnElement && btnElement.parentElement) {
         btnElement.parentElement.innerHTML = `<span style="color: var(--text-muted); font-size: 11px;">Opção selecionada: ${resposta === 'sim' ? 'Sim' : 'Não'}</span>`;
@@ -1052,7 +1080,6 @@ window.processarLogicaDoBot = function(mensagemUser) {
                 matches = true;
             }
 
-            // 4. BUSCA PROFUNDA NOS BOLETINS
             if(colecao === 'boletins' && (
                 String(item.data['Título do Informativo'] || '').toLowerCase().includes(texto) ||
                 String(item.data['Motivo'] || '').toLowerCase().includes(texto) ||
@@ -1110,7 +1137,6 @@ window.processarLogicaDoBot = function(mensagemUser) {
             respostaFormatada += `<div style="text-align:center; font-size:11px; color:var(--text-muted); margin-top:5px;">+${resultadosEncontrados.length - 3} resultados ocultos.</div><br>`;
         }
 
-        // 2. DICAS INTELIGENTES
         const dicas = [
             "Você sabia que pode pesquisar por nomes de médicos específicos ou especialidades (ex: Ortopedia)?",
             "Dica: Se o paciente precisar de exames, tente pesquisar por 'Ultrassom' ou 'Raio-X'.",
@@ -1120,7 +1146,6 @@ window.processarLogicaDoBot = function(mensagemUser) {
         const dicaAleatoria = dicas[Math.floor(Math.random() * dicas.length)];
         respostaFormatada += `<div style="background: #e2e8f0; padding: 10px; border-radius: 8px; font-size: 11px; margin-top: 10px; border-left: 3px solid var(--primary-color);">💡 <b>Dica:</b> ${dicaAleatoria}</div>`;
 
-        // 3. A PERGUNTA "PRECISA DE ALGO MAIS?" (Botão Sim ou Não)
         respostaFormatada += `<div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 10px; text-align: center;">
             <p style="margin-bottom: 8px; font-weight: 600;">Precisa de algo mais?</p>
             <div style="display: flex; gap: 10px; justify-content: center;">
