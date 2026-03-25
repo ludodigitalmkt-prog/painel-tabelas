@@ -849,7 +849,7 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     if(isDark && colecaoNome !== 'ramais') cardClasses.push('has-gradient');
     if(cardRecolhivel) cardClasses.push('card-collapsible');
 
-    let cardHtml = `<div class="${cardClasses.join(' ')}" data-colecao="${colecaoNome}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border-left: 6px solid var(--primary-color);">`;
+   let cardHtml = `<div class="${cardClasses.join(' ')}" data-colecao="${colecaoNome}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; height: auto; min-height: unset; align-self: start; border-left: 6px solid var(--primary-color);">`;
     cardHtml += `<div class="card-premium-glow"></div>`;
     cardHtml += `<div class="card-summary" ${cardRecolhivel ? 'role="button" tabindex="0"' : ''}>`;
     cardHtml += `<div class="card-summary-main"><div class="card-title">${tituloDesteCard}</div>${badgeValorHtml || ''}</div>`;
