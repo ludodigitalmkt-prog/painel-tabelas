@@ -449,7 +449,28 @@ textarea.form-input { min-height:110px; resize:vertical; }
     .card-summary-main { flex-direction: column; }
     .card-toggle { align-self: flex-start; }
 }
+.cards-grid {
+  align-items: start !important;
+}
 
+.cards-grid > .card,
+.cards-grid > .card.card-collapsible {
+  align-self: start !important;
+  height: auto !important;
+}
+
+.card-collapsible {
+  height: auto !important;
+}
+
+.card-collapsible:not(.expanded) {
+  max-height: fit-content;
+}
+
+.card-collapsible:not(.expanded) .card-details {
+  max-height: 0;
+  overflow: hidden;
+}
 
 /* ===== RH & PEOPLE ANALYTICS INTEGRADO ===== */
 /* RH & People Analytics */
@@ -549,112 +570,42 @@ textarea.form-input { min-height:110px; resize:vertical; }
   .rh-collab-grid { grid-template-columns:1fr; }
 }
 
-/* ===== PATCH LEVE DOS CARDS RECOLHÍVEIS ===== */
-.cards-grid {
-  align-items: start !important;
-}
-
-.cards-grid > .card,
-.cards-grid > .card.card-collapsible {
-  align-self: start !important;
-  height: auto !important;
-  min-height: unset !important;
-}
-
-.card.card-collapsible {
-  padding: 18px !important;
-  height: auto !important;
-  min-height: unset !important;
-  align-self: start !important;
-}
-
-.card.card-collapsible:hover {
-  transform: none !important;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.05) !important;
-}
-
-.card-summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.card-summary-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  flex: 1;
-}
-
+/* ===== PATCH VISUAL LEVE ===== */
+.card-premium-glow,
 .card-toggle {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.28);
-  background: rgba(255,255,255,0.16);
-  color: inherit;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background .18s ease, border-color .18s ease, opacity .18s ease;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
+  display: none !important;
 }
 
-.card:not(.has-gradient) .card-toggle {
-  background: #f8fafc;
-  border-color: var(--border-color);
+.card-collapsible,
+.card-premium,
+.card {
+  transform: none !important;
+  transition: box-shadow .15s ease, border-color .15s ease !important;
 }
 
-.card-toggle:hover {
-  background: rgba(255,255,255,0.28);
-}
-
-.card-toggle i {
-  font-size: 20px;
-  transition: none !important;
-}
-
-.card-collapsible {
+.card-collapsible:hover,
+.card-premium:hover,
+.card:hover {
   transform: none !important;
 }
 
-.card-collapsible.expanded {
-  transform: none !important;
-  box-shadow: 0 8px 22px rgba(15,23,42,0.08) !important;
+.card-collapsible .card-summary {
+  display: block !important;
+  cursor: default !important;
 }
 
 .card-collapsible .card-details {
-  display: none;
+  display: block !important;
   max-height: none !important;
   opacity: 1 !important;
   overflow: visible !important;
-  transform: none !important;
-  margin-top: 14px;
-  transition: none !important;
+  margin-top: 0 !important;
 }
 
-.card-collapsible.expanded .card-details {
-  display: block;
+#tab-home .weather-widget {
+  margin-top: 18px;
 }
 
-.card-collapsible.expanded .card-toggle i {
-  transform: none !important;
-}
-
-.card-collapsible .card-actions {
-  margin-top: 14px;
-}
-
-@media (max-width: 768px) {
-  .card-summary-main {
-    flex-direction: column;
-  }
-  .card-toggle {
-    align-self: flex-start;
-  }
+#tab-home .home-banner {
+  margin-top: 18px;
 }
