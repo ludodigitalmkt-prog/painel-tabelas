@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tabelas-app-v1';
+const CACHE_NAME = 'tabelas-app-v2';
 
 // Ficheiros que queremos guardar no dispositivo
 const urlsToCache = [
@@ -19,15 +19,32 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting();
 });
 
-// Interceptar as requisições (Buscar no cache se a net cair)
+// Ativa o novo Service Worker imediatamente e limpa caches antigos
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => Promise.all(
+      cacheNames
+        .filter(cacheName => cacheName !== CACHE_NAME)
+        .map(cacheName => caches.delete(cacheName))
+    ))
+  );
+  self.clients.claim();
+});
+
+// Estratégia: rede primeiro para arquivos do app (evita servir JS antigo)
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Retorna o que está no cache, se não encontrar, vai buscar à internet
-        return response || fetch(event.request);
+    fetch(event.request)
+      .then(networkResponse => {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        return networkResponse;
       })
+      .catch(() => caches.match(event.request))
   );
 });
