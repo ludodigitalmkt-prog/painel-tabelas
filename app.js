@@ -55,7 +55,16 @@ const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { localCache: persistentLocalCache() });
 const auth = getAuth(app);
 
-window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot;
+window.db = db;
+window.updateDoc = updateDoc;
+window.doc = doc;
+window.arrayUnion = arrayUnion;
+window.arrayRemove = arrayRemove;
+window.addDoc = addDoc;
+window.collection = collection;
+window.deleteDoc = deleteDoc;
+window.onSnapshot = onSnapshot;
+window.setDoc = setDoc;
 
 let isAdmin = false; let abaAtual = 'home'; const EMAIL_GESTAO = "gestao@clinica.com";
 
@@ -1257,15 +1266,27 @@ window.addEventListener('DOMContentLoaded', () => {
             
             btnSalvarAjustes.innerHTML = "Salvando...";
             try {
-                await window.setDoc(window.doc(window.db, "configuracoes", "gerais"), { 
-                    banner_texto: texto, locais: locaisTexto, setores: setoresTexto, especialidades: especialidadesTexto, motivos: motivosTexto, 
-                    cor_pendente: corPend, cor_concluido: corConc, imagem_padrao_pastas: imgPastasTexto, chat_logo: chatLogoTexto, chat_cor: chatCorVal
-                });
-                alert("Configurações salvas com sucesso!");
-            } catch(e) { alert("Erro ao salvar configurações."); }
-            btnSalvarAjustes.innerHTML = 'Salvar Alterações';
-        });
-    }
+               await window.setDoc(
+    window.doc(window.db, "configuracoes", "gerais"),
+    {
+        banner_texto: texto,
+        locais: locaisTexto,
+        setores: setoresTexto,
+        especialidades: especialidadesTexto,
+        motivos: motivosTexto,
+        cor_pendente: corPend,
+        cor_concluido: corConc,
+        imagem_padrao_pastas: imgPastasTexto,
+        chat_logo: chatLogoTexto,
+        chat_cor: chatCorVal
+    },
+    { merge: true }
+);
+alert("Configurações salvas com sucesso!");
+} catch(e) {
+    console.error("Erro ao salvar configurações:", e);
+    alert("Erro ao salvar configurações: " + e.message);
+}
 
     const inputPesqGlobal = document.getElementById('input-pesquisa-global');
     if(inputPesqGlobal) {
