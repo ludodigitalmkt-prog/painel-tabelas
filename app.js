@@ -326,8 +326,9 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
     document.getElementById('modal-form-area').innerHTML = htmlCampos;
     document.getElementById('btn-salvar-dados').setAttribute('data-colecao', colecao);
     document.getElementById('modal-cadastro').style.display = 'flex';
+};
 
-   window.gerarHTMLCard = function(colecaoNome, docId, data) {
+window.gerarHTMLCard = function(colecaoNome, docId, data) {
     const config = configuracaoAbas[colecaoNome]; if(!config) return '';
     let campoTitulo = config.campos[0]; if(config.campoAgrupador) campoTitulo = config.campos.find(c => c !== config.campoAgrupador) || config.campos[0];
     
@@ -398,47 +399,7 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
     if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
     cardHtml += `</div>`; return cardHtml;
 };
-    // 👇 O ID DO CARD AQUI PERMITE O EFEITO "PISCAR" DO CHATBOT 👇
-    let cardHtml = `<div class="card ${cardClass}" id="card-${docId}" style="position: relative; display:flex; flex-direction:column; background: ${corSalva}; min-height: 100%; border-left: 6px solid var(--primary-color);">`;
-    
-    if(config.campoAgrupador) cardHtml += `<div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px; color: var(--text-main);"><i class="${config.icone || 'ri-folder-line'}"></i> PASTA/MÓDULO: ${data[config.campoAgrupador] || 'Geral'}</div>`;
-    cardHtml += `<div style="font-size:18px; font-weight:600; line-height:1.2; margin-bottom:15px;">${tituloDesteCard}</div>`;
-    
-    let hasFlexLayout = (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']);
-    if(hasFlexLayout) {
-        cardHtml += `<div class="medico-wrapper">`;
-        if (colecaoNome === 'corpo-clinico' && data['Link da Foto do Profissional']) {
-            let fotoUrl = window.formatarLinkImagem(data['Link da Foto do Profissional']);
-            if(fotoUrl) cardHtml += `<img src="${fotoUrl}" class="medico-foto" onerror="this.style.display='none'">`;
-        }
-        cardHtml += `<div class="content-info-flex">`;
-    }
 
-    config.campos.forEach(chave => {
-        const valor = data[chave];
-        if (valor && chave !== config.campoAgrupador && chave !== campoTitulo && chave !== 'Configuração da Avaliação' && !String(chave).includes('Link') && chave !== 'PIN de Acesso (Treinamentos)') {
-            cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px;"><strong>${chave}:</strong> <span>${valor}</span></div>`; 
-        }
-    });
-
-    if(hasFlexLayout) cardHtml += `</div></div>`;
-
-    if(colecaoNome === 'colaboradores' && data['PIN de Acesso (Treinamentos)']) {
-         cardHtml += `<div style="margin-top:10px; background:rgba(0,0,0,0.05); padding:8px; border-radius:6px; font-size:12px; border: 1px dashed var(--border-color);"><strong>🔑 PIN de Acesso:</strong> ${data['PIN de Acesso (Treinamentos)']}</div>`;
-    }
-
-    if(colecaoNome === 'treinamentos' && isAdmin) {
-        const precisaResponder = data['Tipo (Vídeo, PDF, Tarefa, Prova)'] && (data['Tipo (Vídeo, PDF, Tarefa, Prova)'].includes('Tarefa') || data['Tipo (Vídeo, PDF, Tarefa, Prova)'].includes('Prova'));
-        const count = precisaResponder ? (data.respostas_alunos || []).length : (data.leituras || []).length;
-        cardHtml += `<div style="margin-top:15px; padding-top:15px; border-top: 1px dashed rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-size:12px; color:var(--primary-color);"><b>Conclusões:</b> ${count} aluno(s).</div>
-                        <button onclick="window.abrirListaLeituras('${docId}', 'treinamentos')" class="btn-hover color-8" style="padding: 6px 12px; font-size: 12px;"><i class="ri-team-line"></i> Respostas</button>
-                     </div>`;
-    }
-
-    if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-    cardHtml += `</div>`; return cardHtml;
-};
 
 window.renderizarListaGenerica = function(colecao) { const grid = document.getElementById(`grid-${colecao}-list`); if(!grid) return; grid.innerHTML = ''; const nomePasta = window[`pasta_${colecao}_Atual`]; const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => (i.data[configuracaoAbas[colecao].campoAgrupador] || 'Geral') === nomePasta); itensExibir.forEach(item => { grid.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data); }); };
 window.renderizarPastasGenericas = function(colecao) {
