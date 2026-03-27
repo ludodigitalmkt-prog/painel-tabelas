@@ -387,3 +387,8 @@ body[data-surface-style="pastel"] .card, body[data-surface-style="pastel"] .fold
 @keyframes floatLogo { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 @media (max-width: 980px) { .weather-shell { grid-template-columns: 1fr; } .weather-side { min-height: 320px; } .week-list { grid-template-columns: repeat(4, minmax(0,1fr)); } .frase-motivacional { max-width: 100%; text-align:left; margin-top:12px; } .home-top-bar { flex-direction:column; align-items:flex-start; } .theme-panel-grid { grid-template-columns: 1fr; } .intro-logo-wrap { flex-direction:column; text-align:center; } }
 @media (max-width: 768px) { .main-content { padding: 20px; } .weather-side { min-height: 280px; } }
+
+
+.weather-shell.has-custom-bg, .weather-widget.has-custom-bg { background-size: cover !important; background-position: center !important; }
+#modal-media { align-items:center; justify-content:center; }
+#modal-media .modal-box { overflow:hidden; }
