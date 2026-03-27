@@ -55,7 +55,7 @@ const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { localCache: persistentLocalCache() });
 const auth = getAuth(app);
 
-window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot;
+window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot; window.setDoc = setDoc;
 
 let isAdmin = false; let abaAtual = 'home'; const EMAIL_GESTAO = "gestao@clinica.com";
 
@@ -75,6 +75,50 @@ window.corStatusPendente = "#e53e3e"; window.corStatusConcluido = "#38a169";
 window.safeParseJSON = function(raw, fallback = null) { try { return JSON.parse(raw); } catch(e) { return fallback; } };
 window.escapeHTML = function(value = '') { return String(value).replace(/[&<>"']/g, chr => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[chr])); };
 window.extrairNomeRegistro = function(registro = '') { return String(registro).split(' (')[0].trim(); };
+
+window.abrirMidiaFlutuante = function(url = '') {
+    const link = String(url || '').trim();
+    if (!link) { alert('Link do material não informado.'); return; }
+    window.open(link, '_blank', 'noopener,noreferrer');
+};
+window.abrirMidaFlutuante = window.abrirMidiaFlutuante;
+
+window.confirmarAssinaturaLeitura = async function(docId, colecao) {
+    try {
+        const inputLeitor = document.getElementById(`leitor-${docId}`);
+        const nomeLeitor = inputLeitor ? String(inputLeitor.value || '').trim() : '';
+        if (!nomeLeitor) { alert('Selecione ou informe o colaborador para registrar a leitura.'); return; }
+
+        const base = colecao === 'boletins' ? (window.todosBoletinsData || []) : (window.todosPrivadosData || []);
+        const item = base.find(i => i.id === docId);
+        if (!item) { alert('Documento não encontrado.'); return; }
+
+        const leituras = Array.isArray(item.data?.leituras) ? item.data.leituras : [];
+        const jaExiste = leituras.some(reg => window.extrairNomeRegistro(reg) === nomeLeitor);
+        if (jaExiste) { alert('Essa leitura já foi registrada.'); return; }
+
+        const registro = `${nomeLeitor} (${new Date().toLocaleString('pt-BR')})`;
+        await window.updateDoc(window.doc(window.db, colecao, docId), { leituras: window.arrayUnion(registro) });
+
+        if (colecao === 'boletins') window.renderizarListaBoletins();
+        if (colecao === 'boletins-privados') window.renderizarListaPrivados();
+        if (typeof window.verificarUrgentesHome === 'function') window.verificarUrgentesHome();
+        alert('Assinatura registrada com sucesso!');
+    } catch (e) {
+        console.error('Erro ao registrar assinatura:', e);
+        alert('Erro ao registrar assinatura: ' + (e?.message || 'falha desconhecida'));
+    }
+};
+
+window.filtrarPorDataPublicacao = function(lista = [], dtInicio = '', dtFim = '') {
+    return (lista || []).filter(item => {
+        const d = String(item?.data?.['Data de Publicação'] || '').trim();
+        if (!d) return !dtInicio && !dtFim;
+        if (dtInicio && d < dtInicio) return false;
+        if (dtFim && d > dtFim) return false;
+        return true;
+    });
+};
 window.getSetoresRHDisponiveis = function() {
     const setFromConfig = Array.isArray(setoresGlobais) ? setoresGlobais.filter(Boolean) : [];
     const setFromPeople = listaColaboradoresGlobal.map(c => c.setor).filter(Boolean);
@@ -517,7 +561,7 @@ window.renderizarListaBoletins = function() {
                     const links = String(valor).split('\n').filter(l => l.trim() !== '');
                     if(links.length > 0) {
                         botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
-                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidiaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
                         botaoLinkHtml += `</div>`;
                     }
                 } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && String(chave).includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span style="font-weight: ${(isUrgente && String(chave).includes('Tipo')) ? '700' : '500'};">${valor}</span></div>`; }
@@ -557,8 +601,15 @@ window.renderizarPastasPrivados = function() {
 window.renderizarListaPrivados = function() {
     const grid = document.getElementById('grid-boletins-privados-list'); if(!grid) return; grid.innerHTML = '';
     const colabAtual = window.pastaPrivadoAtual;
-    const boletinsExibir = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === colabAtual);
+    const dtInicio = document.getElementById('privado-lista-data-inicio') ? document.getElementById('privado-lista-data-inicio').value : '';
+    const dtFim = document.getElementById('privado-lista-data-fim') ? document.getElementById('privado-lista-data-fim').value : '';
+    const boletinsBase = window.todosPrivadosData.filter(item => item.data['Para qual Colaborador?'] === colabAtual);
+    const boletinsExibir = window.filtrarPorDataPublicacao(boletinsBase, dtInicio, dtFim);
     if(typeof window.atualizarGrafico === 'function') chartPrivadosInst = window.atualizarGrafico('chart-privados', chartPrivadosInst, boletinsExibir, `Motivos de ${colabAtual}`);
+    if (boletinsExibir.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1; background:#fff; padding:18px; border-radius:14px; color:var(--text-muted); border:1px solid var(--border-color);">Nenhum informativo encontrado para esse colaborador no período selecionado.</div>';
+        return;
+    }
 
     const camposOrdem = configuracaoAbas['boletins-privados'].campos;
     boletinsExibir.forEach(item => {
@@ -580,7 +631,7 @@ window.renderizarListaPrivados = function() {
                     const links = String(valor).split('\n').filter(l => l.trim() !== '');
                     if(links.length > 0) {
                         botaoLinkHtml += `<div class="boletim-media" style="margin-top: 15px; display:flex; flex-direction:column; gap:5px;">`;
-                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
+                        links.forEach((lk, i) => { botaoLinkHtml += `<button onclick="window.abrirMidiaFlutuante('${lk.trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px;"><i class="ri-eye-line"></i> Acessar Material ${links.length > 1 ? i+1 : ''}</button>`; });
                         botaoLinkHtml += `</div>`;
                     }
                 } else { cardHtml += `<div class="card-info" style="font-size:13px; margin-bottom: 8px; line-height: 1.4; color: ${(isUrgente && String(chave).includes('Tipo')) ? '#e53e3e' : ''};"><strong>${chave}:</strong> <span>${valor}</span></div>`; }
@@ -888,7 +939,7 @@ window.renderizarTrilhaAluno = function() {
         }
 
         let btnAcao = '';
-        if(d['Link do Material (Se houver)']) btnAcao += `<button onclick="window.abrirMidaFlutuante('${String(d['Link do Material (Se houver)']).trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; margin-bottom: 8px;"><i class="ri-eye-line"></i> Acessar Material</button>`;
+        if(d['Link do Material (Se houver)']) btnAcao += `<button onclick="window.abrirMidiaFlutuante('${String(d['Link do Material (Se houver)']).trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; margin-bottom: 8px;"><i class="ri-eye-line"></i> Acessar Material</button>`;
 
         if(!jaFez) {
             if(precisaResponder) {
@@ -1689,9 +1740,21 @@ window.addEventListener('DOMContentLoaded', () => {
     const mainContent = document.querySelector('.main-content');
     if(mainContent) {
         mainContent.addEventListener('click', async (e) => {
-            const btnExcluir = e.target.closest('.btn-delete'); const btnEditar = e.target.closest('.btn-edit');
-            if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) await window.deleteDoc(window.doc(window.db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
-            if (btnEditar && isAdmin) window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+            const btnExcluir = e.target.closest('.btn-delete');
+            const btnEditar = e.target.closest('.btn-edit');
+            const btnAssinar = e.target.closest('.btn-assinar');
+
+            if (btnAssinar) {
+                await window.confirmarAssinaturaLeitura(btnAssinar.dataset.id, btnAssinar.dataset.colecao);
+                return;
+            }
+            if (btnExcluir && isAdmin && confirm("Excluir permanentemente?")) {
+                await window.deleteDoc(window.doc(window.db, btnExcluir.dataset.colecao, btnExcluir.dataset.id));
+                return;
+            }
+            if (btnEditar && isAdmin) {
+                window.abrirModal(btnEditar.dataset.colecao, btnEditar.dataset.id, JSON.parse(btnEditar.dataset.info));
+            }
         });
     }
 
@@ -1762,29 +1825,31 @@ window.addEventListener('DOMContentLoaded', () => {
             const texto = e.target.value.toLowerCase().trim();
             const areaRes = document.getElementById('resultados-globais');
             if(!areaRes) return;
-            if(texto.length < 2) { areaRes.style.display = 'none'; return; }
-            
-            areaRes.style.display = 'grid'; 
-            areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>';
+            if(texto.length < 2) { areaRes.style.display = 'none'; areaRes.innerHTML = ''; return; }
+
+            const colecoesBusca = ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores', 'ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'boletins', 'boletins-privados', 'treinamentos'];
+            const vistos = new Set();
+            let htmlResultados = '';
             let encontrou = false;
-            
-            ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores'].forEach(colecao => {
+
+            colecoesBusca.forEach(colecao => {
                 const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
                 itens.forEach(item => {
-                    if(Object.values(item.data).join(' ').toLowerCase().includes(texto)) { 
-                        areaRes.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data); 
-                        encontrou = true; 
+                    const textoItem = Object.values(item.data || {}).join(' ').toLowerCase();
+                    const chave = `${colecao}:${item.id}`;
+                    if(textoItem.includes(texto) && !vistos.has(chave)) {
+                        vistos.add(chave);
+                        htmlResultados += window.gerarHTMLCard(colecao, item.id, item.data);
+                        encontrou = true;
                     }
                 });
             });
-            if(!encontrou) areaRes.innerHTML += '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado no sistema.</p>';
+
+            areaRes.style.display = 'grid';
+            areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>' + (encontrou ? htmlResultados : '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado no sistema.</p>');
         });
     }
 
-    const rhFiltroSetor = document.getElementById('rh-filter-setor');
-    const rhFiltroColab = document.getElementById('rh-filter-colaborador');
-    if(rhFiltroSetor) rhFiltroSetor.addEventListener('change', window.aplicarFiltrosRH);
-    if(rhFiltroColab) rhFiltroColab.addEventListener('change', window.aplicarFiltrosRH);
 
     const inputPesqAba = document.getElementById('input-pesquisa');
     if(inputPesqAba) {
@@ -1796,6 +1861,22 @@ window.addEventListener('DOMContentLoaded', () => {
                 if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
                 else card.style.display = 'none';
             });
+        });
+    }
+
+
+    ['privado-lista-data-inicio', 'privado-lista-data-fim'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => window.renderizarListaPrivados());
+    });
+    const btnLimparFiltroPrivado = document.getElementById('btn-limpar-filtro-privado-lista');
+    if (btnLimparFiltroPrivado) {
+        btnLimparFiltroPrivado.addEventListener('click', () => {
+            const dtInicioPriv = document.getElementById('privado-lista-data-inicio');
+            const dtFimPriv = document.getElementById('privado-lista-data-fim');
+            if (dtInicioPriv) dtInicioPriv.value = '';
+            if (dtFimPriv) dtFimPriv.value = '';
+            window.renderizarListaPrivados();
         });
     }
 
@@ -1821,47 +1902,3 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-/* ===== PATCH HOME LEVE + SEM RECOLHÍVEL PESADO ===== */
-(() => {
-  function simplificarTelaInicial() {
-    const buscaGlobal = document.getElementById('input-pesquisa-global');
-    if (buscaGlobal) { const wrap = buscaGlobal.closest('.search-container'); if (wrap) wrap.remove(); }
-    const resultados = document.getElementById('resultados-globais'); if (resultados) resultados.remove();
-    const alertas = document.getElementById('area-alertas-home'); if (alertas) alertas.remove();
-    const chartHome = document.getElementById('chart-home');
-    if (chartHome) { const bloco = chartHome.closest('div[style*="height: 300px;"]')?.parentElement; if (bloco) bloco.remove(); }
-
-    const secoesHome = document.querySelectorAll('#tab-home > h2, #tab-home > .home-grid');
-    secoesHome.forEach(el => {
-      if (el.textContent && el.textContent.includes('Acesso Rápido')) el.remove();
-      else if (el.classList && el.classList.contains('home-grid')) el.remove();
-    });
-
-    document.querySelectorAll('.card-collapsible').forEach(card => {
-      card.classList.remove('expanded');
-      const details = card.querySelector('.card-details'); if (details) details.style.display = 'block';
-      const toggle = card.querySelector('.card-toggle'); if (toggle) toggle.remove();
-    });
-  }
-
-  window.toggleCardExpand = function(cardElOrBtn) {
-    const card = cardElOrBtn?.closest ? (cardElOrBtn.closest('.card-collapsible') || cardElOrBtn.closest('.card')) : null;
-    if (!card) return;
-    const details = card.querySelector('.card-details'); if (details) details.style.display = 'block';
-    const toggle = card.querySelector('.card-toggle'); if (toggle) toggle.remove();
-    card.classList.remove('expanded');
-  };
-
-  const oldIrParaAba = window.irParaAba;
-  if (typeof oldIrParaAba === 'function') {
-    window.irParaAba = function() { const out = oldIrParaAba.apply(this, arguments); setTimeout(simplificarTelaInicial, 30); return out; };
-  }
-
-  const oldRenderHomeGraph = window.renderizarGraficoHome;
-  if (typeof oldRenderHomeGraph === 'function') {
-    window.renderizarGraficoHome = function() { return null; };
-  }
-
-  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', simplificarTelaInicial); } 
-  else { simplificarTelaInicial(); }
-})();
