@@ -26,7 +26,7 @@ const configuracaoAbas = {
     'consultas': { titulo: 'Consulta / Procedimento', campos: ['Tipo', 'Código', 'Descrição', 'Valor', 'Profissionais que realizam (Opcional)', 'Observações'], campoAgrupador: 'Tipo', icone: 'ri-stethoscope-line' },
     'exames-imagem': { titulo: 'Exame de Imagem', campos: ['Categoria do Exame', 'Código', 'Descrição', 'Valor', 'Prazo de Laudo', 'Profissionais que realizam (Opcional)', 'Onde encontrar resultado', 'Observações', 'Convênios'], campoAgrupador: 'Categoria do Exame', icone: 'ri-body-scan-line' },
     
-    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que está incluso', 'Observações', 'Pacotes', 'Kit'] },
+    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que está incluso', 'Observações', 'Pacotes', 'Kit'], campoAgrupador: 'Pacotes', icone: 'ri-first-aid-kit-line' },
     'institutos': { titulo: 'Instituto Tabela', campos: ['Número da Tabela', 'Valor da Tabela', 'Profissional', 'Especialidade', 'Restrição de Idade', 'CRM', 'CBO', 'URA', 'Outros'], campoAgrupador: 'Número da Tabela', icone: 'ri-building-line' },
     'remocoes': { titulo: 'Remoção', campos: ['Nome do Lugar', 'Números (Separe por vírgula)', 'Local e Link Maps', 'Observações Importantes'] },
     'ramais': { titulo: 'Ramal', campos: ['Local ou Prédio', 'Setor', 'Número do Ramal', 'Observações'] },
@@ -55,11 +55,11 @@ const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { localCache: persistentLocalCache() });
 const auth = getAuth(app);
 
-window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot;
+window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot; window.setDoc = setDoc;
 
 let isAdmin = false; let abaAtual = 'home'; const EMAIL_GESTAO = "gestao@clinica.com";
 
-let listaColaboradoresGlobal = []; let locaisGlobais = []; let setoresGlobais = []; let especialidadesGlobais = []; let motivosGlobais = []; let imagemPadraoPastas = ""; 
+let listaColaboradoresGlobal = []; let locaisGlobais = []; let setoresGlobais = []; let especialidadesGlobais = []; let motivosGlobais = []; let imagemPadraoPastas = ""; let imagemClimaHome = ""; 
 
 window.todosBoletinsData = []; window.todosPrivadosData = []; window.todosTreinamentosData = []; 
 window.todosPesquisasRH = []; window.todosRespostasRH = []; 
@@ -681,7 +681,7 @@ window.carregarConfiguracoes = function() {
             const mapIds = {
                 'tab-input-banner': 'banner_texto', 'tab-input-locais': 'locais', 'tab-input-setores': 'setores',
                 'tab-input-especialidades': 'especialidades', 'tab-input-motivos': 'motivos', 'tab-input-imagem-pastas': 'imagem_padrao_pastas',
-                'tab-input-chat-logo': 'chat_logo', 'tab-color-chat': 'chat_cor', 'tab-color-pendente': 'cor_pendente', 'tab-color-concluido': 'cor_concluido', 'tab-ui-primary':'ui_primary', 'tab-ui-accent':'ui_accent', 'tab-ui-bg':'ui_bg', 'tab-ui-bg-mode':'ui_bg_mode', 'tab-ui-card-style':'ui_card_style'
+                'tab-input-chat-logo': 'chat_logo', 'tab-color-chat': 'chat_cor', 'tab-color-pendente': 'cor_pendente', 'tab-color-concluido': 'cor_concluido', 'tab-ui-primary':'ui_primary', 'tab-ui-accent':'ui_accent', 'tab-ui-bg':'ui_bg', 'tab-ui-bg-mode':'ui_bg_mode', 'tab-ui-card-style':'ui_card_style', 'tab-input-weather-image':'weather_image'
             };
 
             Object.keys(mapIds).forEach(id => {
@@ -691,6 +691,8 @@ window.carregarConfiguracoes = function() {
 
             const chatLogo = data.chat_logo || "https://cdn-icons-png.flaticon.com/512/8943/8943377.png";
             const chatCor = data.chat_cor || "#0ba360";
+            imagemClimaHome = data.weather_image || '';
+            window.aplicarImagemClimaHome(imagemClimaHome);
             document.documentElement.style.setProperty('--chat-primary', chatCor);
             
             const fabImg = document.getElementById('chat-fab-img'); const headerImg = document.getElementById('chat-header-img');
@@ -843,6 +845,79 @@ if (!document.getElementById('modal-feedback-aluno')) {
 }
 
 window.sairPortalAluno = function() { window.alunoLogado = null; document.getElementById('ensino-dashboard-area').style.display = 'none'; document.getElementById('ensino-login-area').style.display = 'block'; document.getElementById('login-aluno-pin').value = ''; };
+
+window.abrirListaLeituras = function(docId, colecao) {
+    const modal = document.getElementById('modal-leituras');
+    const titulo = document.getElementById('modal-leitura-titulo');
+    const areaOk = document.getElementById('lista-lidos-content');
+    const areaPend = document.getElementById('lista-falta-content');
+    if(!modal || !titulo || !areaOk || !areaPend) return;
+
+    let data = null;
+    if(colecao === 'treinamentos') data = window.todosTreinamentosData.find(item => item.id === docId)?.data || null;
+    else if(colecao === 'boletins') data = window.todosBoletinsData.find(item => item.id === docId)?.data || null;
+    else if(colecao === 'boletins-privados') data = window.todosPrivadosData.find(item => item.id === docId)?.data || null;
+    if(!data) return alert('Não localizei este registro atualizado.');
+
+    const renderEmpty = (texto) => `<div style="padding:12px; border:1px dashed var(--border-color); border-radius:12px; color:var(--text-muted); background:#f8fafc;">${texto}</div>`;
+    const cardBase = (conteudo, cor='#cbd5e1') => `<div style="padding:12px; border-radius:12px; background:#fff; border-left:4px solid ${cor}; margin-bottom:10px; box-shadow:var(--shadow-soft);">${conteudo}</div>`;
+
+    areaOk.innerHTML = '';
+    areaPend.innerHTML = '';
+
+    if(colecao === 'treinamentos') {
+        titulo.textContent = `Respostas da atividade: ${data['Título da Atividade'] || 'Treinamento'}`;
+        const publico = window.obterPublicoAlvo(data['Para quais Setores?'], data['Colaborador Específico (Opcional)']);
+        const respostas = (data.respostas_alunos || []).map(item => window.safeParseJSON(item)).filter(Boolean);
+        const respondidos = new Set();
+
+        respostas.forEach(resp => {
+            respondidos.add(resp.nome);
+            const nota = (resp.nota !== '' && resp.nota !== undefined && resp.nota !== null) ? `<span style="background:#dcfce7; color:#166534; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700;">Nota: ${resp.nota}</span>` : `<span style="background:#fef3c7; color:#92400e; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700;">Aguardando correção</span>`;
+            const nomeEscapado = String(resp.nome || '').replace(/'/g, "\\'");
+            const btnCorrigir = isAdmin ? `<button onclick="window.abrirCorrecaoAdmin('${docId}', '${nomeEscapado}')" class="btn-hover color-8" style="height:32px; font-size:11px; padding:0 14px; margin-top:10px;"><i class="ri-edit-2-line"></i> ${resp.nota !== '' ? 'Revisar correção' : 'Corrigir resposta'}</button>` : '';
+            areaOk.innerHTML += cardBase(`
+                <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                    <div>
+                        <strong style="display:block; color:var(--text-main);">${window.escapeHTML(resp.nome || 'Colaborador')}</strong>
+                        <span style="font-size:12px; color:var(--text-muted);">Enviado em: ${window.escapeHTML(resp.data || '-')}</span>
+                    </div>
+                    ${nota}
+                </div>
+                <div style="margin-top:10px; font-size:12px; color:var(--text-muted);">${(resp.respostas || []).length} resposta(s) enviada(s).</div>
+                ${btnCorrigir}
+            `, '#38a169');
+        });
+
+        if(!respostas.length) areaOk.innerHTML = renderEmpty('Nenhuma resposta enviada ainda.');
+
+        const faltantes = publico.filter(nome => !respondidos.has(nome));
+        areaPend.innerHTML = faltantes.length
+            ? faltantes.map(nome => cardBase(`<strong style="display:block; color:var(--text-main);">${window.escapeHTML(nome)}</strong><span style="font-size:12px; color:var(--text-muted);">Ainda não enviou a atividade.</span>`, '#e53e3e')).join('')
+            : renderEmpty('Todos os colaboradores do público-alvo já responderam.');
+    } else {
+        const publico = colecao === 'boletins-privados'
+            ? [String(data['Para qual Colaborador?'] || '').trim()].filter(Boolean)
+            : window.obterPublicoAlvo(data['Para quais Setores?']);
+        titulo.textContent = `${colecao === 'boletins-privados' ? 'Leitura do informativo direto' : 'Leitura do boletim'}: ${data['Título do Documento'] || data['Título do Informativo'] || 'Documento'}`;
+        const leituras = (data.leituras || []).filter(Boolean);
+        const lidosMap = new Map();
+        leituras.forEach(registro => lidosMap.set(window.extrairNomeRegistro(registro), registro));
+
+        const lidos = publico.filter(nome => lidosMap.has(nome));
+        const faltantes = publico.filter(nome => !lidosMap.has(nome));
+
+        areaOk.innerHTML = lidos.length
+            ? lidos.map(nome => cardBase(`<strong style="display:block; color:var(--text-main);">${window.escapeHTML(nome)}</strong><span style="font-size:12px; color:var(--text-muted);">${window.escapeHTML(lidosMap.get(nome) || '')}</span>`, '#38a169')).join('')
+            : renderEmpty('Nenhuma leitura registrada até o momento.');
+
+        areaPend.innerHTML = faltantes.length
+            ? faltantes.map(nome => cardBase(`<strong style="display:block; color:var(--text-main);">${window.escapeHTML(nome)}</strong><span style="font-size:12px; color:var(--text-muted);">Leitura pendente.</span>`, '#e53e3e')).join('')
+            : renderEmpty('Nenhuma pendência restante.');
+    }
+
+    modal.style.display = 'flex';
+};
 
 window.renderizarTrilhaAluno = function() {
     if(!window.alunoLogado) return;
@@ -1310,6 +1385,202 @@ window.verResultadosPesquisaRH = function(pesquisaId) {
     document.getElementById('modal-ver-respostas-rh').style.display = 'flex';
 };
 
+window.abrirModalCriarPerfil = function(avaliacaoId = '') {
+    const editId = document.getElementById('rh-perfil-edit-id');
+    if(editId) editId.value = avaliacaoId || '';
+    const titulo = document.getElementById('rh-perfil-titulo');
+    const tipoSel = document.getElementById('rh-perfil-alvo-tipo');
+    const valorSel = document.getElementById('rh-perfil-alvo-valor');
+    const perguntasArea = document.getElementById('rh-perfil-perguntas-list');
+    if(titulo) titulo.value = '';
+    if(tipoSel) tipoSel.value = 'Geral';
+    if(perguntasArea) perguntasArea.innerHTML = '';
+    window.atualizarAlvoPerfilFormulario();
+
+    if(avaliacaoId) {
+        const avaliacao = window.todosPerfilAvaliacoes.find(item => item.id === avaliacaoId);
+        if(avaliacao) {
+            if(titulo) titulo.value = avaliacao.data.titulo || '';
+            if(tipoSel) tipoSel.value = avaliacao.data.alvoTipo || 'Geral';
+            window.atualizarAlvoPerfilFormulario();
+            if(valorSel) valorSel.value = avaliacao.data.alvoValor || '';
+            (avaliacao.data.perguntas || []).forEach(pergunta => window.adicionarPerguntaPerfil(pergunta));
+        }
+    }
+
+    const titleEl = document.getElementById('rh-modal-perfil-titulo');
+    if(titleEl) titleEl.innerHTML = avaliacaoId ? '<i class="ri-pencil-line"></i> Editar Avaliação de Perfil' : '<i class="ri-radar-line"></i> Nova Avaliação de Perfil';
+    document.getElementById('modal-criar-perfil').style.display = 'flex';
+};
+
+window.atualizarAlvoPerfilFormulario = function() {
+    const tipo = document.getElementById('rh-perfil-alvo-tipo');
+    const valor = document.getElementById('rh-perfil-alvo-valor');
+    if(!tipo || !valor) return;
+    if(tipo.value === 'Setor') {
+        valor.innerHTML = `<option value="">Selecione o setor</option>` + window.getSetoresRHDisponiveis().map(setor => `<option value="${setor}">${setor}</option>`).join('');
+        valor.disabled = false;
+    } else if(tipo.value === 'Colaborador') {
+        valor.innerHTML = `<option value="">Selecione o colaborador</option>` + listaColaboradoresGlobal.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+        valor.disabled = false;
+    } else {
+        valor.innerHTML = `<option value="">Todos (Geral)</option>`;
+        valor.value = '';
+        valor.disabled = true;
+    }
+};
+
+window.adicionarPerguntaPerfil = function(perguntaAntiga = null) {
+    const area = document.getElementById('rh-perfil-perguntas-list');
+    if(!area) return;
+    const div = document.createElement('div');
+    div.className = 'rh-perfil-pergunta-item';
+    div.style = 'background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:10px; position:relative;';
+    div.innerHTML = `
+        <button onclick="this.parentElement.remove()" style="position:absolute; top:10px; right:10px; color:red; background:none; border:none; cursor:pointer;"><i class="ri-delete-bin-line"></i></button>
+        <div class="rh-form-grid">
+            <div>
+                <label style="font-size:12px; font-weight:600;">Categoria do Radar</label>
+                <select class="form-input rh-perfil-categoria">
+                    <option value="Qualidades" ${perguntaAntiga?.categoria === 'Qualidades' ? 'selected' : ''}>Qualidades</option>
+                    <option value="Pontos Fortes" ${perguntaAntiga?.categoria === 'Pontos Fortes' ? 'selected' : ''}>Pontos Fortes</option>
+                    <option value="Pontos Fracos" ${perguntaAntiga?.categoria === 'Pontos Fracos' ? 'selected' : ''}>Pontos Fracos</option>
+                    <option value="Skills" ${perguntaAntiga?.categoria === 'Skills' ? 'selected' : ''}>Skills</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:12px; font-weight:600;">Pergunta</label>
+                <input type="text" class="form-input rh-perfil-texto" value="${window.escapeHTML(perguntaAntiga?.texto || '')}" placeholder="Ex: Demonstra iniciativa no dia a dia?">
+            </div>
+        </div>
+    `;
+    area.appendChild(div);
+};
+
+window.salvarAvaliacaoPerfil = async function() {
+    const editId = document.getElementById('rh-perfil-edit-id')?.value || '';
+    const titulo = document.getElementById('rh-perfil-titulo').value.trim();
+    const alvoTipo = document.getElementById('rh-perfil-alvo-tipo').value;
+    const alvoValor = document.getElementById('rh-perfil-alvo-valor').value;
+    const perguntas = Array.from(document.querySelectorAll('.rh-perfil-pergunta-item')).map(item => ({
+        categoria: item.querySelector('.rh-perfil-categoria').value,
+        texto: item.querySelector('.rh-perfil-texto').value.trim(),
+        tipo: 'escala'
+    })).filter(item => item.texto);
+
+    if(!titulo || !perguntas.length) return alert('Preencha o título e adicione pelo menos uma pergunta.');
+    if(alvoTipo !== 'Geral' && !alvoValor) return alert('Selecione o alvo da avaliação.');
+
+    const payload = { titulo, alvoTipo, alvoValor: alvoTipo === 'Geral' ? '' : alvoValor, perguntas, dataCriacao: new Date().toISOString() };
+    try {
+        if(editId) {
+            await window.updateDoc(window.doc(window.db, 'rh-perfil-avaliacoes', editId), payload);
+            alert('Avaliação de perfil atualizada com sucesso!');
+        } else {
+            await window.addDoc(window.collection(window.db, 'rh-perfil-avaliacoes'), payload);
+            alert('Avaliação de perfil enviada com sucesso!');
+        }
+        document.getElementById('modal-criar-perfil').style.display = 'none';
+    } catch(e) { alert('Erro ao salvar avaliação: ' + e.message); }
+};
+
+window.excluirAvaliacaoPerfil = async function(id) {
+    if(!confirm('Excluir esta avaliação de perfil?')) return;
+    try { await window.deleteDoc(window.doc(window.db, 'rh-perfil-avaliacoes', id)); alert('Avaliação excluída!'); } catch(e) { alert('Erro ao excluir: ' + e.message); }
+};
+
+window.responderPerfilRH = function(avaliacaoId) {
+    const avaliacao = window.todosPerfilAvaliacoes.find(item => item.id === avaliacaoId);
+    if(!avaliacao) return;
+    document.getElementById('rh-perfil-resp-id').value = avaliacaoId;
+    document.getElementById('rh-perfil-resp-titulo').textContent = avaliacao.data.titulo || 'Avaliação de Perfil';
+    const area = document.getElementById('rh-perfil-resp-area');
+    if(!area) return;
+    area.innerHTML = (avaliacao.data.perguntas || []).map((pergunta, idx) => `
+        <div class="rh-resp-bloco" style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border-color);">
+            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:10px; color:var(--text-main);">${idx+1}. ${window.escapeHTML(pergunta.texto)} <span style="display:inline-block; margin-left:8px; padding:4px 8px; border-radius:999px; font-size:11px; background:#eef2ff; color:#4338ca;">${window.escapeHTML(pergunta.categoria)}</span></label>
+            <input type="hidden" class="rh-perfil-pergunta-texto" value="${window.escapeHTML(pergunta.texto)}">
+            <input type="hidden" class="rh-perfil-pergunta-categoria" value="${window.escapeHTML(pergunta.categoria)}">
+            <div class="rh-scale-row">${[1,2,3,4,5].map(n => `<label class="rh-scale-option"><input type="radio" name="perfil_${avaliacaoId}_${idx}" value="${n}"><span>${n}</span></label>`).join('')}</div>
+        </div>
+    `).join('');
+    document.getElementById('modal-responder-perfil').style.display = 'flex';
+};
+
+window.enviarRespostaPerfilRH = async function() {
+    if(!window.alunoLogado) return;
+    const avaliacaoId = document.getElementById('rh-perfil-resp-id').value;
+    const nome = window.alunoLogado['Nome Completo do Colaborador'];
+    const setor = window.alunoLogado['Setor da Clínica'] || 'Geral';
+    const blocos = Array.from(document.querySelectorAll('#rh-perfil-resp-area .rh-resp-bloco'));
+    const respostas = [];
+    let incompleto = false;
+    blocos.forEach(bloco => {
+        const texto = bloco.querySelector('.rh-perfil-pergunta-texto').value;
+        const categoria = bloco.querySelector('.rh-perfil-pergunta-categoria').value;
+        const marcado = bloco.querySelector('input[type="radio"]:checked');
+        if(!marcado) incompleto = true;
+        respostas.push({ pergunta: texto, categoria, resposta: marcado ? Number(marcado.value) : null });
+    });
+    if(incompleto) return alert('Responda todas as perguntas para enviar a avaliação.');
+    try {
+        const antiga = window.todosRespostasPerfil.find(item => item.data.avaliacaoId === avaliacaoId && item.data.nome === nome);
+        if(antiga) {
+            await window.updateDoc(window.doc(window.db, 'rh-perfil-respostas', antiga.id), { respostas, data: new Date().toISOString(), setor });
+        } else {
+            await window.addDoc(window.collection(window.db, 'rh-perfil-respostas'), { avaliacaoId, nome, setor, respostas, data: new Date().toISOString() });
+        }
+        alert('Avaliação de perfil enviada com sucesso!');
+        document.getElementById('modal-responder-perfil').style.display = 'none';
+        window.renderizarPesquisasAluno();
+    } catch(e) { alert('Erro ao enviar avaliação: ' + e.message); }
+};
+
+window.abrirModalPerfilProfissional = function() {
+    const modal = document.getElementById('modal-perfil-profissional');
+    const select = document.getElementById('rh-perfil-select-colaborador');
+    if(!modal || !select) return;
+    select.innerHTML = `<option value="">Selecione um colaborador</option>` + listaColaboradoresGlobal.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+    if(window.rhFiltroAtual.colaborador) select.value = window.rhFiltroAtual.colaborador;
+    modal.style.display = 'flex';
+    if(select.value) window.renderizarGraficoPerfilProfissional(select.value);
+};
+
+window.obterResumoPerfilColaborador = function(nome) {
+    const respostas = window.todosRespostasPerfil.filter(item => item.data.nome === nome);
+    const buckets = { 'Qualidades': [], 'Pontos Fortes': [], 'Pontos Fracos': [], 'Skills': [] };
+    respostas.forEach(item => {
+        (item.data.respostas || []).forEach(resp => {
+            if(resp && buckets[resp.categoria] && Number.isFinite(Number(resp.resposta))) buckets[resp.categoria].push(Number(resp.resposta));
+        });
+    });
+    const medias = Object.fromEntries(Object.entries(buckets).map(([categoria, valores]) => [categoria, valores.length ? Number((valores.reduce((a,b) => a+b, 0) / valores.length).toFixed(1)) : 0]));
+    return { medias, totalAvaliacoes: respostas.length, totalRespostas: Object.values(buckets).reduce((acc, arr) => acc + arr.length, 0) };
+};
+
+window.renderizarGraficoPerfilProfissional = function(nome) {
+    const resumo = window.obterResumoPerfilColaborador(nome);
+    const canvas = document.getElementById('rh-perfil-radar-chart');
+    const info = document.getElementById('rh-perfil-radar-info');
+    if(!canvas || !info) return;
+    const colaborador = listaColaboradoresGlobal.find(item => item.nome === nome);
+    const labels = ['Qualidades', 'Pontos Fortes', 'Pontos Fracos', 'Skills'];
+    const data = labels.map(label => resumo.medias[label] || 0);
+    if(window.rhPerfilRadarChart) window.rhPerfilRadarChart.destroy();
+    window.rhPerfilRadarChart = new Chart(canvas, {
+        type: 'radar',
+        data: { labels, datasets: [{ label: nome, data, fill: true, backgroundColor: 'rgba(139, 37, 44, 0.18)', borderColor: '#8B252C', pointBackgroundColor: '#8B252C', pointBorderColor: '#fff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: '#8B252C' }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, min: 0, max: 5, ticks: { stepSize: 1, backdropColor: 'transparent' }, pointLabels: { font: { size: 13, weight: '600' } }, grid: { color: 'rgba(148,163,184,.35)' }, angleLines: { color: 'rgba(148,163,184,.25)' } } }, plugins: { legend: { display: false } } }
+    });
+    const mediaGeral = data.filter(v => v > 0).length ? (data.reduce((a,b)=>a+b,0) / data.filter(v => v > 0).length).toFixed(1) : '0.0';
+    info.innerHTML = `
+        <div class="rh-profile-summary-card"><span>Colaborador</span><strong>${window.escapeHTML(nome)}</strong><small>${window.escapeHTML(colaborador?.setor || 'Geral')}</small></div>
+        <div class="rh-profile-summary-card"><span>Avaliações Respondidas</span><strong>${resumo.totalAvaliacoes}</strong><small>coletas válidas</small></div>
+        <div class="rh-profile-summary-card"><span>Média Global do Perfil</span><strong>${mediaGeral}</strong><small>escala 0 a 5</small></div>
+        <div class="rh-profile-summary-card"><span>Qualidades / Skills</span><strong>${(resumo.medias['Qualidades'] || 0).toFixed(1)} / ${(resumo.medias['Skills'] || 0).toFixed(1)}</strong><small>forças-chave</small></div>
+    `;
+};
+
 // ==========================================
 // 8. ATRIBUIÇÃO DE EVENTOS DE CLIQUES E INICIALIZAÇÃO
 // ==========================================
@@ -1372,6 +1643,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const corConc = document.getElementById('tab-color-concluido').value; 
             
             const imgPastaInput = document.getElementById('tab-input-imagem-pastas'); const imgPastasTexto = imgPastaInput ? imgPastaInput.value : "";
+            const weatherImageInput = document.getElementById('tab-input-weather-image'); const weatherImageTexto = weatherImageInput ? weatherImageInput.value : "";
             const chatLogoInput = document.getElementById('tab-input-chat-logo'); const chatLogoTexto = chatLogoInput ? chatLogoInput.value : "";
             const chatCorInput = document.getElementById('tab-color-chat'); const chatCorVal = chatCorInput ? chatCorInput.value : "#0ba360";
             
@@ -1379,7 +1651,7 @@ window.addEventListener('DOMContentLoaded', () => {
             try {
                 await window.setDoc(window.doc(window.db, "configuracoes", "gerais"), { 
                     banner_texto: texto, locais: locaisTexto, setores: setoresTexto, especialidades: especialidadesTexto, motivos: motivosTexto, 
-                    cor_pendente: corPend, cor_concluido: corConc, imagem_padrao_pastas: imgPastasTexto, chat_logo: chatLogoTexto, chat_cor: chatCorVal,
+                    cor_pendente: corPend, cor_concluido: corConc, imagem_padrao_pastas: imgPastasTexto, weather_image: weatherImageTexto, chat_logo: chatLogoTexto, chat_cor: chatCorVal,
                     ui_primary: document.getElementById('tab-ui-primary')?.value || '#8B252C',
                     ui_accent: document.getElementById('tab-ui-accent')?.value || '#23a6d5',
                     ui_bg: document.getElementById('tab-ui-bg')?.value || '#f4f7fa',
@@ -1451,4 +1723,3 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
-
