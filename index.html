@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css?v=20260327-10">
+    <link rel="stylesheet" href="style.css?v=20260327-1">
     <style>
         .sidebar-nav { overflow-y: auto; max-height: 65vh; }
         .sidebar-nav::-webkit-scrollbar { width: 4px; }
@@ -90,7 +90,7 @@
                     <div id="banner-content"><h2>Bem-vindo ao Painel Clínico</h2></div>
                 </div>
 
-                <div class="weather-widget">
+                <div class="weather-widget"><img id="weather-cover-image" class="weather-cover-image" style="display:none;" alt="Imagem do clima">
                     <div class="weather-info">
                         <h3 id="weather-city"><i class="ri-map-pin-line"></i> Araucária, PR</h3>
                         <div class="weather-temp"><span id="weather-deg">--</span>°C</div>
@@ -141,6 +141,8 @@
                         <input type="color" id="tab-color-chat" class="form-input" style="height:50px; padding:5px; cursor:pointer;">
                         <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px; margin-top: 15px;">Imagem Padrão das Pastas (Link)</label>
                         <input type="text" id="tab-input-imagem-pastas" class="form-input">
+                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px; margin-top: 15px;">Imagem do Clima/Home (Link)</label>
+                        <input type="text" id="tab-input-weather-image" class="form-input" placeholder="Cole uma imagem da clínica ou da cidade">
                     </div>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Locais/Prédios</label>
@@ -775,6 +777,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=20260327-10"></script>
+    <script type="module" src="app.js?v=20260327-1"></script>
 </body>
 </html>
