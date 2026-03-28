@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Clínico</title>
+    <title>Painel Clínico 2.0</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#8B252C">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css?v=20260327-1">
+    <link rel="stylesheet" href="style.css?v=2.0">
     <style>
         .sidebar-nav { overflow-y: auto; max-height: 65vh; }
         .sidebar-nav::-webkit-scrollbar { width: 4px; }
@@ -53,9 +53,7 @@
                 
                 <button class="nav-btn admin-only" id="btn-nav-privados" data-tab="boletins-privados" style="display: none;"><i class="ri-user-star-line"></i> Informativos Diretos</button>
                 <button class="nav-btn admin-only" id="btn-nav-treinamentos" data-tab="treinamentos" style="display: none;"><i class="ri-book-read-line"></i> Gerenciar Ensino</button>
-                
                 <button class="nav-btn admin-only" id="btn-nav-rh" data-tab="rh" style="display: none; background: #eefbf4; color: #166534; border-left: 4px solid #166534;"><i class="ri-pie-chart-2-fill"></i> RH & Analytics</button>
-
                 <button class="nav-btn admin-only" id="btn-nav-colaboradores" data-tab="colaboradores" style="display: none;"><i class="ri-group-line"></i> Gerenciar Equipe</button>
                 <button class="nav-btn admin-only" id="btn-nav-ajustes" data-tab="ajustes" style="display: none;"><i class="ri-settings-4-line"></i> Ajustes Globais</button>
             </nav>
@@ -77,8 +75,7 @@
             <section id="tab-home" class="tab-content active">
                 <div class="home-top-bar">
                     <div class="relogio-digital" id="relogio">00:00:00</div>
-                    <div class="frase-motivacional" id="frase-dia">"Carregando motivação..."</div>
-                </div>
+                    </div>
 
                 <div class="search-container">
                     <i class="ri-search-line" style="color: var(--primary-color); font-size: 20px;"></i>
@@ -90,14 +87,13 @@
                     <div id="banner-content"><h2>Bem-vindo ao Painel Clínico</h2></div>
                 </div>
 
-                <div class="weather-widget"><img id="weather-cover-image" class="weather-cover-image" style="display:none;" alt="Imagem do clima">
+                <div class="weather-widget">
                     <div class="weather-info">
                         <h3 id="weather-city"><i class="ri-map-pin-line"></i> Araucária, PR</h3>
-                        <div class="weather-temp"><span id="weather-deg">--</span>°C</div>
-                        <div id="weather-desc">Buscando previsão do tempo...</div>
-                    </div>
-                    <div class="weather-icon">
-                        <i id="weather-icon-class" class="ri-sun-cloudy-line"></i>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="weather-temp"><span id="weather-deg">--</span>°C</div>
+                            <div class="weather-icon" style="margin: 0;"><i id="weather-icon-class" class="ri-sun-cloudy-line" style="font-size: 40px; filter: none;"></i></div>
+                        </div>
                     </div>
                 </div>
 
@@ -141,8 +137,6 @@
                         <input type="color" id="tab-color-chat" class="form-input" style="height:50px; padding:5px; cursor:pointer;">
                         <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px; margin-top: 15px;">Imagem Padrão das Pastas (Link)</label>
                         <input type="text" id="tab-input-imagem-pastas" class="form-input">
-                        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 5px; margin-top: 15px;">Imagem do Clima/Home (Link)</label>
-                        <input type="text" id="tab-input-weather-image" class="form-input" placeholder="Cole uma imagem da clínica ou da cidade">
                     </div>
 
                     <label style="font-weight: 600; font-size: 14px; display: block; margin-bottom: 5px; margin-top: 20px;">Locais/Prédios</label>
@@ -333,7 +327,10 @@
                             <button class="btn-hover color-8" onclick="window.fecharPastaBoletim()"><i class="ri-arrow-left-line"></i> Voltar</button>
                             <h2 id="titulo-pasta-boletins" style="color: var(--primary-color);">Setor</h2>
                         </div>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins')" style="display:none;"><i class="ri-add-line"></i> Novo Boletim</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-hover color-5" onclick="window.abrirModalImpressao('boletins')"><i class="ri-printer-line"></i> Imprimir Relatório</button>
+                            <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins')" style="display:none;"><i class="ri-add-line"></i> Novo Boletim</button>
+                        </div>
                     </div>
                     <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: var(--shadow-soft); margin-bottom: 25px; height: 300px;">
                         <canvas id="chart-boletins"></canvas>
@@ -610,8 +607,25 @@
 
     <div id="modal-media" class="modal-overlay" style="display: none; z-index: 9999;">
         <div class="modal-box glass-effect" style="width: 95vw; height: 90vh; max-width: 1200px; padding: 20px;">
-            <header class="modal-header" style="margin-bottom: 10px;"><h3>Visualização de Material</h3><button id="btn-fechar-media" class="btn-icon" onclick="window.fecharMidiaFlutuante()"><i class="ri-close-line"></i></button></header>
+            <header class="modal-header" style="margin-bottom: 10px;"><h3>Visualização de Material</h3><button id="btn-fechar-media" class="btn-icon" onclick="document.getElementById('modal-media').style.display='none'; document.getElementById('iframe-media').src='';"><i class="ri-close-line"></i></button></header>
             <div class="modal-body" style="height: 100%; border-radius: 15px; overflow:hidden;"><iframe id="iframe-media" src="" allowfullscreen style="width: 100%; height: 100%; border: none; background-color: #e2e8f0;"></iframe></div>
+        </div>
+    </div>
+    
+    <div id="modal-imprimir-boletim" class="modal-overlay" style="display: none; z-index: 10010;">
+        <div class="modal-box glass-effect">
+            <header class="modal-header"><h3>Imprimir Relatório de Assinaturas</h3><button onclick="document.getElementById('modal-imprimir-boletim').style.display='none'" class="btn-icon"><i class="ri-close-line"></i></button></header>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; font-size: 14px; color: var(--text-muted);">Selecione os dados que deseja incluir no relatório físico:</p>
+                <input type="hidden" id="print-boletim-id">
+                <div class="checkbox-group" style="display: grid; gap: 10px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="print-chk-nome" checked disabled> Nome do Colaborador (Obrigatório)</label>
+                    <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="print-chk-data" checked> Data/Hora da Assinatura</label>
+                    <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="print-chk-tema" checked> Título do Boletim</label>
+                    <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="print-chk-motivo" checked> Motivo do Boletim</label>
+                </div>
+                <button onclick="window.gerarImpressaoBoletim()" class="btn-hover color-5" style="width: 100%; margin-top: 20px;"><i class="ri-printer-line"></i> Gerar Página e Imprimir</button>
+            </div>
         </div>
     </div>
 
@@ -648,15 +662,12 @@
                         <option value="">Todos (Geral)</option>
                     </select>
                 </div>
-                
                 <h4 style="margin: 15px 0 10px; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Perguntas da Pesquisa</h4>
                 <div id="rh-pesq-perguntas-list" style="margin-bottom: 15px;"></div>
-                
                 <div style="display:flex; gap:10px;">
                     <button onclick="window.adicionarPerguntaRH('escala')" class="btn-hover color-8" style="flex:1; height:35px; font-size:11px;">+ Adicionar Escala (1 a 5)</button>
                     <button onclick="window.adicionarPerguntaRH('texto')" class="btn-hover color-5" style="flex:1; height:35px; font-size:11px;">+ Adicionar Texto Aberto</button>
                 </div>
-                
                 <button onclick="window.salvarPesquisaRH()" class="btn-hover color-11" style="width: 100%; margin-top: 25px;"><i class="ri-send-plane-fill"></i> Salvar Pesquisa</button>
             </div>
         </div>
@@ -668,8 +679,7 @@
                 <h3 id="rh-resp-titulo">Responder Pesquisa</h3>
                 <button class="rh-close" onclick="document.getElementById('modal-responder-pesquisa').style.display='none'">&times;</button>
             </div>
-            <div class="modal-body" id="rh-resp-area">
-                </div>
+            <div class="modal-body" id="rh-resp-area"></div>
             <input type="hidden" id="rh-resp-id">
             <button onclick="window.enviarRespostaRH()" class="btn-hover color-5" style="width: 100%; margin-top: 15px;"><i class="ri-check-double-line"></i> Enviar Respostas</button>
         </div>
@@ -777,6 +787,17 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=20260327-1"></script>
+    <div id="floating-window-persistent" style="display: none; position: fixed; bottom: 20px; right: 120px; width: 450px; height: 600px; background: white; border-radius: 15px; box-shadow: 0 15px 50px rgba(0,0,0,0.3); z-index: 9998; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-color);">
+        <div style="background: var(--primary-color); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; cursor: move; font-weight: 600; font-size: 14px;" id="fw-header">
+            <span id="fw-title"><i class="ri-global-line"></i> Navegador Interno</span>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="document.getElementById('fw-iframe').contentWindow.print()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;" title="Imprimir Tela"><i class="ri-printer-line"></i></button>
+                <button onclick="document.getElementById('floating-window-persistent').style.display='none'; document.getElementById('fw-iframe').src='';" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;"><i class="ri-close-line"></i></button>
+            </div>
+        </div>
+        <iframe id="fw-iframe" src="" style="width: 100%; flex: 1; border: none; background: #f4f7fa;"></iframe>
+    </div>
+
+    <script type="module" src="app.js?v=2.0"></script>
 </body>
 </html>
