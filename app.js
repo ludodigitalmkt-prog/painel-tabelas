@@ -19,7 +19,7 @@ const configuracaoAbas = {
     'consultas': { titulo: 'Consulta / Procedimento', campos: ['Tipo', 'Código', 'Descrição', 'Valor', 'Profissionais que realizam (Opcional)', 'Observações'], campoAgrupador: 'Tipo', icone: 'ri-stethoscope-line' },
     'exames-imagem': { titulo: 'Exame de Imagem', campos: ['Categoria do Exame', 'Código', 'Descrição', 'Valor', 'Prazo de Laudo', 'Profissionais que realizam (Opcional)', 'Onde encontrar resultado', 'Observações', 'Convênios'], campoAgrupador: 'Categoria do Exame', icone: 'ri-body-scan-line' },
     
-    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que est incluso', 'Observações', 'Pacotes', 'Kit'] },
+    'pacotes': { titulo: 'Pacote PS', campos: ['Descrição', 'Valor ou Informacao', 'O que est incluso', 'Observações', 'Pacotes', 'Kit'], campoAgrupador: 'Pacotes', icone: 'ri-first-aid-kit-line' },
     'institutos': { titulo: 'Instituto Tabela', campos: ['Número da Tabela', 'Valor da Tabela', 'Profissional', 'Especialidade', 'Restrição de Idade', 'CRM', 'CBO', 'URA', 'Outros'], campoAgrupador: 'Número da Tabela', icone: 'ri-building-line' },
     'remocoes': { titulo: 'Remoção', campos: ['Nome do Lugar', 'Números (Separe por vírgula)', 'Local e Link Maps', 'Observações Importantes'] },
     'ramais': { titulo: 'Ramal', campos: ['Local ou Prédio', 'Setor', 'Número do Ramal', 'Observações'] },
@@ -156,7 +156,7 @@ window.obterAvaliacoesPerfilDisponiveis = function(nomeColaborador = '', setorCo
 };
 
 let chartBoletinsInst = null; let chartPrivadosInst = null; let chartHomeInst = null; let chartPrivadosGeralInst = null;
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.1.1';
 let loginEmAndamento = false;
 
 if ('serviceWorker' in navigator) {
@@ -952,7 +952,7 @@ window.abrirListaLeituras = function(docId, colecao) {
             : renderEmpty('Nenhuma pendência restante.');
     }
 
-    modal.style.display = 'flex';
+    modal.classList.add('ativo');
 };
 
 window.sairPortalAluno = function() { window.alunoLogado = null; document.getElementById('ensino-dashboard-area').style.display = 'none'; document.getElementById('ensino-login-area').style.display = 'block'; document.getElementById('login-aluno-pin').value = ''; };
@@ -1640,7 +1640,7 @@ window.enviarRespostaRH = async function() {
 
         alert('Muito obrigado pelas suas respostas! Isso nos ajuda a crescer juntos.');
         const modal = document.getElementById('modal-responder-pesquisa');
-        if (modal) modal.style.display = 'none';
+        if (modal) modal.classList.remove('ativo');
 
         if (typeof window.renderizarPesquisasAluno === 'function') {
             window.renderizarPesquisasAluno();
@@ -1847,7 +1847,7 @@ window.abrirModalPerfilProfissional = function() {
     if(!modal || !select) return;
     select.innerHTML = `<option value="">Selecione um colaborador</option>` + listaColaboradoresGlobal.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
     if(window.rhFiltroAtual.colaborador) select.value = window.rhFiltroAtual.colaborador;
-    modal.style.display = 'flex';
+    modal.classList.add('ativo');
     if(select.value) window.renderizarGraficoPerfilProfissional(select.value);
 };
 
@@ -2080,7 +2080,12 @@ window.abrirModalImpressao = function(tipo = 'boletins') {
     }
 
     if (inputTipo) inputTipo.value = tipo;
-    modal.style.display = 'flex';
+    modal.classList.add('ativo');
+};
+
+window.fecharModalImpressao = function() {
+    const modal = document.getElementById('modal-imprimir-boletim');
+    if (modal) modal.classList.remove('ativo');
 };
 
 window.gerarImpressaoBoletim = function() {
@@ -2088,7 +2093,7 @@ window.gerarImpressaoBoletim = function() {
     const incluirData = document.getElementById('print-chk-data')?.checked;
     const incluirTema = document.getElementById('print-chk-tema')?.checked;
     const incluirMotivo = document.getElementById('print-chk-motivo')?.checked;
-    const incluirPublicacao = document.getElementById('print-chk-publicacao')?.checked;
+    const incluirPublicacao = document.getElementById('print-chk-publicacao')?.checked || false;
 
     let boletins = Array.isArray(window.todosBoletinsData) ? [...window.todosBoletinsData] : [];
 
@@ -2227,5 +2232,5 @@ window.gerarImpressaoBoletim = function() {
     }, 500);
 
     const modal = document.getElementById('modal-imprimir-boletim');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.classList.remove('ativo');
 };
