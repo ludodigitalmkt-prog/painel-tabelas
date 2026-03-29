@@ -2070,3 +2070,162 @@ if ('serviceWorker' in navigator) {
         console.info('Novo service worker ativo.');
     });
 }
+window.abrirModalImpressao = function(tipo = 'boletins') {
+    const modal = document.getElementById('modal-imprimir-boletim');
+    const inputTipo = document.getElementById('print-boletim-id');
+
+    if (!modal) {
+        alert('Modal de impressão não encontrado.');
+        return;
+    }
+
+    if (inputTipo) inputTipo.value = tipo;
+    modal.style.display = 'flex';
+};
+
+window.gerarImpressaoBoletim = function() {
+    const incluirNome = document.getElementById('print-chk-nome')?.checked;
+    const incluirData = document.getElementById('print-chk-data')?.checked;
+    const incluirTema = document.getElementById('print-chk-tema')?.checked;
+    const incluirMotivo = document.getElementById('print-chk-motivo')?.checked;
+    const incluirPublicacao = document.getElementById('print-chk-publicacao')?.checked;
+
+    let boletins = Array.isArray(window.todosBoletinsData) ? [...window.todosBoletinsData] : [];
+
+    if (window.pastaBoletimAtual) {
+        boletins = boletins.filter(item => {
+            const setor = String(item?.data?.['Para quais Setores?'] || 'Geral');
+            return setor.includes(window.pastaBoletimAtual);
+        });
+    }
+
+    if (!boletins.length) {
+        alert('Não há dados de boletins carregados para gerar o relatório.');
+        return;
+    }
+
+    const linhas = [];
+
+    boletins.forEach(item => {
+        const data = item.data || {};
+        const leituras = Array.isArray(data.leituras) ? data.leituras : [];
+        const titulo = data['Título do Documento'] || data['Título do Informativo'] || 'Sem título';
+        const motivo = data['Motivo do Informativo'] || data['Motivo'] || '-';
+        const dataPublicacao = data['Data de Publicação'] || data['Publicado em'] || '-';
+
+        if (!leituras.length) {
+            linhas.push({
+                nome: 'Nenhuma assinatura registrada',
+                dataHora: '-',
+                tema: titulo,
+                motivo,
+                publicacao: dataPublicacao
+            });
+            return;
+        }
+
+        leituras.forEach(registro => {
+            const texto = String(registro || '').trim();
+
+            let nomeColaborador = texto;
+            let dataHora = '-';
+
+            const match = texto.match(/^(.*?)\s*-\s*(\d{2}\/\d{2}\/\d{4}.*)$/);
+            if (match) {
+                nomeColaborador = match[1].trim();
+                dataHora = match[2].trim();
+            }
+
+            linhas.push({
+                nome: nomeColaborador || '-',
+                dataHora,
+                tema: titulo,
+                motivo,
+                publicacao: dataPublicacao
+            });
+        });
+    });
+
+    const ths = [];
+    if (incluirNome) ths.push('<th>Nome do Colaborador</th>');
+    if (incluirData) ths.push('<th>Data/Hora da Assinatura</th>');
+    if (incluirTema) ths.push('<th>Tema</th>');
+    if (incluirMotivo) ths.push('<th>Motivo</th>');
+    if (incluirPublicacao) ths.push('<th>Data de Publicação</th>');
+
+    const escape = (valor) => {
+        const texto = String(valor ?? '');
+        return texto
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    };
+
+    const trs = linhas.map(linha => {
+        const cols = [];
+        if (incluirNome) cols.push(`<td>${escape(linha.nome)}</td>`);
+        if (incluirData) cols.push(`<td>${escape(linha.dataHora)}</td>`);
+        if (incluirTema) cols.push(`<td>${escape(linha.tema)}</td>`);
+        if (incluirMotivo) cols.push(`<td>${escape(linha.motivo)}</td>`);
+        if (incluirPublicacao) cols.push(`<td>${escape(linha.publicacao)}</td>`);
+        return `<tr>${cols.join('')}</tr>`;
+    }).join('');
+
+    const totalColunas = Math.max(ths.length, 1);
+
+    const janela = window.open('', '_blank', 'width=1200,height=800');
+
+    if (!janela) {
+        alert('O navegador bloqueou a janela de impressão. Libere pop-ups para este site.');
+        return;
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Assinaturas</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #1f2937; }
+    h1 { color: #8B252C; margin-bottom: 8px; }
+    p { margin: 0 0 18px; color: #6b7280; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; font-size: 13px; vertical-align: top; }
+    th { background: #8B252C; color: white; }
+    tr:nth-child(even) td { background: #f9fafb; }
+    @media print {
+        @page { size: A4 portrait; margin: 12mm; }
+        body { margin: 0; }
+    }
+</style>
+</head>
+<body>
+    <h1>Relatório de Assinaturas</h1>
+    <p>Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+    <table>
+        <thead>
+            <tr>${ths.join('')}</tr>
+        </thead>
+        <tbody>
+            ${trs || `<tr><td colspan="${totalColunas}">Nenhum registro encontrado.</td></tr>`}
+        </tbody>
+    </table>
+</body>
+</html>
+`;
+
+    janela.document.open();
+    janela.document.write(html);
+    janela.document.close();
+
+    setTimeout(() => {
+        janela.focus();
+        janela.print();
+    }, 500);
+
+    const modal = document.getElementById('modal-imprimir-boletim');
+    if (modal) modal.style.display = 'none';
+};
