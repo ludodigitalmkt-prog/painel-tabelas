@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Clínico 2.0</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="./logo.png" type="image/png">
     <meta name="theme-color" content="#8B252C">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -21,7 +20,7 @@
 
     <div id="login-screen" class="screen">
         <form id="form-login" class="login-box glass-effect" novalidate>
-            <img src="./logo.png" alt="Logo" class="login-logo" onerror="this.style.display='none'">
+            <img src="logo.png" alt="Logo" class="login-logo" onerror="this.style.display='none'">
             <h2 style="color: var(--primary-color);">Painel de Gestão</h2>
             <div class="input-group"><i class="ri-mail-line"></i><input type="email" id="email" placeholder="E-mail" required></div>
             <div class="input-group"><i class="ri-lock-line"></i><input type="password" id="senha" placeholder="Senha" required onkeypress="if(event.key === 'Enter') window.efetuarLogin(event)"></div>
@@ -33,7 +32,7 @@
 
         <aside class="sidebar">
             <div class="sidebar-header">
-                <img src="./logo.png" alt="Logo" class="sidebar-logo" onerror="this.style.display='none'">
+                <img src="logo.png" alt="Logo" class="sidebar-logo" onerror="this.style.display='none'">
                 <h2 style="color: var(--primary-color); font-weight: 800; font-size: 24px; margin-top: 10px;">Painel<br>Clínico</h2>
             </div>
             <nav class="sidebar-nav">
@@ -795,12 +794,12 @@
             <span id="fw-title"><i class="ri-global-line"></i> Navegador Interno</span>
             <div style="display: flex; gap: 10px;">
                 <button onclick="document.getElementById('fw-iframe').contentWindow.print()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;" title="Imprimir Tela"><i class="ri-printer-line"></i></button>
-                <button onclick="document.getElementById('floating-window-persistent').style.display='none'; document.getElementById('fw-iframe').src='';" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;"><i class="ri-close-line"></i></button>
+                <button type="button" onclick="window.fecharJanelaFlutuante()" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px;"><i class="ri-close-line"></i></button>
             </div>
         </div>
         <iframe id="fw-iframe" src="" style="width: 100%; flex: 1; border: none; background: #f4f7fa;"></iframe>
     </div>
 
-    <script type="module" src="app.js?v=3.1.0"></script>
+    <script type="module" src="app.js?v=3.1.3"></script>
 </body>
 </html>
