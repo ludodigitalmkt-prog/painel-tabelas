@@ -150,7 +150,7 @@ window.obterAvaliacoesPerfilDisponiveis = function(nomeColaborador = '', setorCo
 };
 
 let chartBoletinsInst = null; let chartPrivadosInst = null; let chartHomeInst = null; let chartPrivadosGeralInst = null;
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.1.6';
 let loginEmAndamento = false;
 
 if ('serviceWorker' in navigator) {
@@ -250,9 +250,20 @@ onAuthStateChanged(auth, (user) => {
 
 setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 window.formatarLinkImagem = function(link) {
-    if (!link || link.includes('file:///')) return null;
-    if (link.includes("drive.google.com")) { const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/) || link.match(/id=([a-zA-Z0-9_-]+)/); if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${match[1]}`; }
-    return link;
+    const raw = String(link ?? '').trim();
+    if (!raw || ['_', '#', '-', 'null', 'undefined'].includes(raw) || raw.includes('file:///')) return null;
+    if (raw.includes("drive.google.com")) {
+        const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/id=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+    return raw;
+};
+
+window.obterUrlPreviewGoogleDrive = function(link = '') {
+    const raw = String(link ?? '').trim();
+    if (!raw || ['_', '#', '-', 'null', 'undefined'].includes(raw)) return '';
+    const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    return match && match[1] ? `https://drive.google.com/file/d/${match[1]}/preview` : raw;
 };
 
 window.obterUrlPreviewGoogleDrive = function(link = '') {
@@ -261,13 +272,70 @@ window.obterUrlPreviewGoogleDrive = function(link = '') {
     return match && match[1] ? `https://drive.google.com/file/d/${match[1]}/preview` : raw;
 };
 window.obterUrlEmbedMaterial = function(link = '') {
-    const raw = String(link || '').trim();
-    if (!raw) return '';
+    const raw = String(link ?? '').trim();
+    if (!raw || ['_', '#', '-', 'null', 'undefined'].includes(raw)) return '';
     if (/drive\.google\.com/i.test(raw)) return window.obterUrlPreviewGoogleDrive(raw);
-    if (/\.(pdf)(\?|#|$)/i.test(raw)) return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(raw)}`;
-    if (/\.(doc|docx|ppt|pptx|xls|xlsx)(\?|#|$)/i.test(raw)) return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(raw)}`;
+    if (/\.(pdf)(\?|#|$)/i.test(raw)) return raw;
+    if (/\.(doc|docx|ppt|pptx|xls|xlsx)(\?|#|$)/i.test(raw)) return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(raw)}`;
     return raw;
 };
+
+window.fecharMidiaFlutuante = function() {
+    const modal = document.getElementById('modal-media');
+    const iframe = document.getElementById('iframe-media');
+    const title = document.getElementById('modal-media-title');
+    if (iframe) iframe.src = 'about:blank';
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('is-open');
+    }
+    if (title) title.textContent = 'Visualização de Material';
+};
+
+window.fecharJanelaFlutuante = function() {
+    const floatingWindow = document.getElementById('floating-window-persistent');
+    const iframe = document.getElementById('fw-iframe');
+    if (iframe) iframe.src = 'about:blank';
+    if (floatingWindow) floatingWindow.style.display = 'none';
+};
+
+window.abrirMidiaFlutuante = function(url = '', titulo = 'Visualização de Material') {
+    const link = String(url ?? '').trim();
+    if (!link || ['_', '#', '-', 'null', 'undefined'].includes(link)) {
+        alert('Link do material não informado.');
+        return;
+    }
+    const modal = document.getElementById('modal-media');
+    const iframe = document.getElementById('iframe-media');
+    const titleEl = document.getElementById('modal-media-title');
+    if (!modal || !iframe) {
+        window.open(link, '_blank', 'noopener,noreferrer');
+        return;
+    }
+    const embedUrl = window.obterUrlEmbedMaterial(link);
+    if (!embedUrl) {
+        alert('Material sem link válido para visualização.');
+        return;
+    }
+    iframe.src = embedUrl;
+    if (titleEl) titleEl.textContent = titulo || 'Visualização de Material';
+    modal.style.display = 'flex';
+    modal.classList.add('is-open');
+};
+window.abrirMidaFlutuante = window.abrirMidiaFlutuante;
+
+window.imprimirMidiaAtual = function() {
+    const iframe = document.getElementById('iframe-media');
+    if (!iframe || !iframe.src || iframe.src === 'about:blank') return;
+    try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    } catch (e) {
+        window.open(iframe.src, '_blank', 'noopener,noreferrer');
+    }
+};
+
+
 window.fecharMidiaFlutuante = function() {
     const modal = document.getElementById('modal-media');
     const iframe = document.getElementById('iframe-media');
@@ -2107,7 +2175,6 @@ window.abrirMidiaFlutuante = window.abrirMidiaFlutuante;
 window.abrirMidaFlutuante = window.abrirMidiaFlutuante;
 window.fecharMidiaFlutuante = window.fecharMidiaFlutuante;
 window.abrirListaLeituras = window.abrirListaLeituras;
-window.fecharModalImpressao = window.fecharModalImpressao;
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -2117,14 +2184,13 @@ if ('serviceWorker' in navigator) {
 window.abrirModalImpressao = function(tipo = 'boletins') {
     const modal = document.getElementById('modal-imprimir-boletim');
     const inputTipo = document.getElementById('print-boletim-id');
-
     if (!modal) {
         alert('Modal de impressão não encontrado.');
         return;
     }
-
     if (inputTipo) inputTipo.value = tipo;
     modal.style.display = 'flex';
+    modal.classList.add('is-open');
 };
 
 window.gerarImpressaoBoletim = function() {
@@ -2135,7 +2201,6 @@ window.gerarImpressaoBoletim = function() {
     const incluirPublicacao = document.getElementById('print-chk-publicacao')?.checked;
 
     let boletins = Array.isArray(window.todosBoletinsData) ? [...window.todosBoletinsData] : [];
-
     if (window.pastaBoletimAtual) {
         boletins = boletins.filter(item => {
             const setor = String(item?.data?.['Para quais Setores?'] || 'Geral');
@@ -2149,7 +2214,6 @@ window.gerarImpressaoBoletim = function() {
     }
 
     const linhas = [];
-
     boletins.forEach(item => {
         const data = item.data || {};
         const leituras = Array.isArray(data.leituras) ? data.leituras : [];
@@ -2158,22 +2222,14 @@ window.gerarImpressaoBoletim = function() {
         const dataPublicacao = data['Data de Publicação'] || data['Publicado em'] || '-';
 
         if (!leituras.length) {
-            linhas.push({
-                nome: 'Nenhuma assinatura registrada',
-                dataHora: '-',
-                tema: titulo,
-                motivo,
-                publicacao: dataPublicacao
-            });
+            linhas.push({ nome: 'Nenhuma assinatura registrada', dataHora: '-', tema: titulo, motivo, publicacao: dataPublicacao });
             return;
         }
 
         leituras.forEach(registro => {
             const texto = String(registro || '').trim();
-
             let nomeColaborador = texto;
             let dataHora = '-';
-
             const matchParenteses = texto.match(/^(.*?)\s*\((.*?)\)$/);
             const matchHifen = texto.match(/^(.*?)\s*-\s*(\d{2}\/\d{2}\/\d{4}.*)$/);
             if (matchParenteses) {
@@ -2183,14 +2239,7 @@ window.gerarImpressaoBoletim = function() {
                 nomeColaborador = matchHifen[1].trim();
                 dataHora = matchHifen[2].trim();
             }
-
-            linhas.push({
-                nome: nomeColaborador || '-',
-                dataHora,
-                tema: titulo,
-                motivo,
-                publicacao: dataPublicacao
-            });
+            linhas.push({ nome: nomeColaborador || '-', dataHora, tema: titulo, motivo, publicacao: dataPublicacao });
         });
     });
 
@@ -2201,15 +2250,12 @@ window.gerarImpressaoBoletim = function() {
     if (incluirMotivo) ths.push('<th>Motivo</th>');
     if (incluirPublicacao) ths.push('<th>Data de Publicação</th>');
 
-    const escape = (valor) => {
-        const texto = String(valor ?? '');
-        return texto
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#39;');
-    };
+    const escape = (valor) => String(valor ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 
     const trs = linhas.map(linha => {
         const cols = [];
@@ -2222,21 +2268,13 @@ window.gerarImpressaoBoletim = function() {
     }).join('');
 
     const totalColunas = Math.max(ths.length, 1);
-
     const janela = window.open('', '_blank', 'width=1200,height=800');
-
     if (!janela) {
         alert('O navegador bloqueou a janela de impressão. Libere pop-ups para este site.');
         return;
     }
-
-    const html = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Relatório de Assinaturas</title>
-<style>
+    janela.document.open();
+    janela.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório de Assinaturas</title><style>
     body { font-family: Arial, sans-serif; margin: 24px; color: #1f2937; }
     h1 { color: #8B252C; margin-bottom: 8px; }
     p { margin: 0 0 18px; color: #6b7280; font-size: 14px; }
@@ -2244,41 +2282,23 @@ window.gerarImpressaoBoletim = function() {
     th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; font-size: 13px; vertical-align: top; }
     th { background: #8B252C; color: white; }
     tr:nth-child(even) td { background: #f9fafb; }
-    @media print {
-        @page { size: A4 portrait; margin: 12mm; }
-        body { margin: 0; }
-    }
-</style>
-</head>
-<body>
+    @media print { @page { size: A4 portrait; margin: 12mm; } body { margin: 0; } }
+    </style></head><body>
     <h1>Relatório de Assinaturas</h1>
     <p>Gerado em ${new Date().toLocaleString('pt-BR')}</p>
-    <table>
-        <thead>
-            <tr>${ths.join('')}</tr>
-        </thead>
-        <tbody>
-            ${trs || `<tr><td colspan="${totalColunas}">Nenhum registro encontrado.</td></tr>`}
-        </tbody>
-    </table>
-</body>
-</html>
-`;
-
-    janela.document.open();
-    janela.document.write(html);
+    <table><thead><tr>${ths.join('')}</tr></thead><tbody>${trs || `<tr><td colspan="${totalColunas}">Nenhum registro encontrado.</td></tr>`}</tbody></table>
+    </body></html>`);
     janela.document.close();
-
-    setTimeout(() => {
-        janela.focus();
-        janela.print();
-    }, 500);
-
+    setTimeout(() => { janela.focus(); janela.print(); }, 500);
     window.fecharModalImpressao();
 };
+
 window.fecharModalImpressao = function() {
     const modal = document.getElementById('modal-imprimir-boletim');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('is-open');
+    }
 };
 
 window.atualizarBottomQuickbar = function() {
