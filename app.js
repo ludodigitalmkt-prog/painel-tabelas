@@ -156,10 +156,10 @@ let loginEmAndamento = false;
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
         try {
-            const registration = await navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`);
-            if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const reg of regs) await reg.unregister();
         } catch (err) {
-            console.warn('SW não registrado:', err);
+            console.warn('Falha ao limpar service workers antigos:', err);
         }
     });
 }
@@ -780,11 +780,11 @@ window.carregarConfiguracoes = function() {
         if (docSnap.exists()) {
             const data = docSnap.data();
             const area = document.getElementById('banner-content');
-            if (area) {
-  area.innerHTML =
-    data.banner_texto && String(data.banner_texto).trim() !== ''
-      ? `<h2>${String(data.banner_texto).replace(/\n/g, '<br>')}</h2>`
-      : '<h2>Bem-vindo ao Painel Clínico</h2>';
+    if (area) {
+    area.innerHTML =
+        data.banner_texto && String(data.banner_texto).trim() !== ''
+            ? `<h2>${String(data.banner_texto).replace(/\n/g, '<br>')}</h2>`
+            : '<h2>Bem-vindo ao Painel Clínico</h2>';
 }
             
             const mapIds = {
