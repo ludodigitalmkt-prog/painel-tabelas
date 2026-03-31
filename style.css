@@ -400,3 +400,76 @@ window.gerarImpressaoBoletim = function() {
 #tab-ensino .atividade-resposta-box textarea { min-height: 120px; }
 #modal-media iframe { border-radius: 12px; }
 @media (max-width: 900px) { #floating-window-persistent { width: calc(100vw - 24px) !important; right: 12px !important; left: 12px !important; bottom: 12px !important; height: 70vh !important; } .bottom-quickbar { position: fixed; left: 12px; right:12px; bottom:12px; } }
+
+                  /* ===== PADRÃO DE CARDS MODERNOS ===== */
+.card-modern {
+  border-radius: 20px;
+  padding: 20px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.card-modern:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+
+/* Ícone central */
+.card-modern .icon {
+  font-size: 40px;
+  opacity: 0.3;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Texto */
+.card-modern h3 {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.card-modern span {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* ===== GRADIENTES BONITOS ===== */
+.gradient-red {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.gradient-blue {
+  background: linear-gradient(135deg, #3b82f6, #1e3a8a);
+}
+
+.gradient-green {
+  background: linear-gradient(135deg, #10b981, #065f46);
+}
+
+.gradient-orange {
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+}
+
+.gradient-purple {
+  background: linear-gradient(135deg, #8b5cf6, #4c1d95);
+}
+
+.gradient-pink {
+  background: linear-gradient(135deg, #ec4899, #9d174d);
+}
+
+/* ===== CARDS CLAROS (RH estilo leve) ===== */
+.card-soft {
+  background: #f9fafb;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+.card-soft-title {
+  font-weight: 600;
+  color: #374151;
+}
