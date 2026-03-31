@@ -45,7 +45,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+const db = initializeFirestore(app, {});
 const auth = getAuth(app);
 
 window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot; window.setDoc = setDoc;
@@ -780,7 +780,12 @@ window.carregarConfiguracoes = function() {
         if (docSnap.exists()) {
             const data = docSnap.data();
             const area = document.getElementById('banner-content');
-            if(area) { if(data.banner_texto && data.banner_texto.trim() !== '') area.innerHTML = `<h2>${data.banner_texto.replace(/\n/g, '<br>')}</h2>`; else area.innerHTML = `<h2>Bem-vindo ao Painel Clínico</h2>`; }
+            if (area) {
+  area.innerHTML =
+    data.banner_texto && String(data.banner_texto).trim() !== ''
+      ? `<h2>${String(data.banner_texto).replace(/\n/g, '<br>')}</h2>`
+      : '<h2>Bem-vindo ao Painel Clínico</h2>';
+}
             
             const mapIds = {
                 'tab-input-banner': 'banner_texto', 'tab-input-locais': 'locais', 'tab-input-setores': 'setores',
