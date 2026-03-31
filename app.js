@@ -150,7 +150,7 @@ window.obterAvaliacoesPerfilDisponiveis = function(nomeColaborador = '', setorCo
 };
 
 let chartBoletinsInst = null; let chartPrivadosInst = null; let chartHomeInst = null; let chartPrivadosGeralInst = null;
-const APP_VERSION = '3.1.8';
+const APP_VERSION = '3.1.0';
 let loginEmAndamento = false;
 
 if ('serviceWorker' in navigator) {
@@ -233,7 +233,7 @@ onAuthStateChanged(auth, (user) => {
         window.carregarConfiguracoes(); window.buscarClimaAraucaria();
         if (typeof window.aplicarFraseMotivacional === 'function') window.aplicarFraseMotivacional();
         if(window.escutarRH) window.escutarRH();
-        
+        if (window.atualizarBottomQuickbar) window.atualizarBottomQuickbar();
     } else {
         if(loginScreen) loginScreen.style.display = 'flex'; if(dashboardScreen) dashboardScreen.style.display = 'none';
         if(chatFab) chatFab.style.display = 'none';
@@ -250,9 +250,10 @@ onAuthStateChanged(auth, (user) => {
 
 setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
 window.formatarLinkImagem = function(link) {
-    if (!link || link.includes('file:///')) return null;
-    if (link.includes("drive.google.com")) { const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/) || link.match(/id=([a-zA-Z0-9_-]+)/); if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${match[1]}`; }
-    return link;
+    const raw = String(link || '').trim();
+    if (!raw || raw.includes('file:///')) return null;
+    if (raw.includes('drive.google.com')) { const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/id=([a-zA-Z0-9_-]+)/); if (match && match[1]) return `https://drive.google.com/uc?export=view&id=${match[1]}`; }
+    return raw;
 };
 
 window.obterUrlPreviewGoogleDrive = function(link = '') {
@@ -278,7 +279,7 @@ window.fecharMidiaFlutuante = function() {
 };
 window.abrirMidiaFlutuante = function(url = '', titulo = 'Visualização de Material') {
     const link = String(url || '').trim();
-    if (!link) { alert('Link do material não informado.'); return; }
+    if (!link || ['#','_','null','undefined','-'].includes(link.toLowerCase())) { alert('Link do material não informado.'); return; }
     const modal = document.getElementById('modal-media');
     const iframe = document.getElementById('iframe-media');
     const titleEl = document.getElementById('modal-media-title');
@@ -798,15 +799,9 @@ window.carregarConfiguracoes = function() {
             document.documentElement.style.setProperty('--chat-primary', chatCor);
             
             const fabImg = document.getElementById('chat-fab-img'); const headerImg = document.getElementById('chat-header-img');
-            const logoFinal = window.formatarLinkImagem(chatLogo) || chatLogo || './logo.png';
-        if (fabImg) {
-            fabImg.src = logoFinal;
-            fabImg.onerror = () => { fabImg.src = './logo.png'; };
-        }
-        if (headerImg) {
-            headerImg.src = logoFinal;
-            headerImg.onerror = () => { headerImg.src = './logo.png'; };
-        }
+            const _chatLogoFinal = window.formatarLinkImagem(chatLogo) || chatLogo || './logo.png';
+            if(fabImg){ fabImg.src = _chatLogoFinal; fabImg.onerror = () => { fabImg.src = './logo.png'; }; }
+            if(headerImg){ headerImg.src = _chatLogoFinal; headerImg.onerror = () => { headerImg.src = './logo.png'; }; }
             window.aplicarImagemClimaHome(data.weather_image || '');
 
             window.corStatusPendente = data.cor_pendente || '#e53e3e'; window.corStatusConcluido = data.cor_concluido || '#38a169';
@@ -2102,7 +2097,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if(abaAtual === 'boletins-privados') window.fecharPastaPrivado();
             ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'treinamentos', 'pacotes'].forEach(col => { if(abaAtual === col) window.fecharPastaGenerica(col); });
             if(abaAtual === 'rh' && isAdmin) { window.atualizarOpcoesFiltrosRH(); window.renderizarDashboardRH(); }
-            
+            if (window.atualizarBottomQuickbar) window.atualizarBottomQuickbar();
         });
     });
 });
@@ -2289,3 +2284,7 @@ window.fecharModalImpressao = function() {
     if (modal) modal.style.display = 'none';
 };
 
+window.atualizarBottomQuickbar = function() {
+  const bar = document.getElementById('colaboradores-quickbar');
+  if (bar) bar.style.display = 'none';
+};
