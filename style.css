@@ -408,3 +408,81 @@ window.gerarImpressaoBoletim = function() {
 #tab-ensino .atividade-resposta-box textarea { min-height: 120px; }
 #modal-media iframe { border-radius: 12px; }
 @media (max-width: 900px) { #floating-window-persistent { width: calc(100vw - 24px) !important; right: 12px !important; left: 12px !important; bottom: 12px !important; height: 70vh !important; } .bottom-quickbar { position: fixed; left: 12px; right:12px; bottom:12px; } }
+
+
+/* ====== UI PATCH v3.2.2 ====== */
+
+.home-hero-stack{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:stretch;margin-bottom:24px}
+.home-top-bar{margin-bottom:0;min-height:160px;display:flex;flex-direction:column;justify-content:center;gap:12px;background:linear-gradient(135deg,#8B252C,#b33a42)}
+.frase-motivacional{font-size:18px;font-weight:500;opacity:.95}
+.weather-widget--home{margin-bottom:0;min-height:160px;border-radius:24px;background:linear-gradient(135deg,#264a8c,#3b6fc5);box-shadow:0 14px 30px rgba(38,74,140,.16)}
+.weather-mini-stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.weather-mini-stats span{background:rgba(255,255,255,.12);padding:8px 10px;border-radius:999px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.weather-status-pill{background:#d8f5df!important;color:#205c2c;font-weight:700}
+.home-banner{margin-bottom:24px;background:linear-gradient(135deg,#fff,#f8fafc);border:1px solid var(--border-color);box-shadow:var(--shadow-soft);border-radius:20px;padding:22px}
+.home-banner h2{font-size:22px;color:var(--primary-color);line-height:1.35}
+
+/* cards modernizados */
+.cards-grid{gap:24px}
+.card{border-radius:24px;padding:20px;box-shadow:0 12px 32px rgba(15,23,42,.06);border:1px solid rgba(148,163,184,.14);overflow:hidden}
+.card.has-gradient{color:#fff;border:none;box-shadow:0 18px 38px rgba(31,41,55,.16)}
+.card.has-gradient .card-actions{border-top-color:rgba(255,255,255,.14)}
+.card.has-gradient .card-info, .card.has-gradient strong, .card.has-gradient .folder-chip, .card.has-gradient .uiverse-card-title, .card.has-gradient .uiverse-subtle{color:#fff!important}
+.color-swatch{width:32px;height:32px;border-radius:50%;display:inline-block;cursor:pointer;border:3px solid transparent;box-shadow:0 3px 10px rgba(15,23,42,.12);margin:4px}
+.color-swatch.selected{border-color:#111827;transform:scale(1.08)}
+
+/* card uiverse adaptado */
+.uiverse-shell{background:linear-gradient(135deg,#c8b6ff,#8ec5ff 48%,#e0d4ff);padding:4px;border-radius:30px;display:flex;flex-direction:column;height:100%}
+.uiverse-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.uiverse-body{background:#111827;border-radius:26px;padding:18px;display:flex;flex-direction:column;gap:12px;min-height:100%;color:#cbd5e1}
+.uiverse-card-title{font-size:20px;font-weight:700;line-height:1.2;color:#fff}
+.uiverse-subtle{font-size:13px;color:#cbd5e1;white-space:pre-wrap}
+.uiverse-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+.uiverse-btn{border:none;border-radius:12px;padding:10px 14px;cursor:pointer;font-size:12px;font-weight:700;color:#fff;background:linear-gradient(135deg,#7c3aed,#2563eb);display:inline-flex;align-items:center;gap:8px;box-shadow:inset 0 2px 4px rgba(255,255,255,.2)}
+.uiverse-btn.alt{background:linear-gradient(135deg,#0ba360,#38b2ac)}
+.uiverse-btn.neutral{background:linear-gradient(135deg,#334155,#475569)}
+.uiverse-btn:hover{transform:translateY(-1px) scale(1.02)}
+
+/* workspace ensino/rh */
+.workspace-shell{background:#fff;border-radius:28px;padding:24px;box-shadow:0 18px 44px rgba(15,23,42,.08);border:1px solid rgba(148,163,184,.12)}
+.section-top-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.section-top-tab{background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;color:#334155;font-weight:700}
+.section-top-tab.active{background:#eefbf4;border-color:#bbf7d0;color:#166534;box-shadow:inset 0 0 0 1px #86efac}
+#tab-ensino #ensino-login-area, #tab-ensino #ensino-dashboard-area, #tab-rh{max-width:none}
+#tab-ensino, #tab-rh{padding-top:6px}
+.rh-shell{background:#fff;border-radius:28px;padding:24px;box-shadow:0 18px 44px rgba(15,23,42,.08);border:1px solid rgba(148,163,184,.12)}
+.rh-overview-grid{gap:18px}
+.rh-stat-card{border-radius:22px;box-shadow:none}
+
+/* chatbot suave */
+#chat-fab{background:linear-gradient(135deg,var(--chat-primary),#1ec98e);box-shadow:0 18px 30px rgba(11,163,96,.25);overflow:visible}
+#chat-window{border-radius:24px;box-shadow:0 22px 55px rgba(15,23,42,.18);border:1px solid rgba(148,163,184,.18)}
+.chat-header{background:linear-gradient(135deg,var(--chat-primary),#0f9f62)}
+.chat-quick-replies{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;border-top:1px solid #edf2f7;background:#fff}
+.chat-quick-replies button{border:none;background:#f0fdf4;color:#166534;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;box-shadow:0 4px 10px rgba(22,101,52,.08)}
+.chat-quick-replies button:hover{background:#dcfce7}
+.chat-msg.bot{box-shadow:0 8px 18px rgba(15,23,42,.06)}
+.chat-input-area input{border-radius:999px}
+.chatbot-tooltip{position:absolute;right:78px;bottom:12px;max-width:230px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:12px 14px;font-size:13px;box-shadow:0 18px 38px rgba(15,23,42,.15);display:none}
+.chatbot-tooltip strong{display:block;color:var(--primary-color);margin-bottom:4px}
+.chatbot-tooltip::after{content:"";position:absolute;right:-8px;bottom:18px;width:16px;height:16px;background:#fff;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;transform:rotate(-45deg)}
+
+/* floating workspace for convenios */
+.floating-workspace{position:fixed;right:120px;bottom:22px;width:min(860px,calc(100vw - 160px));height:min(78vh,760px);background:#fff;border-radius:24px;box-shadow:0 30px 80px rgba(15,23,42,.25);z-index:9998;border:1px solid rgba(148,163,184,.18);overflow:hidden;display:flex;flex-direction:column}
+.floating-workspace.minimized{width:360px!important;height:64px!important;bottom:18px;right:110px}
+.floating-workspace.minimized #fw-iframe,.floating-workspace.minimized #fw-blocked{display:none!important}
+.fw-toolbar{background:linear-gradient(135deg,var(--primary-color),#b33a42);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;cursor:move;font-weight:700}
+.fw-actions{display:flex;gap:8px}
+.fw-actions button{background:rgba(255,255,255,.14);border:none;color:#fff;width:34px;height:34px;border-radius:10px;cursor:pointer}
+.fw-actions button:hover{background:rgba(255,255,255,.22)}
+.fw-blocked{padding:22px;background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412}
+
+/* hide quickbar in portal do aluno */
+.bottom-quickbar{display:none!important}
+#ensino-dashboard-area .section-top-tabs, #ensino-login-area .section-top-tabs{display:none!important}
+
+@media (max-width: 900px){
+  .home-hero-stack{grid-template-columns:1fr}
+  .floating-workspace{right:12px;left:12px;width:auto;height:72vh;bottom:12px}
+  #chat-window{width:calc(100vw - 24px);right:12px;left:12px;bottom:92px;height:72vh}
+}
