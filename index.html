@@ -90,16 +90,47 @@
                     <div id="banner-content"><h2>Bem-vindo ao Painel Clínico</h2></div>
                 </div>
 
-                <div class="weather-widget">
-                    <div class="weather-info">
-                        <h3 id="weather-city"><i class="ri-map-pin-line"></i> Araucária, PR</h3>
-                        <div id="weather-desc" class="weather-desc">Atualizando clima...</div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="weather-temp"><span id="weather-deg">--</span>°C</div>
-                            <div class="weather-icon" style="margin: 0;"><i id="weather-icon-class" class="ri-sun-cloudy-line" style="font-size: 40px; filter: none;"></i></div>
-                        </div>
-                    </div>
-                </div>
+                <div class="weather-card-uiverse">
+  <div class="weather-card-front">
+    <div class="weather-main-icon">
+      <i id="weather-icon-class" class="ri-sun-cloudy-line"></i>
+    </div>
+
+    <div class="weather-main-info">
+      <div class="weather-temp-line">
+        <span id="weather-deg">--</span><span class="weather-unit">°C</span>
+      </div>
+      <div id="weather-city" class="weather-city-line">
+        <i class="ri-map-pin-line"></i> Araucária, PR
+      </div>
+      <div id="weather-desc" class="weather-desc-line">Atualizando clima...</div>
+    </div>
+  </div>
+
+  <div class="weather-card-back">
+    <div class="weather-back-grid">
+      <div class="weather-mini-box">
+        <span class="weather-mini-title">Humidade</span>
+        <strong id="weather-humidity">--%</strong>
+      </div>
+
+      <div class="weather-mini-box">
+        <span class="weather-mini-title">Vento</span>
+        <strong id="weather-wind">-- km/h</strong>
+      </div>
+
+      <div class="weather-mini-box">
+        <span class="weather-mini-title">Sensação</span>
+        <strong id="weather-feel">-- °C</strong>
+      </div>
+
+      <div class="weather-mini-box weather-status-box">
+        <span class="weather-mini-title">Status</span>
+        <strong id="weather-status">Clima</strong>
+      </div>
+    </div>
+  </div>
+</div>
 
                 <div id="area-alertas-home"></div>
 
