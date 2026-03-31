@@ -306,18 +306,94 @@ window.imprimirMidiaAtual = function() {
 
 window.buscarClimaAraucaria = async function() {
     try {
-        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-25.59&longitude=-49.41&current_weather=true'); const data = await response.json(); const clima = data.current_weather;
-        const wDeg = document.getElementById('weather-deg'); if(wDeg) wDeg.textContent = Math.round(clima.temperature);
-        let desc = "Céu Limpo"; let icon = "ri-sun-fill";
-        if(clima.weathercode >= 1 && clima.weathercode <= 3) { desc = "Parcialmente Nublado"; icon = "ri-sun-cloudy-fill"; }
-        if(clima.weathercode === 45 || clima.weathercode === 48) { desc = "Neblina"; icon = "ri-foggy-fill"; }
-        if(clima.weathercode >= 51 && clima.weathercode <= 67) { desc = "Chuva Leve"; icon = "ri-drizzle-fill"; }
-        if(clima.weathercode >= 71 && clima.weathercode <= 77) { desc = "Chuva/Neve"; icon = "ri-snowy-line"; }
-        if(clima.weathercode >= 80 && clima.weathercode <= 82) { desc = "Pancadas de Chuva"; icon = "ri-showers-fill"; }
-        if(clima.weathercode >= 95) { desc = "Tempestade"; icon = "ri-thunderstorms-fill"; }
-        const wDesc = document.getElementById('weather-desc'); const wIcon = document.getElementById('weather-icon-class');
-        if(wDesc) wDesc.textContent = desc; if(wIcon) wIcon.className = icon;
-    } catch(e) { const wDesc = document.getElementById('weather-desc'); if(wDesc) wDesc.textContent = "Clima indisponível"; }
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-25.59&longitude=-49.41&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&forecast_days=1');
+        const data = await response.json();
+        const clima = data.current_weather || {};
+
+        const wDeg = document.getElementById('weather-deg');
+        const wDesc = document.getElementById('weather-desc');
+        const wIcon = document.getElementById('weather-icon-class');
+        const wHumidity = document.getElementById('weather-humidity');
+        const wWind = document.getElementById('weather-wind');
+        const wFeel = document.getElementById('weather-feel');
+        const wStatus = document.getElementById('weather-status');
+
+        if (wDeg) wDeg.textContent = Math.round(clima.temperature ?? 0);
+
+        let desc = "Céu Limpo";
+        let icon = "ri-sun-fill";
+        let status = "Agradável";
+
+        if (clima.weathercode >= 1 && clima.weathercode <= 3) {
+            desc = "Parcialmente Nublado";
+            icon = "ri-sun-cloudy-fill";
+            status = "Estável";
+        }
+        if (clima.weathercode === 45 || clima.weathercode === 48) {
+            desc = "Neblina";
+            icon = "ri-foggy-fill";
+            status = "Neblina";
+        }
+        if (clima.weathercode >= 51 && clima.weathercode <= 67) {
+            desc = "Chuva Leve";
+            icon = "ri-drizzle-fill";
+            status = "Úmido";
+        }
+        if (clima.weathercode >= 71 && clima.weathercode <= 77) {
+            desc = "Chuva/Neve";
+            icon = "ri-snowy-line";
+            status = "Instável";
+        }
+        if (clima.weathercode >= 80 && clima.weathercode <= 82) {
+            desc = "Pancadas de Chuva";
+            icon = "ri-showers-fill";
+            status = "Chuvoso";
+        }
+        if (clima.weathercode >= 95) {
+            desc = "Tempestade";
+            icon = "ri-thunderstorms-fill";
+            status = "Atenção";
+        }
+
+        if (wDesc) wDesc.textContent = desc;
+        if (wIcon) wIcon.className = icon;
+        if (wStatus) wStatus.textContent = status;
+
+        if (wWind) {
+            const vento = Math.round(clima.windspeed ?? 0);
+            wWind.textContent = `${vento} km/h`;
+        }
+
+        const hourlyTimes = data.hourly?.time || [];
+        const humidityValues = data.hourly?.relativehumidity_2m || [];
+        const apparentValues = data.hourly?.apparent_temperature || [];
+
+        const currentTime = clima.time;
+        const idx = hourlyTimes.indexOf(currentTime);
+
+        if (wHumidity) {
+            const humidity = idx >= 0 ? humidityValues[idx] : '--';
+            wHumidity.textContent = `${humidity}%`;
+        }
+
+        if (wFeel) {
+            const feel = idx >= 0 ? Math.round(apparentValues[idx]) : Math.round(clima.temperature ?? 0);
+            wFeel.textContent = `${feel} °C`;
+        }
+
+    } catch (e) {
+        const wDesc = document.getElementById('weather-desc');
+        const wHumidity = document.getElementById('weather-humidity');
+        const wWind = document.getElementById('weather-wind');
+        const wFeel = document.getElementById('weather-feel');
+        const wStatus = document.getElementById('weather-status');
+
+        if (wDesc) wDesc.textContent = "Clima indisponível";
+        if (wHumidity) wHumidity.textContent = "--%";
+        if (wWind) wWind.textContent = "-- km/h";
+        if (wFeel) wFeel.textContent = "-- °C";
+        if (wStatus) wStatus.textContent = "Offline";
+    }
 };
 
 window.obterPublicoAlvo = function(setoresAlvoString, colabEsp = '') {
