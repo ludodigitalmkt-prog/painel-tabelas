@@ -913,10 +913,16 @@ window.toggleChat = function() {
                 window.abrirSaudacaoChat();
             }
         }
+    } else {
+        win.style.display = 'none';
+    }
+};
 
-        window.renderizarSugestoesChat = function() {
+window.renderizarSugestoesChat = function() {
     const quickRepliesDiv = document.querySelector('.chat-quick-replies');
     if (!quickRepliesDiv) return;
+    
+    // (O resto da função continua igualzinho...)
 
     const termosPopulares = [
         { label: 'Cardiologia', icon: 'ri-heart-pulse-line' },
