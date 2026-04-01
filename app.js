@@ -776,7 +776,9 @@ window.renderizarListaPrivados = function() {
 
 window.renderizarCards = function(colecaoNome) {
     const grid = document.getElementById(`grid-${colecaoNome}`);
-    if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
+    
+    // MÁGICA: Adicionamos o 'ramais' na exceção para ele passar pela trava de segurança!
+    if(!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && colecaoNome !== 'ramais' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
 
     onSnapshot(collection(db, colecaoNome), (snapshot) => {
         if(snapshot.empty) {
@@ -784,17 +786,26 @@ window.renderizarCards = function(colecaoNome) {
             if(colecaoNome === 'boletins') { window.todosBoletinsData = []; window.verificarUrgentesHome(); window.renderizarGraficoHome(); }
             if(colecaoNome === 'boletins-privados') { window.todosPrivadosData = []; window.verificarUrgentesHome(); window.renderizarGraficoPrivadosGeral(); }
             if(configuracaoAbas[colecaoNome] && configuracaoAbas[colecaoNome].campoAgrupador) { window.dadosGlobaisAbas[colecaoNome] = []; if(abaAtual === colecaoNome) window.renderizarPastasGenericas(colecaoNome); }
+            
+            // Se excluir todos os ramais, a tela precisa limpar
+            if (colecaoNome === 'ramais') { window.todosOsDadosDoSistema['ramais'] = []; window.renderizarRamaisAgrupados(); }
+            
             if(grid) { grid.style.display = 'block'; grid.innerHTML = ''; }
             return;
         }
-        let itens = []; snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() })); window.todosOsDadosDoSistema[colecaoNome] = itens;
         
+        let itens = []; snapshot.forEach(doc => itens.push({ id: doc.id, data: doc.data() })); 
+        window.todosOsDadosDoSistema[colecaoNome] = itens;
+        
+        // Intercepta e renderiza os ramais agrupados!
         if (colecaoNome === 'ramais') {
             if (abaAtual === 'contatos' || document.getElementById('sub-ramais')?.style.display !== 'none') {
                 window.renderizarRamaisAgrupados();
             }
             return;
         }
+
+        if(colecaoNome === 'colaboradores') {
 
         if(colecaoNome === 'colaboradores') { 
             listaColaboradoresGlobal = itens.map(item => { return { nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' }; }).filter(c => c.nome).sort((a,b) => a.nome.localeCompare(b.nome)); 
