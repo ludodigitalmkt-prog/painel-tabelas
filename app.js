@@ -918,15 +918,15 @@ window.toggleChat = function() {
     const abrindo = (win.style.display === 'none' || win.style.display === '');
     if (abrindo) {
         win.style.display = 'flex';
-        window.ocultarTooltipChatbot();
+        if (typeof window.ocultarTooltipChatbot === 'function') window.ocultarTooltipChatbot();
 
         if (!window.chatJaInicializado) {
-            window.abrirSaudacaoChat();
+            if (typeof window.abrirSaudacaoChat === 'function') window.abrirSaudacaoChat();
             window.chatJaInicializado = true;
         } else {
             const body = document.getElementById('chat-body');
             if (body && body.innerHTML.trim() === '') {
-                window.abrirSaudacaoChat();
+                if (typeof window.abrirSaudacaoChat === 'function') window.abrirSaudacaoChat();
             }
         }
     } else {
@@ -935,8 +935,8 @@ window.toggleChat = function() {
 };
 
 window.renderizarSugestoesChat = function() {
-    
-    // (O resto da função continua igualzinho...)
+    const quickRepliesDiv = document.querySelector('.chat-quick-replies');
+    if (!quickRepliesDiv) return;
 
     const termosPopulares = [
         { label: 'Cardiologia', icon: 'ri-heart-pulse-line' },
@@ -958,7 +958,7 @@ window.renderizarSugestoesChat = function() {
             <span>${item.label}</span>
         </button>`
     ).join('');
-};;
+};
 
 window.sendQuickMsg = function(texto) { const input = document.getElementById('chat-input'); if(input) { input.value = texto; window.sendChat(); } };
 window.sendChat = function() {
