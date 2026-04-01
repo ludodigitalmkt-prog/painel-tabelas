@@ -524,12 +524,16 @@
                 </div>
                 
                 <div id="sub-ramais" style="display:none;">
-                    <div class="sub-aba-header">
-                        <button class="btn-hover color-8" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ramais')" style="display:none;"><i class="ri-add-line"></i> Novo Ramal</button>
-                    </div>
-                    <div class="cards-grid" id="grid-ramais"></div>
-                </div>
+  <div class="list-header">
+    <h3>Ramais</h3>
+    <div class="actions">
+      <button class="back-btn" onclick="window.voltarSubAba()"><i class="ri-arrow-left-line"></i> Voltar</button>
+      <button class="btn-hover color-9" onclick="window.abrirModal('ramais')"><i class="ri-add-line"></i> Novo cadastro</button>
+    </div>
+  </div>
+
+  <div id="grid-ramais-agrupado" class="ramais-agrupados"></div>
+</div>
                 
                 <div id="sub-emails" style="display:none;">
                     <div class="sub-aba-header">
