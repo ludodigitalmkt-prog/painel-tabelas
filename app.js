@@ -478,6 +478,56 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     let campoTitulo = config.campos[0]; if(config.campoAgrupador) campoTitulo = config.campos.find(c => c !== config.campoAgrupador) || config.campos[0];
     
     let tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes do Cadastro';
+
+    // Função para voltar para o menu principal de contatos
+window.voltarSubAba = function() {
+    ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas'].forEach(id => {
+        const sub = document.getElementById('sub-' + id);
+        if(sub) sub.style.display = 'none';
+    });
+    const menu = document.getElementById('menu-contatos');
+    if(menu) menu.style.display = 'grid';
+};
+
+// Função para agrupar e renderizar os ramais por Prédio/Local
+window.renderizarRamaisAgrupados = function() {
+    const grid = document.getElementById('grid-ramais-agrupado');
+    if(!grid) return;
+    
+    const itens = window.todosOsDadosDoSistema['ramais'] || [];
+    if (itens.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-muted);">Nenhum ramal cadastrado no momento.</p>';
+        return;
+    }
+
+    const grupos = {};
+    itens.forEach(item => {
+        const local = item.data['Local ou Prédio'] || 'Outros Locais';
+        if (!grupos[local]) grupos[local] = [];
+        grupos[local].push(item);
+    });
+
+    let htmlFinal = '';
+    Object.keys(grupos).sort().forEach(local => {
+        let htmlGrupo = `
+        <div class="ramal-unidade-bloco">
+            <div class="ramal-unidade-titulo">
+                <div style="background: var(--primary-color); color: white; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="ri-building-4-fill" style="font-size: 18px;"></i>
+                </div>
+                ${local}
+            </div>
+            <div class="ramal-unidade-grid">`;
+        
+        grupos[local].sort((a,b) => String(a.data['Setor'] || '').localeCompare(String(b.data['Setor'] || ''))).forEach(item => {
+            htmlGrupo += window.gerarHTMLCard('ramais', item.id, item.data);
+        });
+        
+        htmlGrupo += `</div></div>`;
+        htmlFinal += htmlGrupo;
+    });
+    grid.innerHTML = htmlFinal;
+};
     
     // MÁGICA: Alterar o título principal se for da aba de ramais
     if (colecaoNome === 'ramais') {
