@@ -621,15 +621,28 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     cardHtml += `</div>`; return cardHtml;
 };
 
-window.renderizarListaGenerica = function(colecao) { const grid = document.getElementById(`grid-${colecao}-list`); if(!grid) return; grid.innerHTML = ''; const nomePasta = window[`pasta_${colecao}_Atual`]; const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => (i.data[configuracaoAbas[colecao].campoAgrupador] || 'Geral') === nomePasta); itensExibir.forEach(item => { grid.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data); }); };
+window.renderizarListaGenerica = function(colecao) { 
+    const grid = document.getElementById(`grid-${colecao}-list`); 
+    if(!grid) return; 
+    grid.innerHTML = ''; 
+    const nomePasta = window[`pasta_${colecao}_Atual`]; 
+    const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => (i.data[configuracaoAbas[colecao].campoAgrupador] || 'Geral') === nomePasta); 
+    
+    // MÁGICA AQUI: Ordenação alfabética inteligente para os cards DENTRO da pasta
+    itensExibir.sort((a, b) => String(a.data[configuracaoAbas[colecao].campos[0]] || '').toLowerCase().localeCompare(String(b.data[configuracaoAbas[colecao].campos[0]] || '').toLowerCase()));
+
+    itensExibir.forEach(item => { grid.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data); }); 
+};
+
 window.renderizarPastasGenericas = function(colecao) {
-// FIM DA PARTE 1
-    // INÍCIO DA PARTE 2
     const grid = document.getElementById(`grid-${colecao}-folders`); if(!grid) return; grid.innerHTML = '';
     const config = configuracaoAbas[colecao]; const dadosAtuais = window.dadosGlobaisAbas[colecao] || [];
     if (dadosAtuais.length === 0) { grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Nenhuma pasta/módulo encontrado. Clique em "Novo" para criar.</p>'; return; }
     const obterNomePasta = (item) => { const bruto = item?.data?.[config.campoAgrupador] || item?.data?.Pacotes || item?.data?.['Pasta / Módulo'] || item?.data?.Especialidade || item?.data?.Convênio || item?.data?.Exame || item?.data?.Tipo || item?.data?.['Categoria do Exame'] || item?.data?.['Número da Tabela'] || 'Geral'; return String(bruto || 'Geral').trim() || 'Geral'; };
-    const pastasUnicas = [...new Set(dadosAtuais.map(obterNomePasta))].sort((a,b)=>String(a).localeCompare(String(b))); 
+    
+    // MÁGICA AQUI: Ordenação alfabética inteligente para as PASTAS
+    const pastasUnicas = [...new Set(dadosAtuais.map(obterNomePasta))].sort((a,b)=>String(a).toLowerCase().localeCompare(String(b).toLowerCase())); 
+    
     pastasUnicas.forEach(nomePasta => {
         const itensPasta = dadosAtuais.filter(i => obterNomePasta(i) === nomePasta);
         const qtd = itensPasta.length;
