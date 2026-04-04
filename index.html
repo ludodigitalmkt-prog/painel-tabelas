@@ -609,6 +609,24 @@
             <div class="modal-body">
                 <p class="fs-14 text-muted mb-15">Selecione os dados que deseja incluir no relatório físico:</p>
                 <input type="hidden" id="print-boletim-id">
+                <div style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
+    <div>
+        <label style="font-size: 12px; font-weight: 600;">Filtrar por Colaborador (Opcional):</label>
+        <select id="print-colaborador" class="form-input" style="width: 100%; margin-top: 5px;">
+            <option value="">Todos os Colaboradores</option>
+        </select>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <div style="flex: 1;">
+            <label style="font-size: 12px; font-weight: 600;">Data Início:</label>
+            <input type="date" id="print-data-inicio" class="form-input" style="width: 100%; margin-top: 5px;">
+        </div>
+        <div style="flex: 1;">
+            <label style="font-size: 12px; font-weight: 600;">Data Fim:</label>
+            <input type="date" id="print-data-fim" class="form-input" style="width: 100%; margin-top: 5px;">
+        </div>
+    </div>
+</div>
                 <div class="checkbox-group checkbox-group-box">
                     <label class="checkbox-label"><input type="checkbox" id="print-chk-nome" checked disabled> Nome do Colaborador (Obrigatório)</label>
                     <label class="checkbox-label"><input type="checkbox" id="print-chk-data" checked> Data/Hora da Assinatura</label>
