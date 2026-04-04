@@ -355,13 +355,16 @@
                     <div class="home-grid" id="grid-privados-folders"></div>
                 </div>
                 <div id="privados-view-list" style="display:none;">
-                    <div class="flex-between mb-25">
-                        <div class="flex-start">
-                            <button class="btn-hover color-8" onclick="window.fecharPastaPrivado()"><i class="ri-arrow-left-line"></i> Voltar</button>
-                            <h2 id="titulo-pasta-privados" class="text-primary">Colaborador</h2>
-                        </div>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')" style="display:none;"><i class="ri-add-line"></i> Novo Documento</button>
+                <div class="flex-between mb-25">
+                    <div class="flex-start">
+                        <button class="btn-hover color-8" onclick="window.fecharPastaPrivado()"><i class="ri-arrow-left-line"></i> Voltar</button>
+                        <h2 class="text-primary" id="titulo-pasta-privados">Documentos do Colaborador</h2>
                     </div>
+                    <div>
+                        <button class="btn-hover color-9 admin-only" onclick="window.abrirModalImpressao('boletins-privados')" style="margin-right: 10px;"><i class="ri-printer-line"></i> Relatório</button>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('boletins-privados')"><i class="ri-add-line"></i> Novo Documento</button>
+                    </div>
+                </div>
                     <div class="chart-box">
                         <canvas id="chart-privados"></canvas>
                     </div>
