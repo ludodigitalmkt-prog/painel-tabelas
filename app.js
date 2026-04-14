@@ -27,14 +27,16 @@ const configuracaoAbas = {
     'contatos-convenios': { titulo: 'Contato Convênio', campos: ['Nome do Convênio', 'Número'] },
     'senhas': { titulo: 'Senha de Acesso', campos: ['Convênio ou Sistema', 'Link de Acesso', 'Senha', 'Local de Acesso Permitido'] },
     'boletins': { titulo: 'Boletim Informativo', campos: ['Título do Informativo', 'Para quais Setores?', 'Tipo (Urgente, Norma, Regra, etc)', 'Data de Publicação', 'Motivo', 'Links dos Materiais (1 por linha)'] },
-    'boletins-privados': { titulo: 'Informativo Privado', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] }
+    'boletins-privados': { titulo: 'Informativo Privado', campos: ['Para qual Colaborador?', 'Título do Documento', 'Data de Publicação', 'Tipo (Urgente, Norma, Regra, etc)', 'Motivo', 'Links dos Materiais (1 por linha)'] },
+    
+    // --- NOVO MÓDULO: CONTROLE DE ATIVOS ---
     'ativos': { 
         titulo: 'Ativo / Equipamento', 
         campos: ['Nome do Equipamento', 'Categoria', 'Número de Patrimônio', 'Localização / Setor', 'Responsável', 'Status do Ativo', 'Observações'], 
         campoAgrupador: 'Categoria', 
         icone: 'ri-qr-code-line' 
     }
-};  
+};
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -556,25 +558,15 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
     document.getElementById('modal-cadastro').style.display = 'flex';
 };
 
-if(colecaoNome === 'treinamentos' && isAdmin) {
-        const precisaResponder = data['Tipo (Vídeo, PDF, Tarefa, Prova)'] && (data['Tipo (Vídeo, PDF, Tarefa, Prova)'].includes('Tarefa') || data['Tipo (Vídeo, PDF, Tarefa, Prova)'].includes('Prova'));
-        const count = precisaResponder ? (data.respostas_alunos || []).length : (data.leituras || []).length;
-        cardHtml += `<div style="margin-top:15px; padding-top:15px; border-top: 1px dashed rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-size:12px; color:var(--primary-color);"><b>Conclusões:</b> ${count} aluno(s).</div>
-                        <button onclick="window.abrirListaLeituras('${docId}', 'treinamentos')" class="btn-hover color-8" style="padding: 6px 12px; font-size: 12px;"><i class="ri-team-line"></i> Respostas</button>
-                     </div>`;
+window.gerarHTMLCard = function(colecaoNome, docId, data) {
+    const config = configuracaoAbas[colecaoNome]; if(!config) return '';
+    let campoTitulo = config.campos[0]; if(config.campoAgrupador) campoTitulo = config.campos.find(c => c !== config.campoAgrupador) || config.campos[0];
+    
+    let tituloDesteCard = data[campoTitulo] || data['Nome/Médico'] || data['Nome'] || 'Detalhes do Cadastro';
+    
+    if (colecaoNome === 'ramais') {
+        tituloDesteCard = data['Setor'] || 'Ramal Geral';
     }
-
-    // ==========================================
-    // CÓDIGO DO QR CODE INJETADO AQUI:
-    // ==========================================
-    if (colecaoNome === 'ativos' && isAdmin) {
-        cardHtml += `<button type="button" onclick="window.imprimirEtiquetaAtivo('${docId}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 12px; margin-top: 12px; border: 1px solid var(--border-color);"><i class="ri-qr-code-line"></i> Imprimir Etiqueta QR</button>`;
-    }
-
-    if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
-    cardHtml += `</div>`; return cardHtml;
-};
 
     const corSalva = data.corCard && data.corCard !== "transparent" ? data.corCard : "#ffffff";
     const configCor = paletaGradientes.find(p => p.valor === corSalva);
@@ -649,6 +641,10 @@ if(colecaoNome === 'treinamentos' && isAdmin) {
                         <div style="font-size:12px; color:var(--primary-color);"><b>Conclusões:</b> ${count} aluno(s).</div>
                         <button onclick="window.abrirListaLeituras('${docId}', 'treinamentos')" class="btn-hover color-8" style="padding: 6px 12px; font-size: 12px;"><i class="ri-team-line"></i> Respostas</button>
                      </div>`;
+    }
+
+    if (colecaoNome === 'ativos' && isAdmin) {
+        cardHtml += `<button type="button" onclick="window.imprimirEtiquetaAtivo('${docId}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 12px; margin-top: 12px; border: 1px solid var(--border-color);"><i class="ri-qr-code-line"></i> Imprimir Etiqueta QR</button>`;
     }
 
     if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
@@ -2013,6 +2009,65 @@ window.renderizarGraficoPerfilProfissional = function(nome) {
     `;
 };
 
+window.imprimirEtiquetaAtivo = function(docId) {
+    const itens = window.dadosGlobaisAbas['ativos'] || [];
+    const ativo = itens.find(i => i.id === docId);
+    
+    if (!ativo) {
+        alert('Erro: Ativo não encontrado na base de dados.');
+        return;
+    }
+
+    const data = ativo.data;
+    const patrimonio = data['Número de Patrimônio'] || docId;
+    const nome = data['Nome do Equipamento'] || 'Equipamento';
+    const setor = data['Localização / Setor'] || '-';
+    
+    // API gratuita e rápida para gerar QR Code
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(patrimonio)}`;
+
+    const htmlImpressao = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Etiqueta - ${patrimonio}</title>
+        <style>
+            body { margin: 0; padding: 20px; font-family: 'Arial', sans-serif; display: flex; justify-content: center; }
+            .etiqueta { border: 2px solid #000; padding: 15px; width: 220px; text-align: center; border-radius: 10px; background: #fff; }
+            .etiqueta img { width: 130px; height: 130px; margin: 10px 0; }
+            .titulo { font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+            .patrimonio { font-size: 18px; font-weight: 900; color: #8B252C; }
+            .setor { font-size: 11px; color: #555; border-top: 1px dashed #ccc; padding-top: 5px; margin-top: 5px;}
+            @media print {
+                body { padding: 0; }
+                .etiqueta { border: none; width: auto; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="etiqueta">
+            <div class="titulo">${nome}</div>
+            <img src="${qrUrl}" alt="QR Code Patrimônio">
+            <div class="patrimonio">ID: ${patrimonio}</div>
+            <div class="setor">Local: ${setor}</div>
+        </div>
+        <script>
+            // Espera a imagem do QR Code carregar antes de chamar a impressão
+            window.onload = function() { 
+                setTimeout(function() { window.print(); }, 800); 
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    // Abre uma pequena aba e já chama a tela de impressão
+    const janelaImpressao = window.open('', '_blank', 'width=400,height=500');
+    janelaImpressao.document.write(htmlImpressao);
+    janelaImpressao.document.close();
+};
+
 // ==========================================
 // 8. ATRIBUIÇÃO DE EVENTOS DE CLIQUES E INICIALIZAÇÃO
 // ==========================================
@@ -2115,285 +2170,4 @@ window.addEventListener('DOMContentLoaded', () => {
             try {
                 await window.setDoc(window.doc(window.db, "configuracoes", "gerais"), { 
                     banner_texto: texto, locais: locaisTexto, setores: setoresTexto, especialidades: especialidadesTexto, motivos: motivosTexto, 
-                    cor_pendente: corPend, cor_concluido: corConc, imagem_padrao_pastas: imgPastasTexto, chat_logo: chatLogoTexto, chat_cor: chatCorVal
-                }, { merge: true });
-                alert("Configurações salvas com sucesso!");
-            } catch(e) { alert("Erro ao salvar configurações: " + e.message); }
-            btnSalvarAjustes.innerHTML = 'Salvar Alterações';
-        });
-    }
-
-    const inputPesqGlobal = document.getElementById('input-pesquisa-global');
-    if(inputPesqGlobal) {
-        inputPesqGlobal.addEventListener('keyup', (e) => {
-            const texto = e.target.value.toLowerCase().trim();
-            const areaRes = document.getElementById('resultados-globais');
-            if(!areaRes) return;
-            if(texto.length < 2) { areaRes.style.display = 'none'; areaRes.innerHTML = ''; return; }
-
-            const colecoesBusca = ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'pacotes', 'remocoes', 'colaboradores', 'ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'boletins', 'boletins-privados', 'treinamentos'];
-            const vistos = new Set();
-            let htmlResultados = '';
-            let encontrou = false;
-
-            colecoesBusca.forEach(colecao => {
-                const itens = window.todosOsDadosDoSistema[colecao] || window.dadosGlobaisAbas[colecao] || [];
-                itens.forEach(item => {
-                    const textoItem = Object.values(item.data || {}).join(' ').toLowerCase();
-                    const chave = `${colecao}:${item.id}`;
-                    if(textoItem.includes(texto) && !vistos.has(chave)) {
-                        vistos.add(chave);
-                        htmlResultados += window.gerarHTMLCard(colecao, item.id, item.data);
-                        encontrou = true;
-                    }
-                });
-            });
-
-            areaRes.style.display = 'grid';
-            areaRes.innerHTML = '<h3 style="grid-column: 1/-1; margin-bottom: 10px; border-bottom: 2px solid var(--border-color); padding-bottom: 5px; color: var(--primary-color);">Resultados da Busca Global:</h3>' + (encontrou ? htmlResultados : '<p style="color:var(--text-muted); font-size:14px; grid-column: 1/-1;">Nenhum resultado encontrado no sistema.</p>');
-        });
-    }
-
-    const inputPesqAba = document.getElementById('input-pesquisa');
-    if(inputPesqAba) {
-        inputPesqAba.addEventListener('keyup', (e) => {
-            const texto = e.target.value.toLowerCase();
-            const abaContainer = document.getElementById(`tab-${abaAtual}`);
-            if(!abaContainer) return;
-            abaContainer.querySelectorAll('.card, .shortcut-card, .mini-card').forEach(card => {
-                if(card.innerText.toLowerCase().includes(texto)) card.style.display = 'flex';
-                else card.style.display = 'none';
-            });
-        });
-    }
-
-    ['privado-lista-data-inicio', 'privado-lista-data-fim'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', () => window.renderizarListaPrivados());
-    });
-    const btnLimparFiltroPrivado = document.getElementById('btn-limpar-filtro-privado-lista');
-    if (btnLimparFiltroPrivado) {
-        btnLimparFiltroPrivado.addEventListener('click', () => {
-            const dtInicioPriv = document.getElementById('privado-lista-data-inicio');
-            const dtFimPriv = document.getElementById('privado-lista-data-fim');
-            if (dtInicioPriv) dtInicioPriv.value = '';
-            if (dtFimPriv) dtFimPriv.value = '';
-            window.renderizarListaPrivados();
-        });
-    }
-
-    document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.nav-btn[data-tab]').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-            btn.classList.add('active');
-            abaAtual = btn.getAttribute('data-tab');
-            const tabEl = document.getElementById(`tab-${abaAtual}`);
-            if(tabEl) tabEl.style.display = 'block';
-            
-            const titleEl = document.getElementById('page-title');
-            if(titleEl) titleEl.textContent = btn.textContent.trim();
-            const inputPesqLocal = document.getElementById('input-pesquisa');
-            if(inputPesqLocal) inputPesqLocal.value = ''; 
-            
-            if(abaAtual === 'boletins') window.fecharPastaBoletim(); 
-            if(abaAtual === 'boletins-privados') window.fecharPastaPrivado();
-            ['convenios', 'ultrassom', 'consultas', 'exames-imagem', 'institutos', 'corpo-clinico', 'treinamentos', 'pacotes'].forEach(col => { if(abaAtual === col) window.fecharPastaGenerica(col); });
-            if(abaAtual === 'rh' && isAdmin) { window.atualizarOpcoesFiltrosRH(); window.renderizarDashboardRH(); }
-            if (window.atualizarBottomQuickbar) window.atualizarBottomQuickbar();
-        });
-    });
-});
-
-window.efetuarLogin = window.efetuarLogin;
-window.safeParseJSON = window.safeParseJSON;
-window.aplicarImagemClimaHome = window.aplicarImagemClimaHome;
-window.abrirMidiaFlutuante = window.abrirMidiaFlutuante;
-window.abrirMidaFlutuante = window.abrirMidiaFlutuante;
-window.fecharMidiaFlutuante = window.fecharMidiaFlutuante;
-window.abrirListaLeituras = window.abrirListaLeituras;
-window.fecharModalImpressao = window.fecharModalImpressao;
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.info('Novo service worker ativo.');
-    });
-}
-window.fecharModalImpressao = function() {
-    const modal = document.getElementById('modal-imprimir-boletim');
-    if (modal) modal.style.display = 'none';
-};
-window.abrirModalImpressao = function(tipo = 'boletins') {
-    const modal = document.getElementById('modal-imprimir-boletim');
-    const inputTipo = document.getElementById('print-boletim-id');
-    const selectColab = document.getElementById('print-colaborador');
-
-    if (!modal) {
-        alert('Modal de impressão não encontrado.');
-        return;
-    }
-
-    if (inputTipo) inputTipo.value = tipo;
-
-    // Popula a lista de colaboradores no formulário de impressão
-    if (selectColab) {
-        selectColab.innerHTML = '<option value="">Todos os Colaboradores</option>' + 
-            listaColaboradoresGlobal.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
-    }
-
-    modal.style.display = 'flex';
-};
-
-window.gerarImpressaoBoletim = function() {
-    const incluirNome = document.getElementById('print-chk-nome')?.checked;
-    const incluirData = document.getElementById('print-chk-data')?.checked;
-    const incluirTema = document.getElementById('print-chk-tema')?.checked;
-    const incluirMotivo = document.getElementById('print-chk-motivo')?.checked;
-    const incluirPublicacao = document.getElementById('print-chk-publicacao')?.checked;
-    
-    const tipo = document.getElementById('print-boletim-id')?.value || 'boletins';
-    
-    // Captura os novos filtros
-    const dataInicio = document.getElementById('print-data-inicio')?.value;
-    const dataFim = document.getElementById('print-data-fim')?.value;
-    const colabFiltro = document.getElementById('print-colaborador')?.value;
-
-    let boletins = tipo === 'boletins-privados' 
-        ? (Array.isArray(window.todosPrivadosData) ? [...window.todosPrivadosData] : [])
-        : (Array.isArray(window.todosBoletinsData) ? [...window.todosBoletinsData] : []);
-
-    if (!boletins.length) {
-        alert('Não há dados carregados para gerar o relatório.');
-        return;
-    }
-
-    // Filtra pelo período de publicação, se informado
-    if (dataInicio || dataFim) {
-        boletins = boletins.filter(item => {
-            const d = item.data['Data de Publicação'] || item.data['Publicado em'];
-            if (!d) return false;
-            if (dataInicio && d < dataInicio) return false;
-            if (dataFim && d > dataFim) return false;
-            return true;
-        });
-    }
-
-    const linhas = [];
-
-    boletins.forEach(item => {
-        const data = item.data || {};
-        const leituras = Array.isArray(data.leituras) ? data.leituras : [];
-        const titulo = data['Título do Documento'] || data['Título do Informativo'] || 'Sem título';
-        const motivo = data['Motivo do Informativo'] || data['Motivo'] || '-';
-        const dataPublicacao = data['Data de Publicação'] || data['Publicado em'] || '-';
-
-        // Se for privado e não for para o colaborador selecionado no filtro, ignora o documento
-        if (tipo === 'boletins-privados' && colabFiltro) {
-            if (data['Para qual Colaborador?'] !== colabFiltro) return;
-        }
-
-        if (!leituras.length) {
-            if (!colabFiltro) { // Só mostra documento vazio se não estiver procurando uma pessoa específica
-                linhas.push({
-                    nome: 'Nenhuma assinatura registrada', dataHora: '-', tema: titulo, motivo, publicacao: dataPublicacao
-                });
-            }
-            return;
-        }
-
-        leituras.forEach(registro => {
-            const texto = String(registro || '').trim();
-            let nomeColaborador = texto;
-            let dataHora = '-';
-
-            const matchParenteses = texto.match(/^(.*?)\s*\((.*?)\)$/);
-            const matchHifen = texto.match(/^(.*?)\s*-\s*(\d{2}\/\d{2}\/\d{4}.*)$/);
-            if (matchParenteses) {
-                nomeColaborador = matchParenteses[1].trim();
-                dataHora = matchParenteses[2].trim();
-            } else if (matchHifen) {
-                nomeColaborador = matchHifen[1].trim();
-                dataHora = matchHifen[2].trim();
-            }
-
-            // Se tem filtro de colaborador, pula as assinaturas que não são dele
-            if (colabFiltro && nomeColaborador !== colabFiltro) return;
-
-            linhas.push({
-                nome: nomeColaborador || '-',
-                dataHora,
-                tema: titulo,
-                motivo,
-                publicacao: dataPublicacao
-            });
-        });
-    });
-
-    if (linhas.length === 0) {
-        alert('Nenhuma assinatura encontrada para os filtros selecionados.');
-        return;
-    }
-
-    const ths = [];
-    if (incluirNome) ths.push('<th>Nome do Colaborador</th>');
-    if (incluirData) ths.push('<th>Data/Hora da Assinatura</th>');
-    if (incluirTema) ths.push('<th>Tema</th>');
-    if (incluirMotivo) ths.push('<th>Motivo</th>');
-    if (incluirPublicacao) ths.push('<th>Data de Publicação</th>');
-
-    const escape = (valor) => String(valor ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-
-    const trs = linhas.map(linha => {
-        const cols = [];
-        if (incluirNome) cols.push(`<td>${escape(linha.nome)}</td>`);
-        if (incluirData) cols.push(`<td>${escape(linha.dataHora)}</td>`);
-        if (incluirTema) cols.push(`<td>${escape(linha.tema)}</td>`);
-        if (incluirMotivo) cols.push(`<td>${escape(linha.motivo)}</td>`);
-        if (incluirPublicacao) cols.push(`<td>${escape(linha.publicacao)}</td>`);
-        return `<tr>${cols.join('')}</tr>`;
-    }).join('');
-
-    const janela = window.open('', '_blank', 'width=1200,height=800');
-    if (!janela) { alert('O navegador bloqueou a janela de impressão. Libere pop-ups para este site.'); return; }
-
-    const subtituloFiltro = colabFiltro ? `<p>Filtrado por Colaborador: <b>${colabFiltro}</b></p>` : '';
-    const periodoFiltro = (dataInicio || dataFim) ? `<p>Período: <b>${dataInicio ? dataInicio.split('-').reverse().join('/') : 'Início'} até ${dataFim ? dataFim.split('-').reverse().join('/') : 'Hoje'}</b></p>` : '';
-
-    const html = `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Relatório de Assinaturas</title>
-<style>
-    body { font-family: Arial, sans-serif; margin: 24px; color: #1f2937; }
-    h1 { color: #8B252C; margin-bottom: 8px; }
-    p { margin: 0 0 5px; color: #6b7280; font-size: 14px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #d1d5db; padding: 10px; text-align: left; font-size: 13px; vertical-align: top; }
-    th { background-color: #f3f4f6; font-weight: 600; color: #374151; }
-    tr:nth-child(even) { background-color: #f9fafb; }
-    @media print { @page { margin: 1.5cm; } body { margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-</style>
-</head>
-<body>
-    <h1>Relatório de Assinaturas e Leituras</h1>
-    <p>Gerado em: <b>${new Date().toLocaleString('pt-BR')}</b></p>
-    ${subtituloFiltro}
-    ${periodoFiltro}
-    
-    <table>
-        <thead><tr>${ths.join('')}</tr></thead>
-        <tbody>${trs}</tbody>
-    </table>
-
-    <script>
-        window.onload = function() { setTimeout(function() { window.print(); }, 300); };
-    </script>
-</body>
-</html>`;
-
-    janela.document.write(html);
-    janela.document.close();
-    janela.focus();
-};
+                    cor_pendente: corPend, cor_concluido: corConc, imagem_padrao_
