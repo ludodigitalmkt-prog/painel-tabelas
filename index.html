@@ -55,6 +55,11 @@
                 <button class="nav-btn admin-only nav-btn-rh-style" id="btn-nav-rh" data-tab="rh" style="display: none;"><i class="ri-pie-chart-2-fill"></i> RH & Analytics</button>
                 <button class="nav-btn admin-only" id="btn-nav-colaboradores" data-tab="colaboradores" style="display: none;"><i class="ri-group-line"></i> Gerenciar Equipe</button>
                 <button class="nav-btn admin-only" id="btn-nav-ajustes" data-tab="ajustes" style="display: none;"><i class="ri-settings-4-line"></i> Ajustes Globais</button>
+                <button class="nav-btn admin-only" id="btn-nav-colaboradores" data-tab="colaboradores" style="display: none;"><i class="ri-group-line"></i> Gerenciar Equipe</button>
+                <button class="nav-btn admin-only" id="btn-nav-ajustes" data-tab="ajustes" style="display: none;"><i class="ri-settings-4-line"></i> Ajustes Globais</button>  
+                <button class="nav-btn admin-only" id="btn-nav-ativos" data-tab="ativos" style="display: none;"><i class="ri-qr-code-line"></i> Controle de Ativos</button>
+            <div class="sidebar-footer"><button id="btn-logout" class="nav-btn logout-btn"><i class="ri-logout-box-r-line"></i> Sair do Painel</button></div>
+        </aside>
             </nav>
             <div class="sidebar-footer"><button id="btn-logout" class="nav-btn logout-btn"><i class="ri-logout-box-r-line"></i> Sair do Painel</button></div>
         </aside>
@@ -184,6 +189,29 @@
                 </div>
                 <div class="cards-grid" id="grid-remocoes"></div>
             </section>
+
+            <section id="tab-ativos" class="tab-content" style="display: none;">
+                <div id="ativos-view-folders">
+                    <div class="flex-between mb-20">
+                        <p class="text-muted">Selecione a Categoria do Equipamento (Ex: TI, Móveis, Frota).</p>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ativos')" style="display:none;"><i class="ri-add-line"></i> Novo Ativo</button>
+                    </div>
+                    <div class="home-grid" id="grid-ativos-folders"></div>
+                </div>
+                <div id="ativos-view-list" style="display:none;">
+                    <div class="flex-between mb-25">
+                        <div class="flex-start">
+                            <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('ativos')"><i class="ri-arrow-left-line"></i> Voltar</button>
+                            <h2 id="titulo-pasta-ativos" class="text-primary">Pasta</h2>
+                        </div>
+                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ativos')" style="display:none;"><i class="ri-add-line"></i> Novo Ativo</button>
+                    </div>
+                    <div class="cards-grid" id="grid-ativos-list"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
 
             <section id="tab-corpo-clinico" class="tab-content" style="display: none;">
                 <div id="corpo-clinico-view-folders">
