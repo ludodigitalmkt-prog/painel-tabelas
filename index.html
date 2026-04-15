@@ -201,10 +201,12 @@
                         <div style="height: 220px; display: flex; justify-content: center;">
                             <canvas id="chart-ativos-status"></canvas>
                         </div>
+                        <div id="ativos-status-resumo" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;"></div>
                     </div>
                     <div class="flex-between mb-20">
                         <p class="text-muted">Selecione a Categoria do Equipamento.</p>
                         <div class="flex-gap-10">
+                            <button class="btn-hover color-8 admin-only" onclick="window.abrirModalEtiquetasAtivos()" style="display:none;"><i class="ri-printer-line"></i> Etiquetas em Lote</button>
                             <button class="btn-hover color-5 admin-only" onclick="window.iniciarLeitorQR()" style="display:none;"><i class="ri-qr-scan-2-line"></i> Ler Etiqueta (Câmera)</button>
                             <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ativos')" style="display:none;"><i class="ri-add-line"></i> Novo Ativo</button>
                         </div>
@@ -217,7 +219,10 @@
                             <button class="btn-hover color-8" onclick="window.fecharPastaGenerica('ativos')"><i class="ri-arrow-left-line"></i> Voltar</button>
                             <h2 id="titulo-pasta-ativos" class="text-primary">Pasta</h2>
                         </div>
-                        <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ativos')" style="display:none;"><i class="ri-add-line"></i> Novo Ativo</button>
+                        <div class="flex-gap-10">
+                            <button class="btn-hover color-8 admin-only" onclick="window.abrirModalEtiquetasAtivos()" style="display:none;"><i class="ri-printer-line"></i> Etiquetas em Lote</button>
+                            <button class="btn-hover color-11 admin-only" onclick="window.abrirModal('ativos')" style="display:none;"><i class="ri-add-line"></i> Novo Ativo</button>
+                        </div>
                     </div>
                     <div class="cards-grid" id="grid-ativos-list"></div>
                 </div>
@@ -865,24 +870,73 @@
     </div>
 
     <div id="modal-visualizar-qr" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:99999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:#fff; width:min(420px, 100%); border-radius:18px; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,0.25); position:relative;">
-        <button onclick="window.fecharVisualizacaoQR()" style="position:absolute; top:12px; right:12px; background:#f1f5f9; border:none; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:18px;">×</button>
-
-        <div style="font-size:20px; font-weight:700; color:#8B252C; margin-bottom:14px;">
-            Visualizar QR Code
-        </div>
-
-        <div id="visualizar-qr-info" style="margin-bottom:14px; color:#1e293b;"></div>
-        <div id="visualizar-qr-area" style="display:flex; justify-content:center; align-items:center; min-height:240px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:14px;"></div>
-
-        <div style="display:flex; gap:10px; margin-top:16px;">
-            <button onclick="window.fecharVisualizacaoQR()" style="flex:1; height:40px; border:none; border-radius:10px; background:#e2e8f0; cursor:pointer; font-weight:600;">
-                Fechar
-            </button>
+        <div style="background:#fff; width:min(420px, 100%); border-radius:18px; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,0.25); position:relative;">
+            <button onclick="window.fecharVisualizacaoQR()" style="position:absolute; top:12px; right:12px; background:#f1f5f9; border:none; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:18px;">×</button>
+            <div style="font-size:20px; font-weight:700; color:#8B252C; margin-bottom:14px;">Visualizar QR Code</div>
+            <div id="visualizar-qr-info" style="margin-bottom:14px; color:#1e293b;"></div>
+            <div id="visualizar-qr-area" style="display:flex; justify-content:center; align-items:center; min-height:240px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:14px;"></div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button onclick="window.fecharVisualizacaoQR()" style="flex:1; height:40px; border:none; border-radius:10px; background:#e2e8f0; cursor:pointer; font-weight:600;">Fechar</button>
+            </div>
         </div>
     </div>
-</div>
+
+    <div id="modal-etiquetas-ativos" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,.58); z-index:99998; align-items:center; justify-content:center; padding:18px;">
+        <div style="background:#fff; width:min(760px, 100%); border-radius:20px; padding:22px; box-shadow:0 24px 60px rgba(0,0,0,.22); position:relative; max-height:90vh; overflow:auto;">
+            <button onclick="window.fecharModalEtiquetasAtivos()" style="position:absolute; top:12px; right:12px; background:#f1f5f9; border:none; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:18px;">×</button>
+            <div style="font-size:22px; font-weight:800; color:#8B252C; margin-bottom:8px;">Impressão de Etiquetas em Lote</div>
+            <p style="margin:0 0 18px; color:#64748b; font-size:13px;">Filtre por setor, categoria/produto e gere várias etiquetas de uma só vez sem impactar os cadastros atuais.</p>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Setor</label>
+                    <select id="etiqueta-filtro-setor" class="form-input" onchange="window.atualizarOpcoesEtiquetasAtivos()">
+                        <option value="">Todos os setores</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Categoria / Produto</label>
+                    <select id="etiqueta-filtro-categoria" class="form-input" onchange="window.atualizarOpcoesEtiquetasAtivos()">
+                        <option value="">Todas as categorias</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Status do ativo</label>
+                    <select id="etiqueta-filtro-status" class="form-input" onchange="window.atualizarOpcoesEtiquetasAtivos()">
+                        <option value="">Todos os status</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Tamanho da etiqueta</label>
+                    <select id="etiqueta-tamanho-impressao" class="form-input">
+                        <option value="pequeno">Pequena</option>
+                        <option value="medio" selected>Média</option>
+                        <option value="grande">Grande</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top:12px;">
+                <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Produto(s) pelo nome</label>
+                <input type="text" id="etiqueta-filtro-produto" class="form-input" placeholder="Digite um ou mais nomes separados por vírgula" oninput="window.atualizarOpcoesEtiquetasAtivos()">
+            </div>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; align-items:center;">
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;">
+                    <input type="checkbox" id="etiqueta-apenas-pasta-atual" onchange="window.atualizarOpcoesEtiquetasAtivos()">
+                    Apenas itens da categoria/pasta aberta
+                </label>
+                <span id="etiqueta-resultado-contador" style="font-size:13px; color:#64748b;">0 ativo(s) encontrado(s)</span>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+                <button class="btn-hover color-8" type="button" onclick="window.fecharModalEtiquetasAtivos()"><i class="ri-close-line"></i> Fechar</button>
+                <button class="btn-hover color-11" type="button" onclick="window.imprimirEtiquetasAtivosEmLote()"><i class="ri-printer-line"></i> Imprimir Etiquetas</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="app.js?v=3.3.1"></script>
+
 </body>
 </html>
