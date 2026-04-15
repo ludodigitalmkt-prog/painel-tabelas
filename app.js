@@ -6,7 +6,7 @@ const configuracaoAbas = {
     
     'treinamentos': { 
         titulo: 'Material de Ensino', 
-        campos: ['Título da Atividade', 'Pasta / Módulo', 'Tipo (Vídeo, PDF, Tarefa, Prova)', 'Link do Material (Se houver)', 'Colaborador Específico (Opcional)', 'Para quais Setores?', 'Pontos Valendo', 'Configuração da Avaliação'], 
+        campos: ['Título da Atividade', 'Pasta / Módulo', 'Tipo (Vídeo, PDF, Tarefa, Prova)', 'Link do Material (Se houver)', 'Colaborador Específico (Opcional)', 'Para quais Setores?', 'Pontos Valendo', 'Modo de Controle', 'Permite Pausa?', 'Limite de Infrações', 'Regra ao Sair', 'Configuração da Avaliação'], 
         campoAgrupador: 'Pasta / Módulo', 
         icone: 'ri-book-read-fill' 
     },
@@ -541,6 +541,21 @@ window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
         }
         else if(colecao === 'treinamentos' && campo === 'Colaborador Específico (Opcional)') {
             htmlCampos += `<select id="input-${campo}" class="form-input"><option value="">Nenhum (Vai para todo o Setor marcado)</option>`; listaColaboradoresGlobal.forEach(c => { htmlCampos += `<option value="${c.nome}" ${valorAntigo === c.nome ? 'selected' : ''}>${c.nome}</option>`; }); htmlCampos += `</select>`;
+        }
+        else if(colecao === 'treinamentos' && campo === 'Modo de Controle') {
+            const valorAtual = valorAntigo || (String(dadosAntigos?.['Tipo (Vídeo, PDF, Tarefa, Prova)'] || '').includes('Prova') ? 'prova_bloqueada' : (String(dadosAntigos?.['Tipo (Vídeo, PDF, Tarefa, Prova)'] || '').includes('Tarefa') ? 'atividade_com_pausa' : 'material_apenas_leitura'));
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="material_apenas_leitura" ${valorAtual === 'material_apenas_leitura' ? 'selected' : ''}>Material apenas leitura</option><option value="atividade_livre" ${valorAtual === 'atividade_livre' ? 'selected' : ''}>Atividade livre</option><option value="atividade_com_pausa" ${valorAtual === 'atividade_com_pausa' ? 'selected' : ''}>Atividade com pausa</option><option value="prova_bloqueada" ${valorAtual === 'prova_bloqueada' ? 'selected' : ''}>Prova bloqueada</option></select>`;
+        }
+        else if(colecao === 'treinamentos' && campo === 'Permite Pausa?') {
+            const valorAtual = valorAntigo || (String(dadosAntigos?.['Tipo (Vídeo, PDF, Tarefa, Prova)'] || '').includes('Tarefa') ? 'Sim' : 'Não');
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="Sim" ${valorAtual === 'Sim' ? 'selected' : ''}>Sim</option><option value="Não" ${valorAtual === 'Não' ? 'selected' : ''}>Não</option></select>`;
+        }
+        else if(colecao === 'treinamentos' && campo === 'Limite de Infrações') {
+            htmlCampos += `<input type="number" min="1" max="10" id="input-${campo}" value="${valorAntigo || 3}" class="form-input">`;
+        }
+        else if(colecao === 'treinamentos' && campo === 'Regra ao Sair') {
+            const valorAtual = valorAntigo || (String(dadosAntigos?.['Tipo (Vídeo, PDF, Tarefa, Prova)'] || '').includes('Prova') ? 'zerada_por_saida' : 'inconclusa');
+            htmlCampos += `<select id="input-${campo}" class="form-input"><option value="inconclusa" ${valorAtual === 'inconclusa' ? 'selected' : ''}>Marcar como inconclusa</option><option value="zerada_por_saida" ${valorAtual === 'zerada_por_saida' ? 'selected' : ''}>Finalizar e zerar tentativa</option></select>`;
         }
         else if(colecao === 'treinamentos' && campo === 'Configuração da Avaliação') {
             htmlCampos += `<label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Perguntas da Prova ou Enunciado da Tarefa:</label>`;
@@ -1085,49 +1100,13 @@ window.imprimirEtiquetasAtivosEmLote = function() {
 
 
 window.renderizarListaGenerica = function(colecao) { 
-    const grid = document.getElementById(`grid-${colecao}-list`);
-    if (!grid) return;
-
-    grid.innerHTML = '';
-
-    const nomePasta = String(window[`pasta_${colecao}_Atual`] || '').trim().toLowerCase();
-    const config = configuracaoAbas[colecao];
-
-    const obterNomePasta = (item) => {
-        const bruto =
-            item?.data?.[config.campoAgrupador] ||
-            item?.data?.Pacotes ||
-            item?.data?.['Pasta / Módulo'] ||
-            item?.data?.Especialidade ||
-            item?.data?.Convênio ||
-            item?.data?.Exame ||
-            item?.data?.Tipo ||
-            item?.data?.['Categoria do Exame'] ||
-            item?.data?.['Número da Tabela'] ||
-            'Geral';
-
-        return String(bruto || 'Geral').trim();
-    };
-
-    const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => {
-        return obterNomePasta(i).toLowerCase() === nomePasta;
-    });
-
-    itensExibir.sort((a, b) =>
-        String(a.data[config.campos[0]] || '').toLowerCase()
-            .localeCompare(String(b.data[config.campos[0]] || '').toLowerCase())
-    );
-
-    if (!itensExibir.length) {
-        grid.innerHTML = `<div style="grid-column:1/-1; color: var(--text-muted); font-size:14px; padding: 10px 0;">
-            Nenhum cadastro encontrado nesta pasta.
-        </div>`;
-        return;
-    }
-
-    itensExibir.forEach(item => {
-        grid.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data);
-    });
+    const grid = document.getElementById(`grid-${colecao}-list`); 
+    if(!grid) return; 
+    grid.innerHTML = ''; 
+    const nomePasta = window[`pasta_${colecao}_Atual`]; 
+    const itensExibir = (window.dadosGlobaisAbas[colecao] || []).filter(i => (i.data[configuracaoAbas[colecao].campoAgrupador] || 'Geral') === nomePasta); 
+    itensExibir.sort((a, b) => String(a.data[configuracaoAbas[colecao].campos[0]] || '').toLowerCase().localeCompare(String(b.data[configuracaoAbas[colecao].campos[0]] || '').toLowerCase()));
+    itensExibir.forEach(item => { grid.innerHTML += window.gerarHTMLCard(colecao, item.id, item.data); }); 
 };
 
 window.renderizarPastasGenericas = function(colecao) {
@@ -1514,7 +1493,7 @@ window.processarLogicaDoBot = function(mensagemUser) {
 
 if (!document.getElementById('modal-resposta-aluno')) {
     const m = document.createElement('div'); m.id = 'modal-resposta-aluno'; m.className = 'modal-overlay'; m.style.display = 'none'; m.style.zIndex = '10001';
-    m.innerHTML = `<div class="modal-box glass-effect" style="max-width: 600px; max-height: 90vh; display:flex; flex-direction:column;"><header class="modal-header"><h3 id="resposta-titulo">Responder Atividade</h3><button onclick="document.getElementById('modal-resposta-aluno').style.display='none'" class="btn-icon"><i class="ri-close-line"></i></button></header><div class="modal-body" style="overflow-y: auto; flex:1;" id="area-perguntas-dinamicas"></div><input type="hidden" id="resposta-docid"><button onclick="window.enviarRespostaTreinamento()" class="btn-hover color-11" style="width: 100%; margin-top: 15px; background: #3182ce; color:white; border:none;"><i class="ri-send-plane-fill"></i> Enviar Resposta para Correção</button></div>`;
+    m.innerHTML = `<div class="modal-box glass-effect" style="max-width: 720px; max-height: 90vh; display:flex; flex-direction:column;"><header class="modal-header"><h3 id="resposta-titulo">Responder Atividade</h3><button id="btn-fechar-resposta-aluno" onclick="window.tentarFecharModalRespostaAluno()" class="btn-icon"><i class="ri-close-line"></i></button></header><div id="aviso-prova-bloqueada" style="display:none; padding: 0 20px;"></div><div class="modal-body" style="overflow-y: auto; flex:1;" id="area-perguntas-dinamicas"></div><input type="hidden" id="resposta-docid"><div style="display:flex; gap:10px; margin-top: 15px;"><button id="btn-pausar-treinamento" onclick="window.pausarSessaoTreinamento()" class="btn-hover color-8" style="display:none; flex:1; background:#dd6b20; color:white; border:none;"><i class="ri-pause-circle-line"></i> Pausar</button><button id="btn-enviar-resposta-treinamento" onclick="window.enviarRespostaTreinamento()" class="btn-hover color-11" style="flex:2; background: #3182ce; color:white; border:none;"><i class="ri-send-plane-fill"></i> Enviar Resposta para Correção</button></div></div>`;
     document.body.appendChild(m);
 }
 
@@ -1529,6 +1508,223 @@ if (!document.getElementById('modal-feedback-aluno')) {
     fb.innerHTML = `<div class="modal-box glass-effect" style="max-width: 500px;"><header class="modal-header"><h3>Feedback do Supervisor</h3><button onclick="document.getElementById('modal-feedback-aluno').style.display='none'" class="btn-icon"><i class="ri-close-line"></i></button></header><div class="modal-body"><div style="text-align:center; margin-bottom:15px;"><div style="font-size:40px; color:#38a169;"><i class="ri-award-fill"></i></div><h2 style="color:var(--primary-color);">Nota: <span id="feedback-nota"></span></h2></div><div style="background: #f8fafc; padding: 15px; border-radius: 8px; font-size: 14px; color: var(--text-main); border-left: 4px solid var(--primary-color);"><span id="feedback-texto" style="white-space: pre-wrap;"></span></div></div></div>`;
     document.body.appendChild(fb);
 }
+
+window.sessaoTreinamentoAtiva = null;
+window._timerAutosaveTreinamento = null;
+window._ultimoEventoInfracaoTreinamento = 0;
+
+window.obterTipoTreinamento = function(data = {}) { return String(data['Tipo (Vídeo, PDF, Tarefa, Prova)'] || 'Vídeo'); };
+window.obterModoControleTreinamento = function(data = {}) {
+    const modoExpl = String(data['Modo de Controle'] || '').trim();
+    if (modoExpl) return modoExpl;
+    const tipo = window.obterTipoTreinamento(data);
+    if (tipo.includes('Prova')) return 'prova_bloqueada';
+    if (tipo.includes('Tarefa')) return 'atividade_com_pausa';
+    return 'material_apenas_leitura';
+};
+window.permitePausaTreinamento = function(data = {}) {
+    const campo = String(data['Permite Pausa?'] || '').trim();
+    if (campo) return campo === 'Sim';
+    return window.obterModoControleTreinamento(data) === 'atividade_com_pausa';
+};
+window.obterLimiteInfracoesTreinamento = function(data = {}) {
+    const n = parseInt(data['Limite de Infrações'], 10);
+    return Number.isFinite(n) && n > 0 ? n : 3;
+};
+window.obterRegraSaidaTreinamento = function(data = {}) {
+    const regra = String(data['Regra ao Sair'] || '').trim();
+    if (regra === 'zerada_por_saida' || regra === 'inconclusa') return regra;
+    return window.obterModoControleTreinamento(data) === 'prova_bloqueada' ? 'zerada_por_saida' : 'inconclusa';
+};
+window.listarProgressoTreinamento = function(data = {}) {
+    return (Array.isArray(data.progresso_alunos) ? data.progresso_alunos : []).map(raw => window.safeParseJSON(raw, null)).filter(Boolean);
+};
+window.obterProgressoAlunoTreinamento = function(data = {}, nome = '') {
+    return window.listarProgressoTreinamento(data).find(p => String(p.nome || '') === String(nome || '')) || null;
+};
+window._atualizarCacheLocalProgressoTreinamento = function(docId, nome, novoObj) {
+    const item = window.todosTreinamentosData.find(i => i.id === docId);
+    if (!item) return;
+    const rawNovo = JSON.stringify(novoObj);
+    let lista = Array.isArray(item.data.progresso_alunos) ? item.data.progresso_alunos.slice() : [];
+    let achou = false;
+    lista = lista.map(raw => {
+        const obj = window.safeParseJSON(raw, null);
+        if (obj && String(obj.nome || '') === String(nome || '')) { achou = true; return rawNovo; }
+        return raw;
+    });
+    if (!achou) lista.push(rawNovo);
+    item.data.progresso_alunos = lista;
+};
+window.salvarProgressoTreinamento = async function(docId, nome, patch = {}) {
+    const item = window.todosTreinamentosData.find(i => i.id === docId);
+    const data = item?.data || {};
+    const listaRaw = Array.isArray(data.progresso_alunos) ? data.progresso_alunos : [];
+    let antigoRaw = null; let antigoObj = null;
+    listaRaw.forEach(raw => {
+        const obj = window.safeParseJSON(raw, null);
+        if (obj && String(obj.nome || '') === String(nome || '')) { antigoRaw = raw; antigoObj = obj; }
+    });
+    const atualizado = { nome, status: 'pendente', tentativas: 0, infracoes: 0, ultima_interacao_em: new Date().toLocaleString('pt-BR'), ...antigoObj, ...patch, ultima_interacao_em: patch.ultima_interacao_em || new Date().toLocaleString('pt-BR') };
+    const ref = window.doc(window.db, 'treinamentos', docId);
+    if (antigoRaw) await window.updateDoc(ref, { progresso_alunos: window.arrayRemove(antigoRaw) });
+    await window.updateDoc(ref, { progresso_alunos: window.arrayUnion(JSON.stringify(atualizado)) });
+    window._atualizarCacheLocalProgressoTreinamento(docId, nome, atualizado);
+    return atualizado;
+};
+window.capturarRespostasModalTreinamento = function() {
+    const blocos = document.querySelectorAll('.pergunta-aluno-bloco');
+    const respostas = [];
+    blocos.forEach(bloco => {
+        const tipo = bloco.querySelector('.resp-tipo')?.value || 'descritiva';
+        const pergunta = bloco.querySelector('.resp-pergunta-txt')?.value || '';
+        let resposta = '';
+        if (tipo === 'descritiva') resposta = bloco.querySelector('.resp-valor')?.value.trim() || '';
+        else {
+            const checked = bloco.querySelector('.resp-radio:checked');
+            resposta = checked ? checked.value : '';
+        }
+        respostas.push({ pergunta, resposta });
+    });
+    return respostas;
+};
+window.preencherRascunhoTreinamento = function(rascunho = []) {
+    const blocos = document.querySelectorAll('.pergunta-aluno-bloco');
+    blocos.forEach((bloco, idx) => {
+        const item = rascunho[idx]; if (!item) return;
+        const tipo = bloco.querySelector('.resp-tipo')?.value || 'descritiva';
+        if (tipo === 'descritiva') {
+            const ta = bloco.querySelector('.resp-valor'); if (ta) ta.value = item.resposta || '';
+        } else {
+            bloco.querySelectorAll('.resp-radio').forEach(r => { if (r.value === item.resposta) r.checked = true; });
+        }
+    });
+};
+window.atualizarAvisoSessaoTreinamentoUI = function(itemData = null, progresso = null) {
+    const aviso = document.getElementById('aviso-prova-bloqueada');
+    const btnPausar = document.getElementById('btn-pausar-treinamento');
+    const btnFechar = document.getElementById('btn-fechar-resposta-aluno');
+    const btnEnviar = document.getElementById('btn-enviar-resposta-treinamento');
+    if (!aviso || !btnPausar || !btnFechar || !btnEnviar) return;
+    if (!itemData) {
+        aviso.style.display = 'none'; btnPausar.style.display = 'none'; btnFechar.style.display = 'inline-flex'; btnEnviar.innerHTML = '<i class="ri-send-plane-fill"></i> Enviar Resposta para Correção';
+        return;
+    }
+    const modo = window.obterModoControleTreinamento(itemData);
+    const limite = window.obterLimiteInfracoesTreinamento(itemData);
+    const infracoes = progresso?.infracoes || 0;
+    const podePausar = window.permitePausaTreinamento(itemData);
+    if (modo === 'prova_bloqueada') {
+        aviso.style.display = 'block';
+        aviso.innerHTML = `<div style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:10px 12px; border-radius:10px; font-size:13px; margin-bottom:12px;"><b>Modo prova bloqueada:</b> trocar de aba, minimizar ou navegar pelo sistema gera advertência. Limite: <b>${limite}</b>. Advertências: <b>${infracoes}</b>.</div>`;
+        btnPausar.style.display = 'none'; btnFechar.style.display = 'none'; btnEnviar.innerHTML = '<i class="ri-shield-check-line"></i> Finalizar Prova';
+    } else {
+        aviso.style.display = 'block';
+        aviso.innerHTML = `<div style="background:#eff6ff; border:1px solid #93c5fd; color:#1d4ed8; padding:10px 12px; border-radius:10px; font-size:13px; margin-bottom:12px;"><b>Atividade controlada:</b> seu progresso é salvo automaticamente.${podePausar ? ' Você pode pausar e retomar depois.' : ''}</div>`;
+        btnPausar.style.display = podePausar ? 'inline-flex' : 'none'; btnFechar.style.display = 'inline-flex'; btnEnviar.innerHTML = '<i class="ri-send-plane-fill"></i> Enviar Resposta para Correção';
+    }
+};
+window.desativarSessaoTreinamento = function() {
+    window.sessaoTreinamentoAtiva = null;
+    if (window._timerAutosaveTreinamento) { clearTimeout(window._timerAutosaveTreinamento); window._timerAutosaveTreinamento = null; }
+    window.atualizarAvisoSessaoTreinamentoUI();
+};
+window.agendarAutosaveTreinamento = function() {
+    if (!window.sessaoTreinamentoAtiva) return;
+    if (window._timerAutosaveTreinamento) clearTimeout(window._timerAutosaveTreinamento);
+    window._timerAutosaveTreinamento = setTimeout(() => window.salvarRascunhoTreinamento(), 500);
+};
+window.salvarRascunhoTreinamento = async function() {
+    const sessao = window.sessaoTreinamentoAtiva;
+    if (!sessao || !window.alunoLogado) return;
+    try {
+        const progresso = await window.salvarProgressoTreinamento(sessao.docId, sessao.nomeAluno, { status: sessao.modoControle === 'prova_bloqueada' ? 'em_andamento' : (sessao.progresso?.status === 'pausada' ? 'pausada' : 'em_andamento'), tentativas: sessao.progresso?.tentativas || 1, infracoes: sessao.progresso?.infracoes || 0, rascunho: window.capturarRespostasModalTreinamento() });
+        sessao.progresso = progresso;
+    } catch(e) { console.error('Erro ao salvar rascunho', e); }
+};
+window.inicializarGuardaTreinamento = function() {
+    if (window.__guardaTreinamentoInit) return;
+    window.__guardaTreinamentoInit = true;
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') window.registrarInfracaoTreinamento('Mudou de aba ou minimizou a janela'); });
+    window.addEventListener('beforeunload', function(e) {
+        const sessao = window.sessaoTreinamentoAtiva;
+        if (!sessao || sessao.modoControle !== 'prova_bloqueada') return;
+        e.preventDefault(); e.returnValue = ''; return '';
+    });
+    document.addEventListener('click', function(e) {
+        const sessao = window.sessaoTreinamentoAtiva;
+        if (!sessao || sessao.modoControle !== 'prova_bloqueada') return;
+        const nav = e.target.closest('.nav-btn, #btn-logout');
+        if (nav) {
+            const tab = nav.getAttribute('data-tab');
+            if (tab !== 'ensino') {
+                e.preventDefault(); e.stopPropagation();
+                alert('Você não pode sair da prova antes de concluir.');
+                window.registrarInfracaoTreinamento('Tentou navegar para outra aba do sistema');
+            }
+        }
+    }, true);
+};
+window.registrarInfracaoTreinamento = async function(motivo = 'Saiu da prova') {
+    const sessao = window.sessaoTreinamentoAtiva;
+    if (!sessao || sessao.modoControle !== 'prova_bloqueada') return;
+    const agora = Date.now();
+    if (agora - window._ultimoEventoInfracaoTreinamento < 1500) return;
+    window._ultimoEventoInfracaoTreinamento = agora;
+    const novoTotal = (sessao.progresso?.infracoes || 0) + 1;
+    const progresso = await window.salvarProgressoTreinamento(sessao.docId, sessao.nomeAluno, { status: 'em_andamento', tentativas: sessao.progresso?.tentativas || 1, infracoes: novoTotal, ultimo_evento: motivo, rascunho: window.capturarRespostasModalTreinamento() });
+    sessao.progresso = progresso;
+    window.atualizarAvisoSessaoTreinamentoUI(sessao.itemData, progresso);
+    if (novoTotal >= sessao.limiteInfracoes) await window.finalizarSessaoTreinamentoPorSaida(`Limite de advertências atingido. ${motivo}`);
+    else alert(`Advertência ${novoTotal}/${sessao.limiteInfracoes}. Motivo: ${motivo}`);
+};
+window.finalizarSessaoTreinamentoPorSaida = async function(motivo = 'Saiu da atividade') {
+    const sessao = window.sessaoTreinamentoAtiva;
+    if (!sessao) return;
+    await window.salvarProgressoTreinamento(sessao.docId, sessao.nomeAluno, { status: sessao.regraSaida, tentativas: sessao.progresso?.tentativas || 1, infracoes: sessao.progresso?.infracoes || 0, motivo_saida: motivo, rascunho: window.capturarRespostasModalTreinamento() });
+    document.getElementById('modal-resposta-aluno').style.display = 'none';
+    window.desativarSessaoTreinamento();
+    window.renderizarTrilhaAluno();
+    alert(sessao.regraSaida === 'zerada_por_saida' ? 'A tentativa foi zerada por saída indevida.' : 'A atividade foi marcada como inconclusa.');
+};
+window.pausarSessaoTreinamento = async function() {
+    const sessao = window.sessaoTreinamentoAtiva;
+    if (!sessao) return;
+    if (!sessao.permitePausa) return alert('Esta atividade não permite pausa.');
+    await window.salvarProgressoTreinamento(sessao.docId, sessao.nomeAluno, { status: 'pausada', tentativas: sessao.progresso?.tentativas || 1, infracoes: sessao.progresso?.infracoes || 0, rascunho: window.capturarRespostasModalTreinamento() });
+    document.getElementById('modal-resposta-aluno').style.display = 'none';
+    window.desativarSessaoTreinamento();
+    window.renderizarTrilhaAluno();
+    alert('Atividade pausada com sucesso.');
+};
+window.tentarFecharModalRespostaAluno = async function() {
+    const sessao = window.sessaoTreinamentoAtiva;
+    if (!sessao) { document.getElementById('modal-resposta-aluno').style.display = 'none'; return; }
+    if (sessao.modoControle === 'prova_bloqueada') {
+        if (!confirm('Sair agora encerrará esta prova conforme a regra configurada. Deseja continuar?')) return;
+        await window.finalizarSessaoTreinamentoPorSaida('Fechou a prova antes de concluir');
+        return;
+    }
+    if (sessao.permitePausa) { await window.pausarSessaoTreinamento(); return; }
+    document.getElementById('modal-resposta-aluno').style.display = 'none';
+    window.desativarSessaoTreinamento();
+};
+window.abrirCadastroProva = function() {
+    window.abrirModal('treinamentos');
+    setTimeout(() => {
+        const tipo = document.getElementById('input-Tipo (Vídeo, PDF, Tarefa, Prova)');
+        const modo = document.getElementById('input-Modo de Controle');
+        const pausa = document.getElementById('input-Permite Pausa?');
+        const limite = document.getElementById('input-Limite de Infrações');
+        const regra = document.getElementById('input-Regra ao Sair');
+        if (tipo) tipo.value = 'Prova Múltipla Escolha';
+        if (modo) modo.value = 'prova_bloqueada';
+        if (pausa) pausa.value = 'Não';
+        if (limite) limite.value = '3';
+        if (regra) regra.value = 'zerada_por_saida';
+    }, 80);
+};
+window.inicializarGuardaTreinamento();
 
 window.abrirListaLeituras = function(docId, colecao) {
     const modal = document.getElementById('modal-leituras');
@@ -1607,7 +1803,19 @@ window.abrirListaLeituras = function(docId, colecao) {
     modal.style.display = 'flex';
 };
 
-window.sairPortalAluno = function() { window.alunoLogado = null; document.getElementById('ensino-dashboard-area').style.display = 'none'; document.getElementById('ensino-login-area').style.display = 'block'; document.getElementById('login-aluno-pin').value = ''; };
+window.sairPortalAluno = async function() {
+    if (window.sessaoTreinamentoAtiva && window.sessaoTreinamentoAtiva.modoControle === 'prova_bloqueada') {
+        alert('Finalize a prova antes de sair do Portal do Aluno.');
+        return;
+    }
+    if (window.sessaoTreinamentoAtiva && window.sessaoTreinamentoAtiva.permitePausa) {
+        await window.pausarSessaoTreinamento();
+    }
+    window.alunoLogado = null;
+    document.getElementById('ensino-dashboard-area').style.display = 'none';
+    document.getElementById('ensino-login-area').style.display = 'block';
+    document.getElementById('login-aluno-pin').value = '';
+};
 
 window.renderizarTrilhaAluno = function() {
     if(!window.alunoLogado) return;
@@ -1628,37 +1836,47 @@ window.renderizarTrilhaAluno = function() {
     treinamentosAluno.forEach(item => {
         const d = item.data; const docId = item.id;
         const respostas = d.respostas_alunos || [];
-        let minhaResposta = null; respostas.forEach(r => { try { let obj = window.safeParseJSON(r, null); if(obj.nome === nomeAluno) minhaResposta = obj; } catch(e){} });
-
+        let minhaResposta = null; respostas.forEach(r => { try { let obj = window.safeParseJSON(r, null); if(obj && obj.nome === nomeAluno) minhaResposta = obj; } catch(e){} });
+        const progresso = window.obterProgressoAlunoTreinamento(d, nomeAluno);
+        const statusProgresso = String(progresso?.status || 'pendente');
         const concluidos = d.leituras || []; const jaLeu = concluidos.some(txt => txt.startsWith(nomeAluno));
         const tipo = d['Tipo (Vídeo, PDF, Tarefa, Prova)'] || 'Vídeo';
         const precisaResponder = tipo && (tipo.includes('Tarefa') || tipo.includes('Prova'));
         const pontosItem = parseInt(d['Pontos Valendo']) || 0;
-        
-        let jaFez = false; let statusTexto = 'Pendente'; let corStatus = '#e53e3e'; let iconeStatus = 'ri-time-line';
+        const modoControle = window.obterModoControleTreinamento(d);
+        const limite = window.obterLimiteInfracoesTreinamento(d);
 
+        let statusTexto = 'Pendente'; let corStatus = '#e53e3e'; let iconeStatus = 'ri-time-line'; let bloqueado = false;
         if(precisaResponder) {
-            if(minhaResposta) {
-                jaFez = true;
-                if(minhaResposta.nota && minhaResposta.nota !== "") { statusTexto = `Corrigido (Nota: ${minhaResposta.nota})`; corStatus = '#38a169'; iconeStatus = 'ri-award-fill'; pontos += parseInt(minhaResposta.nota) || 0; } 
+            if (statusProgresso === 'zerada_por_saida') { statusTexto = 'Zerada por saída'; corStatus = '#c53030'; iconeStatus = 'ri-close-circle-fill'; bloqueado = true; }
+            else if (statusProgresso === 'inconclusa') { statusTexto = 'Inconclusa'; corStatus = '#dd6b20'; iconeStatus = 'ri-error-warning-line'; bloqueado = modoControle === 'prova_bloqueada'; if (!bloqueado) pendentes++; }
+            else if(minhaResposta) {
+                if(minhaResposta.nota && minhaResposta.nota !== "") { statusTexto = `Corrigido (Nota: ${minhaResposta.nota})`; corStatus = '#38a169'; iconeStatus = 'ri-award-fill'; pontos += parseInt(minhaResposta.nota) || 0; }
                 else { statusTexto = 'Aguardando Correção'; corStatus = '#ecc94b'; iconeStatus = 'ri-hourglass-line'; }
-            } else { pendentes++; }
+            } else if (statusProgresso === 'pausada') { statusTexto = 'Pausada'; corStatus = '#dd6b20'; iconeStatus = 'ri-pause-circle-line'; pendentes++; }
+            else if (statusProgresso === 'em_andamento') { statusTexto = modoControle === 'prova_bloqueada' ? `Em andamento (${progresso?.infracoes || 0}/${limite} advert.)` : 'Em andamento'; corStatus = '#3182ce'; iconeStatus = 'ri-play-circle-line'; pendentes++; }
+            else { pendentes++; }
         } else {
-            if(jaLeu) { jaFez = true; statusTexto = 'Concluído'; corStatus = '#38a169'; iconeStatus = 'ri-check-double-line'; pontos += pontosItem; } 
+            if(jaLeu) { statusTexto = 'Concluído'; corStatus = '#38a169'; iconeStatus = 'ri-check-double-line'; pontos += pontosItem; }
             else { pendentes++; }
         }
 
         let btnAcao = '';
         if(d['Link do Material (Se houver)']) btnAcao += `<button onclick="window.abrirMidiaFlutuante('${String(d['Link do Material (Se houver)']).trim()}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; margin-bottom: 8px;"><i class="ri-eye-line"></i> Acessar Material</button>`;
 
-        if(!jaFez) {
-            if(precisaResponder) {
-                btnAcao += `<button onclick="window.abrirModalResposta('${docId}')" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #3182ce; color:white; border:none;"><i class="ri-pencil-fill"></i> Responder Atividade</button>`;
-            } else {
-                btnAcao += `<button onclick="window.concluirTreinamento('${docId}')" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #38a169; color:white; border:none;"><i class="ri-check-double-line"></i> Marcar como LIDO</button>`;
+        if(precisaResponder) {
+            if (!minhaResposta && !bloqueado) {
+                const label = statusProgresso === 'pausada' || statusProgresso === 'em_andamento'
+                    ? (modoControle === 'prova_bloqueada' ? 'Retomar Prova' : 'Continuar Atividade')
+                    : (modoControle === 'prova_bloqueada' ? 'Iniciar Prova' : 'Responder Atividade');
+                btnAcao += `<button onclick="window.abrirModalResposta('${docId}')" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #3182ce; color:white; border:none;"><i class="ri-pencil-fill"></i> ${label}</button>`;
+            } else if (bloqueado) {
+                btnAcao += `<div style="font-size:12px; padding:10px; border-radius:8px; background:#fff5f5; color:#c53030; border:1px solid #fed7d7;"><i class="ri-alert-line"></i> Tentativa encerrada. Procure a gestão caso precise de liberação.</div>`;
+            } else if (minhaResposta && minhaResposta.nota !== "") {
+                btnAcao += `<button onclick="window.verFeedback('${minhaResposta.nota}', \`${(minhaResposta.feedback || 'Sem comentários.').replace(/'/g, '&apos;')}\`)" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; margin-top:8px;"><i class="ri-message-3-line"></i> Ver Correção</button>`;
             }
-        } else if (precisaResponder && minhaResposta && minhaResposta.nota !== "") {
-            btnAcao += `<button onclick="window.verFeedback('${minhaResposta.nota}', \`${(minhaResposta.feedback || 'Sem comentários.').replace(/'/g, "&apos;")}\`)" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; margin-top:8px;"><i class="ri-message-3-line"></i> Ver Correção</button>`;
+        } else if (!jaLeu) {
+            btnAcao += `<button onclick="window.concluirTreinamento('${docId}')" class="btn-hover color-11" style="width: 100%; height: 35px; border-radius: 8px; font-size: 13px; background: #38a169; color:white; border:none;"><i class="ri-check-double-line"></i> Marcar como LIDO</button>`;
         }
 
         grid.innerHTML += `<div class="card" style="border: 2px solid ${corStatus}; display:flex; flex-direction:column; background: white; border-radius: 10px; padding: 15px;"><div style="font-size:10px; opacity:0.7; text-transform:uppercase; font-weight:700; margin-bottom:5px; color: var(--primary-color);"><i class="ri-book-open-line"></i> MÓDULO: ${d['Pasta / Módulo']} | TIPO: ${tipo}</div><div style="font-size:16px; font-weight:600; margin-bottom:10px; line-height: 1.2;">${d['Título da Atividade']}</div><div style="font-size:12px; color:var(--text-muted); margin-bottom:15px; flex:1;"><b>Pontos Base:</b> <span style="color:#e75516; font-weight:700;">+${pontosItem} XP</span><br><b>Status:</b> <span style="color:${corStatus}; font-weight:600;"><i class="${iconeStatus}"></i> ${statusTexto}</span></div>${btnAcao}</div>`;
@@ -1666,45 +1884,66 @@ window.renderizarTrilhaAluno = function() {
 
     const ptsEl = document.getElementById('aluno-pontos'); const pendEl = document.getElementById('aluno-tarefas-pendentes');
     if(ptsEl) ptsEl.textContent = pontos; if(pendEl) pendEl.textContent = pendentes;
-    
-    if(window.renderizarPesquisasAluno) window.renderizarPesquisasAluno(); 
+    if(window.renderizarPesquisasAluno) window.renderizarPesquisasAluno();
 };
 
 window.concluirTreinamento = async function(docId) {
     if(!window.alunoLogado) return;
     const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
-    if(!confirm(`Você realmente assistiu/leu este material, ${nomeAluno}?\nAo confirmar, os pontos serão computados na sua jornada.`)) return;
+    if(!confirm(`Você realmente assistiu/leu este material, ${nomeAluno}?
+Ao confirmar, os pontos serão computados na sua jornada.`)) return;
     const registro = `${nomeAluno} (Concluído em: ${new Date().toLocaleString('pt-BR')})`;
-    try { await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { leituras: window.arrayUnion(registro) }); alert("Concluído com sucesso! +XP "); } catch(e) { alert("Erro ao salvar: " + e.message); }
+    try {
+        await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { leituras: window.arrayUnion(registro) });
+        await window.salvarProgressoTreinamento(docId, nomeAluno, { status: 'concluida' });
+        alert("Concluído com sucesso! +XP ");
+    } catch(e) { alert("Erro ao salvar: " + e.message); }
 };
 
-window.abrirModalResposta = function(docId) {
+window.abrirModalResposta = async function(docId) {
+    if (!window.alunoLogado) return;
+    if (window.sessaoTreinamentoAtiva && window.sessaoTreinamentoAtiva.docId !== docId) {
+        alert('Finalize ou pause a atividade atual antes de abrir outra.');
+        return;
+    }
     document.getElementById('resposta-docid').value = docId;
     const area = document.getElementById('area-perguntas-dinamicas'); area.innerHTML = '';
-    
     const item = window.todosTreinamentosData.find(i => i.id === docId);
     if(!item) { area.innerHTML = '<p>Treinamento não encontrado.</p>'; return; }
-    
+
+    const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
+    const modoControle = window.obterModoControleTreinamento(item.data);
+    const permitePausa = window.permitePausaTreinamento(item.data);
+    const limiteInfracoes = window.obterLimiteInfracoesTreinamento(item.data);
+    const regraSaida = window.obterRegraSaidaTreinamento(item.data);
+    const progressoAtual = window.obterProgressoAlunoTreinamento(item.data, nomeAluno);
+    if (progressoAtual && (progressoAtual.status === 'zerada_por_saida' || (progressoAtual.status === 'inconclusa' && modoControle === 'prova_bloqueada'))) {
+        alert('Esta tentativa já foi encerrada e não pode ser retomada.');
+        return;
+    }
+
+    const tentativas = progressoAtual && progressoAtual.status !== 'pendente' ? (progressoAtual.tentativas || 1) : ((progressoAtual?.tentativas || 0) + 1);
+    const progressoSalvo = await window.salvarProgressoTreinamento(docId, nomeAluno, { status: 'em_andamento', tentativas, infracoes: progressoAtual?.infracoes || 0, modo_controle: modoControle, regra_saida: regraSaida, limite_infracoes: limiteInfracoes });
+    window.sessaoTreinamentoAtiva = { docId, nomeAluno, itemData: item.data, modoControle, permitePausa, limiteInfracoes, regraSaida, progresso: progressoSalvo };
+    document.getElementById('resposta-titulo').textContent = modoControle === 'prova_bloqueada' ? 'Prova em andamento' : 'Responder Atividade';
+    window.atualizarAvisoSessaoTreinamentoUI(item.data, progressoSalvo);
+
     const configJSON = item.data['Configuração da Avaliação'] || '[]';
-    
     try {
         const jsonStr = typeof configJSON === 'string' ? configJSON : JSON.stringify(configJSON);
         const perguntas = window.safeParseJSON(jsonStr, []);
         perguntas.forEach((q, idx) => {
             let html = `<div class="pergunta-aluno-bloco" style="margin-bottom:15px; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">`;
             html += `<div style="font-weight:600; font-size:13px; margin-bottom:10px;">${idx+1}. ${q.p}</div>`;
-            html += `<input type="hidden" class="resp-tipo" value="${q.tipo}">`;
-            html += `<input type="hidden" class="resp-pergunta-txt" value="${q.p}">`;
-            if(q.tipo === 'descritiva') {
-                html += `<textarea class="form-input resp-valor" style="height:80px; resize:vertical;" placeholder="Sua resposta..."></textarea>`;
-            } else {
-                q.ops.forEach((op, oIdx) => {
-                    if(op.trim() !== '') { html += `<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:5px; cursor:pointer;"><input type="radio" name="q_${idx}" class="resp-radio" value="${op}"> ${op}</label>`; }
-                });
-            }
+            html += `<input type="hidden" class="resp-tipo" value="${q.tipo}"><input type="hidden" class="resp-pergunta-txt" value="${q.p}">`;
+            if(q.tipo === 'descritiva') html += `<textarea class="form-input resp-valor" style="height:80px; resize:vertical;" placeholder="Sua resposta..."></textarea>`;
+            else (q.ops || []).forEach(op => { if(String(op || '').trim() !== '') html += `<label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:5px; cursor:pointer;"><input type="radio" name="q_${idx}" class="resp-radio" value="${op}"> ${op}</label>`; });
             html += `</div>`; area.innerHTML += html;
         });
     } catch(e) { area.innerHTML = '<p>Erro ao carregar perguntas do sistema.</p>'; }
+
+    if (Array.isArray(progressoAtual?.rascunho) && progressoAtual.rascunho.length) window.preencherRascunhoTreinamento(progressoAtual.rascunho);
+    area.querySelectorAll('.resp-valor, .resp-radio').forEach(el => { el.addEventListener('input', window.agendarAutosaveTreinamento); el.addEventListener('change', window.agendarAutosaveTreinamento); });
     document.getElementById('modal-resposta-aluno').style.display = 'flex';
 };
 
@@ -1712,28 +1951,17 @@ window.enviarRespostaTreinamento = async function() {
     if(!window.alunoLogado) return;
     const docId = document.getElementById('resposta-docid').value;
     const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
-    const blocos = document.querySelectorAll('.pergunta-aluno-bloco');
-    let respostasFinais = [];
-    blocos.forEach(bloco => {
-        const tipo = bloco.querySelector('.resp-tipo').value;
-        const p = bloco.querySelector('.resp-pergunta-txt').value;
-        let r = '';
-        if(tipo === 'descritiva') { r = bloco.querySelector('.resp-valor').value.trim(); } 
-        else { const checked = bloco.querySelector('.resp-radio:checked'); r = checked ? checked.value : 'Nenhuma opção selecionada'; }
-        respostasFinais.push({ pergunta: p, resposta: r });
-    });
+    const respostasFinais = window.capturarRespostasModalTreinamento();
+    if(!respostasFinais.some(item => String(item.resposta || '').trim() !== '')) { alert('Preencha ao menos uma resposta antes de enviar.'); return; }
     const respostaObj = { nome: nomeAluno, data: new Date().toLocaleString('pt-BR'), respostas: respostasFinais, nota: "", feedback: "" };
     try {
         await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { respostas_alunos: window.arrayUnion(JSON.stringify(respostaObj)) });
+        await window.salvarProgressoTreinamento(docId, nomeAluno, { status: 'concluida', rascunho: [], tentativas: window.sessaoTreinamentoAtiva?.progresso?.tentativas || 1, infracoes: window.sessaoTreinamentoAtiva?.progresso?.infracoes || 0 });
         alert("Sua resposta foi enviada para correção do supervisor! ");
         document.getElementById('modal-resposta-aluno').style.display = 'none';
-        window.renderizarTrilhaAluno(); 
+        window.desativarSessaoTreinamento();
+        window.renderizarTrilhaAluno();
     } catch(e) { alert("Erro ao enviar resposta: " + e.message); }
-};
-
-window.verFeedback = function(nota, feedback) {
-    document.getElementById('feedback-nota').textContent = nota; document.getElementById('feedback-texto').textContent = feedback;
-    document.getElementById('modal-feedback-aluno').style.display = 'flex';
 };
 
 window.abrirCorrecaoAdmin = function(docId, nomeAluno) {
@@ -2664,65 +2892,34 @@ window.addEventListener('DOMContentLoaded', () => {
                     dados[c] = checks.join(', ');
                 } else if(val) { dados[c] = val.value; }
             });
+
+            if (colecao === 'treinamentos') {
+                const tipoTreino = String(dados['Tipo (Vídeo, PDF, Tarefa, Prova)'] || '');
+                if (!dados['Modo de Controle']) dados['Modo de Controle'] = tipoTreino.includes('Prova') ? 'prova_bloqueada' : (tipoTreino.includes('Tarefa') ? 'atividade_com_pausa' : 'material_apenas_leitura');
+                if (!dados['Permite Pausa?']) dados['Permite Pausa?'] = dados['Modo de Controle'] === 'atividade_com_pausa' ? 'Sim' : 'Não';
+                if (!dados['Limite de Infrações']) dados['Limite de Infrações'] = '3';
+                if (!dados['Regra ao Sair']) dados['Regra ao Sair'] = dados['Modo de Controle'] === 'prova_bloqueada' ? 'zerada_por_saida' : 'inconclusa';
+            }
             
             // --- HISTÓRICO DE ATIVOS ---
-if (colecao === 'ativos') {
-    const dataAntiga = docId ? (window.dadosGlobaisAbas['ativos']?.find(a => a.id === docId)?.data || {}) : {};
-    const histAntigo = Array.isArray(dataAntiga.historico) ? dataAntiga.historico : [];
-
-    const localAntigo = String(dataAntiga['Localização / Setor'] || 'Não informado').trim();
-    const localNovo = String(dados['Localização / Setor'] || 'Não informado').trim();
-
-    const statusAntigo = String(dataAntiga['Status do Ativo'] || 'Não informado').trim();
-    const statusNovo = String(dados['Status do Ativo'] || 'Não informado').trim();
-
-    const responsavelAntigo = String(dataAntiga['Responsável'] || 'Não informado').trim();
-    const responsavelNovo = String(dados['Responsável'] || 'Não informado').trim();
-
-    let comentarioMov = '';
-    if (docId) {
-        comentarioMov = prompt('Comentário da movimentação / alteração:', '') || '';
-    }
-
-    let logTexto = '';
-
-    if (!docId) {
-        logTexto = `Cadastrado em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'} | Local: ${localNovo} | Status: ${statusNovo}`;
-    } else {
-        const mudancas = [];
-
-        if (localAntigo !== localNovo) {
-            mudancas.push(`Local: ${localAntigo} → ${localNovo}`);
-        }
-
-        if (statusAntigo !== statusNovo) {
-            mudancas.push(`Status: ${statusAntigo} → ${statusNovo}`);
-        }
-
-        if (responsavelAntigo !== responsavelNovo) {
-            mudancas.push(`Responsável: ${responsavelAntigo} → ${responsavelNovo}`);
-        }
-
-        if (!mudancas.length) {
-            mudancas.push('Dados gerais atualizados');
-        }
-
-        logTexto = `Movimentado/Atualizado em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'} | ${mudancas.join(' | ')}`;
-
-        if (comentarioMov.trim()) {
-            logTexto += ` | Comentário: ${comentarioMov.trim()}`;
-        }
-    }
-
-    dados.historico = [...histAntigo, logTexto];
-}
+            if (colecao === 'ativos') {
+                const acao = docId ? 'Editado/Movimentado' : 'Cadastrado';
+                const dataAntiga = docId ? (window.dadosGlobaisAbas['ativos']?.find(a => a.id === docId)?.data || {}) : {};
+                const logTexto = `${acao} em ${new Date().toLocaleString('pt-PT')} por ${emailLogado || 'Gestor'}`;
+                
+                if (docId) { 
+                    const histAntigo = Array.isArray(dataAntiga.historico) ? dataAntiga.historico : [];
+                    dados.historico = [...histAntigo, logTexto]; 
+                } 
+                else { dados.historico = [logTexto]; }
+            }
             
             try {
                 if(docId) { 
-    await window.setDoc(window.doc(window.db, colecao, docId), dados, { merge: true }); 
-} else { 
-    await window.addDoc(window.collection(window.db, colecao), dados); 
-}
+                    await window.updateDoc(window.doc(window.db, colecao, docId), dados); 
+                } else { 
+                    await window.addDoc(window.collection(window.db, colecao), dados); 
+                }
                 window.fecharModal();
 
                 if (colecao === 'ativos') {
