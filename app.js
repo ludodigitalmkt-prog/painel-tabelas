@@ -659,9 +659,24 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     }
 
     // --- MÓDULO DE ATIVOS ---
-    if (colecaoNome === 'ativos' && isAdmin) {
-        cardHtml += `<button type="button" onclick="window.imprimirEtiquetaAtivo('${docId}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 12px; margin-top: 12px; border: 1px solid var(--border-color);"><i class="ri-qr-code-line"></i> Imprimir Etiqueta QR</button>`;
-    }
+   if (colecaoNome === 'ativos' && isAdmin) {
+    cardHtml += `
+        <div style="display:flex; gap:8px; margin-top:12px;">
+            <button type="button"
+                onclick="window.visualizarEtiquetaAtivo('${docId}')"
+                class="btn-hover color-11"
+                style="flex:1; height:35px; border-radius:8px; font-size:12px; border:1px solid var(--border-color);">
+                <i class="ri-eye-line"></i> Ver QR Code
+            </button>
+            <button type="button"
+                onclick="window.imprimirEtiquetaAtivo('${docId}')"
+                class="btn-hover color-8"
+                style="flex:1; height:35px; border-radius:8px; font-size:12px; border:1px solid var(--border-color);">
+                <i class="ri-printer-line"></i> Imprimir
+            </button>
+        </div>
+    `;
+}
     if (colecaoNome === 'ativos' && data.historico) {
         cardHtml += `<div style="margin-top:10px; font-size:11px; background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0; max-height:80px; overflow-y:auto;"><strong><i class="ri-history-line"></i> Histórico:</strong><br>`;
         [...data.historico].reverse().forEach(h => { cardHtml += `<div style="border-bottom:1px dashed #cbd5e1; padding:3px 0;">${h}</div>`; });
@@ -672,6 +687,64 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     cardHtml += `</div>`; return cardHtml;
 };
 window.imprimirEtiquetaAtivo = function(docId) {
+    window.visualizarEtiquetaAtivo = function(docId) {
+    try {
+        if (typeof QRCode === 'undefined') {
+            alert('A biblioteca de QR Code não foi carregada.');
+            return;
+        }
+
+        const ativos = window.dadosGlobaisAbas['ativos'] || [];
+        const ativo = ativos.find(item => item.id === docId);
+
+        if (!ativo) {
+            alert('Ativo não encontrado.');
+            return;
+        }
+
+        const data = ativo.data || {};
+        const nome = data['Nome do Equipamento'] || 'Equipamento';
+        const patrimonio = data['Número de Patrimônio'] || docId;
+        const categoria = data['Categoria'] || 'Sem categoria';
+
+        const modal = document.getElementById('modal-visualizar-qr');
+        const qrArea = document.getElementById('visualizar-qr-area');
+        const info = document.getElementById('visualizar-qr-info');
+
+        if (!modal || !qrArea || !info) {
+            alert('Modal de visualização do QR não encontrado no HTML.');
+            return;
+        }
+
+        qrArea.innerHTML = '';
+        info.innerHTML = `
+            <div style="font-size:16px; font-weight:700; margin-bottom:6px;">${nome}</div>
+            <div style="font-size:13px; margin-bottom:4px;"><strong>Patrimônio:</strong> ${patrimonio}</div>
+            <div style="font-size:13px;"><strong>Categoria:</strong> ${categoria}</div>
+        `;
+
+        new QRCode(qrArea, {
+            text: String(patrimonio || docId),
+            width: 220,
+            height: 220
+        });
+
+        modal.style.display = 'flex';
+    } catch (error) {
+        console.error('Erro ao visualizar QR Code:', error);
+        alert('Erro ao visualizar o QR Code.');
+    }
+};
+
+window.fecharVisualizacaoQR = function() {
+    const modal = document.getElementById('modal-visualizar-qr');
+    const qrArea = document.getElementById('visualizar-qr-area');
+    const info = document.getElementById('visualizar-qr-info');
+
+    if (qrArea) qrArea.innerHTML = '';
+    if (info) info.innerHTML = '';
+    if (modal) modal.style.display = 'none';
+};
     try {
         if (typeof QRCode === 'undefined') {
             alert('A biblioteca de QR Code não foi carregada.');
