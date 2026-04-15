@@ -429,7 +429,15 @@ window.abrirPastaGenerica = function(colecao, valorPasta, docIdDestino = null) {
     }
 };
 
-window.fecharPastaGenerica = function(colecao) { window[`pasta_${colecao}_Atual`] = null; document.getElementById(`${colecao}-view-folders`).style.display = 'block'; document.getElementById(`${colecao}-view-list`).style.display = 'none'; window.renderizarPastasGenericas(colecao); };
+window.fecharPastaGenerica = function(colecao) {
+    window[`pasta_${colecao}_Atual`] = null;
+    document.getElementById(`${colecao}-view-folders`).style.display = 'block';
+    document.getElementById(`${colecao}-view-list`).style.display = 'none';
+    window.renderizarPastasGenericas(colecao);
+    if (colecao === 'ativos' && typeof window.renderizarGraficoAtivos === 'function') {
+        setTimeout(window.renderizarGraficoAtivos, 120);
+    }
+};
 window.abrirPastaBoletim = function(pasta, docIdDestino = null) { window.pastaBoletimAtual = pasta; document.getElementById('boletins-view-folders').style.display = 'none'; document.getElementById('boletins-view-list').style.display = 'block'; document.getElementById('titulo-pasta-boletins').innerHTML = `<i class="ri-folder-open-line"></i> Setor: ${pasta}`; window.renderizarListaBoletins(); if(docIdDestino) window.destacarCard(docIdDestino); };
 window.fecharPastaBoletim = function() { window.pastaBoletimAtual = null; document.getElementById('boletins-view-list').style.display = 'none'; document.getElementById('boletins-view-folders').style.display = 'block'; window.renderizarPastasBoletins(); };
 window.abrirPastaPrivado = function(colabNome, docIdDestino = null) { window.pastaPrivadoAtual = colabNome; document.getElementById('privados-view-folders').style.display = 'none'; document.getElementById('privados-view-list').style.display = 'block'; document.getElementById('titulo-pasta-privados').innerHTML = `<i class="ri-folder-user-line"></i> ${colabNome}`; window.renderizarListaPrivados(); if(docIdDestino) window.destacarCard(docIdDestino); };
@@ -686,6 +694,7 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     if (isAdmin) cardHtml += `<div class="card-actions"><button class="btn-action btn-edit" data-id="${docId}" data-colecao="${colecaoNome}" data-info="${JSON.stringify(data).replace(/'/g, "&apos;").replace(/"/g, "&quot;")}" title="Editar"><i class="ri-pencil-line"></i></button><button class="btn-action btn-delete" data-id="${docId}" data-colecao="${colecaoNome}" title="Excluir"><i class="ri-delete-bin-line"></i></button></div>`;
     cardHtml += `</div>`; return cardHtml;
 };
+
 window.visualizarEtiquetaAtivo = function(docId) {
     try {
         if (typeof QRCode === 'undefined') {
@@ -705,6 +714,8 @@ window.visualizarEtiquetaAtivo = function(docId) {
         const nome = data['Nome do Equipamento'] || 'Equipamento';
         const patrimonio = data['Número de Patrimônio'] || docId;
         const categoria = data['Categoria'] || 'Sem categoria';
+        const local = data['Localização / Setor'] || 'Sem localização';
+        const status = data['Status do Ativo'] || 'Não informado';
 
         const modal = document.getElementById('modal-visualizar-qr');
         const qrArea = document.getElementById('visualizar-qr-area');
@@ -717,9 +728,11 @@ window.visualizarEtiquetaAtivo = function(docId) {
 
         qrArea.innerHTML = '';
         info.innerHTML = `
-            <div style="font-size:16px; font-weight:700; margin-bottom:6px;">${nome}</div>
-            <div style="font-size:13px; margin-bottom:4px;"><strong>Patrimônio:</strong> ${patrimonio}</div>
-            <div style="font-size:13px;"><strong>Categoria:</strong> ${categoria}</div>
+            <div style="font-size:16px; font-weight:700; margin-bottom:6px;">${window.escapeHTML(nome)}</div>
+            <div style="font-size:13px; margin-bottom:4px;"><strong>Patrimônio:</strong> ${window.escapeHTML(patrimonio)}</div>
+            <div style="font-size:13px; margin-bottom:4px;"><strong>Categoria:</strong> ${window.escapeHTML(categoria)}</div>
+            <div style="font-size:13px; margin-bottom:4px;"><strong>Setor:</strong> ${window.escapeHTML(local)}</div>
+            <div style="font-size:13px;"><strong>Status:</strong> ${window.escapeHTML(status)}</div>
         `;
 
         new QRCode(qrArea, {
@@ -782,14 +795,14 @@ window.imprimirEtiquetaAtivo = function(docId) {
                 <div style="font-size:18px; font-weight:700; margin-bottom:8px; color:#8B252C;">
                     Etiqueta do Ativo
                 </div>
-                <div style="font-size:14px; margin-bottom:6px;"><strong>Equipamento:</strong> ${nome}</div>
-                <div style="font-size:14px; margin-bottom:6px;"><strong>Patrimônio:</strong> ${patrimonio}</div>
-                <div style="font-size:14px; margin-bottom:6px;"><strong>Categoria:</strong> ${categoria}</div>
-                <div style="font-size:14px; margin-bottom:6px;"><strong>Local:</strong> ${local}</div>
-                <div style="font-size:14px; margin-bottom:12px;"><strong>Responsável:</strong> ${responsavel}</div>
+                <div style="font-size:14px; margin-bottom:6px;"><strong>Equipamento:</strong> ${window.escapeHTML(nome)}</div>
+                <div style="font-size:14px; margin-bottom:6px;"><strong>Patrimônio:</strong> ${window.escapeHTML(patrimonio)}</div>
+                <div style="font-size:14px; margin-bottom:6px;"><strong>Categoria:</strong> ${window.escapeHTML(categoria)}</div>
+                <div style="font-size:14px; margin-bottom:6px;"><strong>Local:</strong> ${window.escapeHTML(local)}</div>
+                <div style="font-size:14px; margin-bottom:12px;"><strong>Responsável:</strong> ${window.escapeHTML(responsavel)}</div>
                 <div id="qr-print-area" style="display:flex; justify-content:center; margin:14px 0;"></div>
                 <div style="font-size:12px; color:#555; text-align:center;">
-                    Código: ${docId}
+                    Código: ${window.escapeHTML(docId)}
                 </div>
             </div>
         `;
@@ -842,6 +855,234 @@ window.imprimirEtiquetaAtivo = function(docId) {
         alert('Erro ao gerar a etiqueta QR do ativo.');
     }
 };
+
+window.obterTamanhoEtiquetaAtivo = function(valor = 'medio') {
+    const mapa = {
+        pequeno: { larguraMm: 35, alturaMm: 22, qrPx: 78, fonteNome: 9, fonteInfo: 8 },
+        medio: { larguraMm: 50, alturaMm: 30, qrPx: 104, fonteNome: 10, fonteInfo: 8.5 },
+        grande: { larguraMm: 62, alturaMm: 40, qrPx: 128, fonteNome: 11, fonteInfo: 9 }
+    };
+    return mapa[valor] || mapa.medio;
+};
+
+window.filtrarAtivosParaEtiquetas = function() {
+    const ativos = window.dadosGlobaisAbas['ativos'] || [];
+    const setorEl = document.getElementById('etiqueta-filtro-setor');
+    const categoriaEl = document.getElementById('etiqueta-filtro-categoria');
+    const produtoEl = document.getElementById('etiqueta-filtro-produto');
+    const statusEl = document.getElementById('etiqueta-filtro-status');
+    const apenasPastaEl = document.getElementById('etiqueta-apenas-pasta-atual');
+
+    const setor = setorEl ? String(setorEl.value || '').trim().toLowerCase() : '';
+    const categoria = categoriaEl ? String(categoriaEl.value || '').trim().toLowerCase() : '';
+    const status = statusEl ? String(statusEl.value || '').trim().toLowerCase() : '';
+    const produtoRaw = produtoEl ? String(produtoEl.value || '').trim().toLowerCase() : '';
+    const termosProduto = produtoRaw ? produtoRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const apenasPasta = apenasPastaEl ? !!apenasPastaEl.checked : false;
+    const pastaAtual = String(window.pasta_ativos_Atual || '').trim().toLowerCase();
+
+    return ativos.filter(item => {
+        const data = item.data || {};
+        const nome = String(data['Nome do Equipamento'] || '').toLowerCase();
+        const itemSetor = String(data['Localização / Setor'] || '').toLowerCase();
+        const itemCategoria = String(data['Categoria'] || '').toLowerCase();
+        const itemStatus = String(data['Status do Ativo'] || '').toLowerCase();
+
+        if (setor && itemSetor !== setor) return false;
+        if (categoria && itemCategoria !== categoria) return false;
+        if (status && itemStatus !== status) return false;
+        if (apenasPasta && pastaAtual && itemCategoria !== pastaAtual) return false;
+        if (termosProduto.length && !termosProduto.some(termo => nome.includes(termo))) return false;
+
+        return true;
+    });
+};
+
+window.atualizarOpcoesEtiquetasAtivos = function() {
+    const ativos = window.dadosGlobaisAbas['ativos'] || [];
+    const setores = Array.from(new Set(ativos.map(item => String(item.data?.['Localização / Setor'] || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b));
+    const categorias = Array.from(new Set(ativos.map(item => String(item.data?.['Categoria'] || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b));
+    const statusList = Array.from(new Set(ativos.map(item => String(item.data?.['Status do Ativo'] || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b));
+
+    const preencherSelect = (id, values, placeholder) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const valorAtual = select.value;
+        select.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${window.escapeHTML(v)}">${window.escapeHTML(v)}</option>`).join('');
+        if (values.includes(valorAtual)) select.value = valorAtual;
+    };
+
+    preencherSelect('etiqueta-filtro-setor', setores, 'Todos os setores');
+    preencherSelect('etiqueta-filtro-categoria', categorias, 'Todas as categorias');
+    preencherSelect('etiqueta-filtro-status', statusList, 'Todos os status');
+
+    const ativosFiltrados = window.filtrarAtivosParaEtiquetas();
+    const contador = document.getElementById('etiqueta-resultado-contador');
+    if (contador) {
+        contador.textContent = `${ativosFiltrados.length} ativo(s) encontrado(s)`;
+    }
+};
+
+window.abrirModalEtiquetasAtivos = function() {
+    const modal = document.getElementById('modal-etiquetas-ativos');
+    if (!modal) {
+        alert('Modal de etiquetas em lote não encontrado no HTML.');
+        return;
+    }
+    window.atualizarOpcoesEtiquetasAtivos();
+    modal.style.display = 'flex';
+};
+
+window.fecharModalEtiquetasAtivos = function() {
+    const modal = document.getElementById('modal-etiquetas-ativos');
+    if (modal) modal.style.display = 'none';
+};
+
+window.gerarHTMLFolhaEtiquetasAtivos = function(itens = [], tamanhoKey = 'medio', titulo = 'Etiquetas de Ativos') {
+    const conf = window.obterTamanhoEtiquetaAtivo(tamanhoKey);
+    return `
+        <html>
+        <head>
+            <title>${titulo}</title>
+            <style>
+                * { box-sizing: border-box; }
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 10mm;
+                    background: #fff;
+                    color: #111;
+                }
+                .sheet-header {
+                    margin-bottom: 8mm;
+                }
+                .sheet-header h1 {
+                    margin: 0 0 4px;
+                    font-size: 16px;
+                    color: #8B252C;
+                }
+                .sheet-header p {
+                    margin: 0;
+                    font-size: 12px;
+                    color: #475569;
+                }
+                .sheet {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 3mm;
+                    align-content: flex-start;
+                }
+                .label {
+                    width: ${conf.larguraMm}mm;
+                    min-height: ${conf.alturaMm}mm;
+                    border: 1px solid #d1d5db;
+                    border-radius: 2.5mm;
+                    padding: 2mm;
+                    display: flex;
+                    align-items: center;
+                    gap: 2mm;
+                    overflow: hidden;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
+                .label-qr {
+                    width: ${conf.qrPx}px;
+                    min-width: ${conf.qrPx}px;
+                    height: ${conf.qrPx}px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .label-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .label-title {
+                    font-size: ${conf.fonteNome}px;
+                    font-weight: 700;
+                    line-height: 1.15;
+                    margin-bottom: 1.4mm;
+                    word-break: break-word;
+                }
+                .label-line {
+                    font-size: ${conf.fonteInfo}px;
+                    line-height: 1.2;
+                    color: #334155;
+                    word-break: break-word;
+                }
+                @media print {
+                    body { padding: 6mm; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="sheet-header">
+                <h1>${window.escapeHTML(titulo)}</h1>
+                <p>Total de etiquetas: ${itens.length}</p>
+            </div>
+            <div class="sheet">
+                ${itens.map(item => {
+                    const data = item.data || {};
+                    const nome = window.escapeHTML(data['Nome do Equipamento'] || 'Equipamento');
+                    const patrimonio = window.escapeHTML(data['Número de Patrimônio'] || item.id);
+                    const setor = window.escapeHTML(data['Localização / Setor'] || 'Sem setor');
+                    const status = window.escapeHTML(data['Status do Ativo'] || 'Sem status');
+                    return `
+                        <div class="label">
+                            <div class="label-qr" data-code="${patrimonio}"></div>
+                            <div class="label-info">
+                                <div class="label-title">${nome}</div>
+                                <div class="label-line"><strong>Série:</strong> ${patrimonio}</div>
+                                <div class="label-line"><strong>Setor:</strong> ${setor}</div>
+                                <div class="label-line"><strong>Status:</strong> ${status}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script>
+            <script>
+                document.querySelectorAll('.label-qr').forEach(el => {
+                    const code = el.getAttribute('data-code') || '';
+                    new QRCode(el, {
+                        text: code,
+                        width: ${conf.qrPx},
+                        height: ${conf.qrPx}
+                    });
+                });
+                setTimeout(() => window.print(), 500);
+            <\/script>
+        </body>
+        </html>
+    `;
+};
+
+window.imprimirEtiquetasAtivosEmLote = function() {
+    try {
+        const itens = window.filtrarAtivosParaEtiquetas();
+        const tamanhoEl = document.getElementById('etiqueta-tamanho-impressao');
+        const tamanho = tamanhoEl ? tamanhoEl.value : 'medio';
+
+        if (!itens.length) {
+            alert('Nenhum ativo encontrado com os filtros selecionados.');
+            return;
+        }
+
+        const win = window.open('', '_blank', 'width=1200,height=900');
+        if (!win) {
+            alert('O navegador bloqueou a janela de impressão. Permita popups e tente novamente.');
+            return;
+        }
+
+        win.document.open();
+        win.document.write(window.gerarHTMLFolhaEtiquetasAtivos(itens, tamanho, 'Etiquetas de Ativos'));
+        win.document.close();
+    } catch (error) {
+        console.error('Erro ao imprimir etiquetas em lote:', error);
+        alert('Erro ao gerar a impressão em lote.');
+    }
+};
+
 
 window.renderizarListaGenerica = function(colecao) { 
     const grid = document.getElementById(`grid-${colecao}-list`); 
@@ -2207,25 +2448,51 @@ let chartAtivosInst = null;
 window.renderizarGraficoAtivos = function() {
     const ctx = document.getElementById('chart-ativos-status');
     if (!ctx) return;
+
     const ativos = window.dadosGlobaisAbas['ativos'] || [];
     const contagem = {};
     ativos.forEach(item => {
-        const status = item.data['Status do Ativo'] || 'Não Informado';
+        const statusBruto = String(item.data?.['Status do Ativo'] || 'Não Informado').trim();
+        const status = statusBruto || 'Não Informado';
         contagem[status] = (contagem[status] || 0) + 1;
     });
 
-    if(chartAtivosInst) chartAtivosInst.destroy(); 
-    chartAtivosInst = new Chart(ctx, { 
-        type: 'doughnut', 
-        data: { 
-            labels: Object.keys(contagem), 
-            datasets: [{ 
-                data: Object.values(contagem), 
-                backgroundColor: ['#38a169', '#ecc94b', '#e53e3e', '#3182ce', '#805ad5', '#a0aec0'] 
-            }] 
-        }, 
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } } 
+    const labels = Object.keys(contagem);
+    const values = Object.values(contagem);
+
+    if (chartAtivosInst) chartAtivosInst.destroy();
+
+    chartAtivosInst = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: ['#38a169', '#ecc94b', '#e53e3e', '#3182ce', '#805ad5', '#a0aec0', '#0ea5e9', '#f97316']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
     });
+
+    const resumoEl = document.getElementById('ativos-status-resumo');
+    if (resumoEl) {
+        resumoEl.innerHTML = labels.length
+            ? labels.map((label, idx) => `
+                <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:120px;">
+                    <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">${window.escapeHTML(label)}</div>
+                    <div style="font-size:20px; color:#0f172a; font-weight:800;">${values[idx]}</div>
+                </div>
+            `).join('')
+            : '<div style="color:#64748b; font-size:13px;">Nenhum ativo cadastrado ainda.</div>';
+    }
+
+    if (typeof window.atualizarOpcoesEtiquetasAtivos === 'function') {
+        window.atualizarOpcoesEtiquetasAtivos();
+    }
 };
 
 let html5QrcodeScanner = null;
