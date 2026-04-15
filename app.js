@@ -687,7 +687,7 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
     cardHtml += `</div>`; return cardHtml;
 };
 window.imprimirEtiquetaAtivo = function(docId) {
-    window.visualizarEtiquetaAtivo = function(docId) {
+ window.visualizarEtiquetaAtivo = function(docId) {
     try {
         if (typeof QRCode === 'undefined') {
             alert('A biblioteca de QR Code não foi carregada.');
@@ -745,6 +745,8 @@ window.fecharVisualizacaoQR = function() {
     if (info) info.innerHTML = '';
     if (modal) modal.style.display = 'none';
 };
+
+window.imprimirEtiquetaAtivo = function(docId) {
     try {
         if (typeof QRCode === 'undefined') {
             alert('A biblioteca de QR Code não foi carregada.');
