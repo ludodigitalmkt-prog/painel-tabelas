@@ -84,7 +84,7 @@ window.confirmarAssinaturaLeitura = async function(docId, colecao) {
     try {
         const inputLeitor = document.getElementById(`leitor-${docId}`);
         const nomeLeitor = inputLeitor ? String(inputLeitor.value || '').trim() : '';
-        if (!nomeLeitor) { alert('Selecione ou informe o colaborador para registrar a leitura.'); return; }
+        if (!nomeLeitor) { alert('Selecione ou informe o colaborador para registar a leitura.'); return; }
 
         const base = colecao === 'boletins' ? (window.todosBoletinsData || []) : (window.todosPrivadosData || []);
         const item = base.find(i => i.id === docId);
@@ -92,20 +92,20 @@ window.confirmarAssinaturaLeitura = async function(docId, colecao) {
 
         const leituras = Array.isArray(item.data?.leituras) ? item.data.leituras : [];
         const jaExiste = leituras.some(reg => window.extrairNomeRegistro(reg) === nomeLeitor);
-        if (jaExiste) { alert('Essa leitura já foi registrada.'); return; }
+        if (jaExiste) { alert('Esta leitura já foi registada.'); return; }
 
-        const registro = `${nomeLeitor} (${new Date().toLocaleString('pt-BR')} | Por: ${emailLogado})`;
+        const registro = `${nomeLeitor} (${new Date().toLocaleString('pt-PT')} | Por: ${emailLogado})`;
         await window.updateDoc(window.doc(window.db, colecao, docId), { leituras: window.arrayUnion(registro) });
 
         if (colecao === 'boletins') window.renderizarListaBoletins();
         if (colecao === 'boletins-privados') window.renderizarListaPrivados();
         if (typeof window.verificarUrgentesHome === 'function') window.verificarUrgentesHome();
-        alert('Assinatura registrada com sucesso!');
-    } catch (e) { alert('Erro ao registrar assinatura: ' + (e?.message || 'falha desconhecida')); }
+        alert('Assinatura registada com sucesso!');
+    } catch (e) { alert('Erro ao registar assinatura: ' + (e?.message || 'falha desconhecida')); }
 };
 
 window.removerAssinaturaLeitura = async function(docId, colecao, registroExato) {
-    if(!confirm('Tem certeza que deseja DESFAZER esta assinatura?')) return;
+    if(!confirm('Tem a certeza de que deseja DESFAZER esta assinatura?')) return;
     try {
         await window.updateDoc(window.doc(window.db, colecao, docId), {
             leituras: window.arrayRemove(registroExato)
@@ -198,7 +198,7 @@ window.efetuarLogin = async function(e) {
 
     const textoOriginal = btn ? btn.innerHTML : 'Entrar';
     loginEmAndamento = true; document.body.classList.add('is-auth-loading');
-    if (btn) { btn.disabled = true; btn.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> Autenticando..."; }
+    if (btn) { btn.disabled = true; btn.innerHTML = "<i class='ri-loader-4-line ri-spin'></i> A autenticar..."; }
 
     try { await signInWithEmailAndPassword(auth, email, senha); } catch (err) { alert('Erro ao entrar: e-mail ou senha incorretos.'); } 
     finally {
@@ -240,7 +240,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+setInterval(() => { const rl = document.getElementById('relogio'); if(rl) rl.innerText = new Date().toLocaleTimeString('pt-PT'); }, 1000);
 
 window.formatarLinkImagem = function(link) {
     const raw = String(link || '').trim();
@@ -413,7 +413,19 @@ window.renderizarRamaisAgrupados = function() {
     grid.innerHTML = htmlFinal;
 };
 
-window.abrirPastaGenerica = function(colecao, valorPasta, docIdDestino = null) { window[`pasta_${colecao}_Atual`] = valorPasta; document.getElementById(`${colecao}-view-folders`).style.display = 'none'; document.getElementById(`${colecao}-view-list`).style.display = 'block'; const titleEl = document.getElementById(`titulo-pasta-${colecao}`); if(titleEl && configuracaoAbas[colecao]) titleEl.innerHTML = `<i class="${configuracaoAbas[colecao].icone}"></i> Pasta: ${valorPasta}`; window.renderizarListaGenerica(colecao); if(docIdDestino) window.destacarCard(docIdDestino); };
+window.abrirPastaGenerica = function(colecao, valorPasta, docIdDestino = null) { 
+    window[`pasta_${colecao}_Atual`] = valorPasta; 
+    document.getElementById(`${colecao}-view-folders`).style.display = 'none'; 
+    document.getElementById(`${colecao}-view-list`).style.display = 'block'; 
+    const titleEl = document.getElementById(`titulo-pasta-${colecao}`); 
+    if(titleEl && configuracaoAbas[colecao]) titleEl.innerHTML = `<i class="${configuracaoAbas[colecao].icone}"></i> Pasta: ${valorPasta}`; 
+    window.renderizarListaGenerica(colecao); 
+    if(docIdDestino) window.destacarCard(docIdDestino); 
+
+    // CARREGAR GRÁFICO SE FOR A ABA DE ATIVOS
+    if(colecao === 'ativos') { setTimeout(() => { if(typeof window.renderizarGraficoAtivos === 'function') window.renderizarGraficoAtivos(); }, 300); }
+};
+
 window.fecharPastaGenerica = function(colecao) { window[`pasta_${colecao}_Atual`] = null; document.getElementById(`${colecao}-view-folders`).style.display = 'block'; document.getElementById(`${colecao}-view-list`).style.display = 'none'; window.renderizarPastasGenericas(colecao); };
 window.abrirPastaBoletim = function(pasta, docIdDestino = null) { window.pastaBoletimAtual = pasta; document.getElementById('boletins-view-folders').style.display = 'none'; document.getElementById('boletins-view-list').style.display = 'block'; document.getElementById('titulo-pasta-boletins').innerHTML = `<i class="ri-folder-open-line"></i> Setor: ${pasta}`; window.renderizarListaBoletins(); if(docIdDestino) window.destacarCard(docIdDestino); };
 window.fecharPastaBoletim = function() { window.pastaBoletimAtual = null; document.getElementById('boletins-view-list').style.display = 'none'; document.getElementById('boletins-view-folders').style.display = 'block'; window.renderizarPastasBoletins(); };
@@ -643,12 +655,10 @@ window.gerarHTMLCard = function(colecaoNome, docId, data) {
                      </div>`;
     }
 
-    // --- MÓDULO DE ATIVOS: Botão de QR Code ---
+    // --- MÓDULO DE ATIVOS ---
     if (colecaoNome === 'ativos' && isAdmin) {
         cardHtml += `<button type="button" onclick="window.imprimirEtiquetaAtivo('${docId}')" class="btn-hover color-8" style="width: 100%; height: 35px; border-radius: 8px; font-size: 12px; margin-top: 12px; border: 1px solid var(--border-color);"><i class="ri-qr-code-line"></i> Imprimir Etiqueta QR</button>`;
     }
-    
-    // --- MÓDULO DE ATIVOS: Exibir o Histórico de alterações ---
     if (colecaoNome === 'ativos' && data.historico) {
         cardHtml += `<div style="margin-top:10px; font-size:11px; background:#f8fafc; padding:8px; border-radius:6px; border:1px solid #e2e8f0; max-height:80px; overflow-y:auto;"><strong><i class="ri-history-line"></i> Histórico:</strong><br>`;
         [...data.historico].reverse().forEach(h => { cardHtml += `<div style="border-bottom:1px dashed #cbd5e1; padding:3px 0;">${h}</div>`; });
@@ -782,7 +792,7 @@ window.renderizarListaPrivados = function() {
     const boletinsExibir = window.filtrarPorDataPublicacao(boletinsBase, dtInicio, dtFim);
     if(typeof window.atualizarGrafico === 'function') chartPrivadosInst = window.atualizarGrafico('chart-privados', chartPrivadosInst, boletinsExibir, `Motivos de ${colabAtual}`);
     if (boletinsExibir.length === 0) {
-        grid.innerHTML = '<div style="grid-column:1/-1; background:#fff; padding:18px; border-radius:14px; color:var(--text-muted); border:1px solid var(--border-color);">Nenhum informativo encontrado para esse colaborador no período selecionado.</div>';
+        grid.innerHTML = '<div style="grid-column:1/-1; background:#fff; padding:18px; border-radius:14px; color:var(--text-muted); border:1px solid var(--border-color);">Nenhum informativo encontrado para este colaborador no período selecionado.</div>';
         return;
     }
 
@@ -822,6 +832,116 @@ window.renderizarListaPrivados = function() {
         grid.innerHTML += cardHtml + `</div>`;
     });
 };
+window.responderPesquisaRH = function(pesquisaId) {
+    const p = (window.todosPesquisasRH || []).find(x => x.id === pesquisaId);
+    if (!p || !p.data) { return; }
+
+    const tituloEl = document.getElementById('rh-resp-titulo');
+    const idEl = document.getElementById('rh-resp-id');
+    const areaEl = document.getElementById('rh-resp-area');
+    const modalEl = document.getElementById('modal-responder-pesquisa');
+
+    if (!tituloEl || !idEl || !areaEl || !modalEl) { return; }
+
+    tituloEl.textContent = p.data.titulo || 'Responder Pesquisa';
+    idEl.value = pesquisaId;
+
+    const perguntas = Array.isArray(p.data.perguntas) ? p.data.perguntas : [];
+    let html = '';
+
+    perguntas.forEach((q, idx) => {
+        const textoSeguro = window.escapeHTML(String(q?.texto || 'Pergunta'));
+        const tipoSeguro = String(q?.tipo || 'texto');
+
+        html += `
+            <div class="rh-resp-bloco" style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid var(--border-color);">
+                <input type="hidden" class="resp-q-texto" value="${textoSeguro}">
+                <input type="hidden" class="resp-q-tipo" value="${tipoSeguro}">
+                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:10px; color:var(--text-main);">
+                    ${idx + 1}. ${textoSeguro}
+                </label>
+        `;
+
+        if (tipoSeguro === 'escala') {
+            html += `<div style="display:flex; gap:10px; justify-content:space-between; flex-wrap:wrap;">`;
+            [1,2,3,4,5].forEach(n => {
+                html += `
+                    <label style="flex:1; min-width:56px; text-align:center; background:white; border:1px solid #cbd5e1; padding:10px; border-radius:8px; cursor:pointer;">
+                        <input type="radio" name="p_${pesquisaId}_q_${idx}" value="${n}" class="resp-q-val" style="margin-bottom:5px;">
+                        <div style="font-weight:bold; color:var(--primary-color);">${n}</div>
+                    </label>
+                `;
+            });
+            html += `</div>`;
+        } else {
+            html += `<textarea class="form-input resp-q-val" style="height:90px; resize:vertical; margin:0;" placeholder="Sua resposta franca e sincera."></textarea>`;
+        }
+
+        html += `</div>`;
+    });
+
+    areaEl.innerHTML = html;
+    modalEl.style.display = 'flex';
+};
+
+window.enviarRespostaRH = async function() {
+    try {
+        if (!window.alunoLogado) { return; }
+
+        const pesquisaId = document.getElementById('rh-resp-id')?.value?.trim();
+        if (!pesquisaId) { return; }
+
+        const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'] || window.alunoLogado.nome || window.alunoLogado.Nome || 'Colaborador';
+
+        const blocos = Array.from(document.querySelectorAll('#rh-resp-area .rh-resp-bloco'));
+        if (!blocos.length) { return; }
+
+        const respostas = [];
+        let ok = true;
+
+        blocos.forEach((b, idx) => {
+            const textoEl = b.querySelector('.resp-q-texto');
+            const tipoEl = b.querySelector('.resp-q-tipo');
+
+            const textoP = textoEl ? textoEl.value : `Pergunta ${idx + 1}`;
+            const tipo = tipoEl ? tipoEl.value : 'texto';
+
+            let val = '';
+
+            if (tipo === 'escala') {
+                const checked = b.querySelector('input[type="radio"]:checked');
+                if (!checked) { ok = false; return; }
+                val = checked.value;
+            } else {
+                const textarea = b.querySelector('textarea');
+                if (!textarea) { ok = false; return; }
+                val = textarea.value.trim();
+                if (!val) { ok = false; return; }
+            }
+
+            respostas.push({ pergunta: textoP, resposta: val, tipo });
+        });
+
+        if (!ok || respostas.length !== blocos.length) {
+            alert('Por favor, responda todas as perguntas antes de enviar!');
+            return;
+        }
+
+        const antiga = (window.todosRespostasRH || []).find(item => item?.data?.pesquisaId === pesquisaId && item?.data?.nome === nomeAluno);
+
+        const payload = { pesquisaId, nome: nomeAluno, respostas, data: new Date().toISOString() };
+
+        if (antiga?.id) { await window.updateDoc(window.doc(window.db, 'rh-respostas-pesquisa', antiga.id), payload); } 
+        else { await window.addDoc(window.collection(window.db, 'rh-respostas-pesquisa'), payload); }
+
+        alert('Muito obrigado pelas suas respostas! Isso nos ajuda a crescer juntos.');
+        const modal = document.getElementById('modal-responder-pesquisa');
+        if (modal) modal.style.display = 'none';
+
+        if (typeof window.renderizarPesquisasAluno === 'function') { window.renderizarPesquisasAluno(); }
+    } catch (e) { alert('Erro ao enviar: ' + (e?.message || 'falha desconhecida')); }
+};
+
 window.verResultadosPesquisaRH = function(pesquisaId) {
     const p = window.todosPesquisasRH.find(x => x.id === pesquisaId);
     const resps = window.todosRespostasRH.filter(r => r.data.pesquisaId === pesquisaId);
@@ -1076,11 +1196,20 @@ window.renderizarGraficoAtivos = function() {
             labels: Object.keys(contagem), 
             datasets: [{ 
                 data: Object.values(contagem), 
-                backgroundColor: ['#38a169', '#ecc94b', '#e53e3e', '#3182ce', '#805ad5'] 
+                backgroundColor: ['#38a169', '#ecc94b', '#e53e3e', '#3182ce', '#805ad5', '#a0aec0'] 
             }] 
         }, 
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } } 
     });
+};
+
+// Modificação da função para carregar o gráfico sempre que abrir a aba de ativos
+const openFolderOld = window.abrirPastaGenerica;
+window.abrirPastaGenerica = function(colecao, valorPasta, docIdDestino = null) { 
+    openFolderOld(colecao, valorPasta, docIdDestino);
+    if(colecao === 'ativos') {
+        setTimeout(window.renderizarGraficoAtivos, 300);
+    }
 };
 
 let html5QrcodeScanner = null;
@@ -1090,7 +1219,7 @@ window.iniciarLeitorQR = function() {
     if(modal) modal.style.display = 'flex';
     
     if (window.location.protocol === 'file:') {
-        alert("⚠️ ATENÇÃO: A câmara foi bloqueada pelo navegador.\n\nPara a câmara funcionar, o sistema precisa estar a correr num ambiente seguro (HTTPS). Suba esta atualização para o seu GitHub Pages para poder testar o leitor de QR Code!");
+        alert("⚠️ ATENÇÃO: A câmera foi bloqueada pelo navegador.\n\nPara a câmera funcionar, o sistema precisa estar rodando num ambiente seguro (HTTPS). Suba esta atualização para o seu GitHub Pages!");
     }
 
     try {
@@ -1190,18 +1319,22 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const btnSalvar = document.getElementById('btn-salvar-dados');
     if(btnSalvar) {
-        btnSalvar.addEventListener('click', async () => {
-            if (btnSalvar.getAttribute('data-colecao') === 'treinamentos' && document.getElementById('quiz-questions-list')) {
+        // Recriar o botão para remover os event listeners antigos, se existirem
+        const novoBtnSalvar = btnSalvar.cloneNode(true);
+        btnSalvar.parentNode.replaceChild(novoBtnSalvar, btnSalvar);
+        
+        novoBtnSalvar.addEventListener('click', async () => {
+            if (novoBtnSalvar.getAttribute('data-colecao') === 'treinamentos' && document.getElementById('quiz-questions-list')) {
                 window.sincronizarQuizJSON();
             }
             
-            const colecao = btnSalvar.getAttribute('data-colecao');
+            const colecao = novoBtnSalvar.getAttribute('data-colecao');
             const docId = document.getElementById('modal-doc-id').value;
             const config = configuracaoAbas[colecao];
             if(!config) return;
             
-            const btnOriginal = btnSalvar.innerHTML;
-            btnSalvar.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> A guardar...';
+            const btnOriginal = novoBtnSalvar.innerHTML;
+            novoBtnSalvar.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> A guardar...';
             
             let dados = { corCard: document.getElementById('card-color') ? document.getElementById('card-color').value : '#ffffff' };
             
@@ -1216,16 +1349,29 @@ window.addEventListener('DOMContentLoaded', () => {
             // --- HISTÓRICO DE ATIVOS ---
             if (colecao === 'ativos') {
                 const acao = docId ? 'Editado/Movimentado' : 'Cadastrado';
-                const logTexto = `${acao} em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`;
-                if (docId) { dados.historico = window.arrayUnion(logTexto); } 
+                const dataAntiga = docId ? (window.dadosGlobaisAbas['ativos']?.find(a => a.id === docId)?.data || {}) : {};
+                const logTexto = `${acao} em ${new Date().toLocaleString('pt-PT')} por ${emailLogado || 'Gestor'}`;
+                
+                if (docId) { 
+                    const histAntigo = Array.isArray(dataAntiga.historico) ? dataAntiga.historico : [];
+                    dados.historico = [...histAntigo, logTexto]; 
+                } 
                 else { dados.historico = [logTexto]; }
             }
             
             try {
-                if(docId) { await window.updateDoc(window.doc(window.db, colecao, docId), dados); } else { await window.addDoc(window.collection(window.db, colecao), dados); }
+                if(docId) { 
+                    await window.updateDoc(window.doc(window.db, colecao, docId), dados); 
+                } else { 
+                    await window.addDoc(window.collection(window.db, colecao), dados); 
+                }
                 window.fecharModal();
+
+                if (colecao === 'ativos') {
+                    setTimeout(() => { if(typeof window.renderizarGraficoAtivos === 'function') window.renderizarGraficoAtivos(); }, 500);
+                }
             } catch(e) { alert("Erro ao guardar: " + e.message); }
-            btnSalvar.innerHTML = btnOriginal;
+            novoBtnSalvar.innerHTML = btnOriginal;
         });
     }
 
