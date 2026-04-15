@@ -2666,17 +2666,56 @@ window.addEventListener('DOMContentLoaded', () => {
             });
             
             // --- HISTÓRICO DE ATIVOS ---
-            if (colecao === 'ativos') {
-                const acao = docId ? 'Editado/Movimentado' : 'Cadastrado';
-                const dataAntiga = docId ? (window.dadosGlobaisAbas['ativos']?.find(a => a.id === docId)?.data || {}) : {};
-                const logTexto = `${acao} em ${new Date().toLocaleString('pt-PT')} por ${emailLogado || 'Gestor'}`;
-                
-                if (docId) { 
-                    const histAntigo = Array.isArray(dataAntiga.historico) ? dataAntiga.historico : [];
-                    dados.historico = [...histAntigo, logTexto]; 
-                } 
-                else { dados.historico = [logTexto]; }
-            }
+if (colecao === 'ativos') {
+    const dataAntiga = docId ? (window.dadosGlobaisAbas['ativos']?.find(a => a.id === docId)?.data || {}) : {};
+    const histAntigo = Array.isArray(dataAntiga.historico) ? dataAntiga.historico : [];
+
+    const localAntigo = String(dataAntiga['Localização / Setor'] || 'Não informado').trim();
+    const localNovo = String(dados['Localização / Setor'] || 'Não informado').trim();
+
+    const statusAntigo = String(dataAntiga['Status do Ativo'] || 'Não informado').trim();
+    const statusNovo = String(dados['Status do Ativo'] || 'Não informado').trim();
+
+    const responsavelAntigo = String(dataAntiga['Responsável'] || 'Não informado').trim();
+    const responsavelNovo = String(dados['Responsável'] || 'Não informado').trim();
+
+    let comentarioMov = '';
+    if (docId) {
+        comentarioMov = prompt('Comentário da movimentação / alteração:', '') || '';
+    }
+
+    let logTexto = '';
+
+    if (!docId) {
+        logTexto = `Cadastrado em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'} | Local: ${localNovo} | Status: ${statusNovo}`;
+    } else {
+        const mudancas = [];
+
+        if (localAntigo !== localNovo) {
+            mudancas.push(`Local: ${localAntigo} → ${localNovo}`);
+        }
+
+        if (statusAntigo !== statusNovo) {
+            mudancas.push(`Status: ${statusAntigo} → ${statusNovo}`);
+        }
+
+        if (responsavelAntigo !== responsavelNovo) {
+            mudancas.push(`Responsável: ${responsavelAntigo} → ${responsavelNovo}`);
+        }
+
+        if (!mudancas.length) {
+            mudancas.push('Dados gerais atualizados');
+        }
+
+        logTexto = `Movimentado/Atualizado em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'} | ${mudancas.join(' | ')}`;
+
+        if (comentarioMov.trim()) {
+            logTexto += ` | Comentário: ${comentarioMov.trim()}`;
+        }
+    }
+
+    dados.historico = [...histAntigo, logTexto];
+}
             
             try {
                 if(docId) { 
