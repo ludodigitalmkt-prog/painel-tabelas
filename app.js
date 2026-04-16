@@ -4336,3 +4336,57 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }, 400);
 });
+
+
+// ==========================================
+// AJUSTE UI - BOTÃO VOLTAR PARA UNIDADES (ATIVOS)
+// ==========================================
+
+window.voltarTelaInicialAtivos = function() {
+    window.ativosUnidadeAtual = null;
+    window.ativosSetorAtual = null;
+    window.pasta_ativos_Atual = null;
+    const folders = document.getElementById('ativos-view-folders');
+    const list = document.getElementById('ativos-view-list');
+    if (folders) folders.style.display = 'block';
+    if (list) list.style.display = 'none';
+    window.renderizarPastasAtivosFase1();
+};
+
+window.atualizarBotaoVoltarInicioAtivos = function() {
+    const toolbar = document.querySelector('#tab-ativos #ativos-view-folders .flex-between');
+    if (!toolbar) return;
+
+    let btn = document.getElementById('btn-voltar-unidades-ativos');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'btn-voltar-unidades-ativos';
+        btn.type = 'button';
+        btn.className = 'btn-hover color-8';
+        btn.style.marginRight = '10px';
+        btn.innerHTML = '<i class="ri-arrow-left-line"></i> Voltar para Unidades';
+        btn.onclick = window.voltarTelaInicialAtivos;
+        const firstChild = toolbar.firstElementChild;
+        if (firstChild) {
+            const wrap = document.createElement('div');
+            wrap.style.display = 'flex';
+            wrap.style.alignItems = 'center';
+            wrap.style.gap = '10px';
+            toolbar.insertBefore(wrap, firstChild);
+            wrap.appendChild(btn);
+            wrap.appendChild(firstChild);
+        } else {
+            toolbar.prepend(btn);
+        }
+    }
+
+    btn.style.display = window.ativosUnidadeAtual ? 'inline-flex' : 'none';
+};
+
+(function() {
+    const oldRenderPastasAtivosFase1 = window.renderizarPastasAtivosFase1;
+    window.renderizarPastasAtivosFase1 = function() {
+        oldRenderPastasAtivosFase1();
+        window.atualizarBotaoVoltarInicioAtivos();
+    };
+})();
