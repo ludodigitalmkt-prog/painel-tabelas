@@ -3531,3 +3531,808 @@ window.gerarImpressaoBoletim = function() {
     janela.document.close();
     janela.focus();
 };
+
+
+// ==========================================
+// FASE 1 - CONTROLE DE ATIVOS: UNIDADES > SETORES > ATIVOS + INVENTÁRIO
+// ==========================================
+
+window.configuracaoAbas['ativos'].campos = [
+    'Nome do Equipamento',
+    'Categoria',
+    'Número de Patrimônio',
+    'Unidade Local',
+    'Setor',
+    'Localização / Setor',
+    'Responsável',
+    'Status do Ativo',
+    'Observações'
+];
+
+window.ativosUnidadeAtual = null;
+window.ativosSetorAtual = null;
+window.inventariosAtivosData = [];
+window.inventarioAtivoSession = null;
+window.html5QrcodeInventario = null;
+window._inventarioUltimoCodigo = '';
+window._inventarioUltimaLeituraEm = 0;
+window._inventariosAtivosEscutando = false;
+
+window.obterUnidadeAtivo = function(data = {}) {
+    const unidade = String(data['Unidade Local'] || '').trim();
+    if (unidade) return unidade;
+    const legado = String(data['Localização / Setor'] || '').trim();
+    return legado ? 'Sem Unidade Definida' : 'Sem Unidade';
+};
+
+window.obterSetorAtivo = function(data = {}) {
+    const setor = String(data['Setor'] || '').trim();
+    if (setor) return setor;
+    const legado = String(data['Localização / Setor'] || '').trim();
+    return legado || 'Sem Setor';
+};
+
+window.obterNomeAtivo = function(data = {}) {
+    return String(data['Nome do Equipamento'] || 'Ativo sem nome').trim() || 'Ativo sem nome';
+};
+
+window.obterStatusInventarioBadge = function(status = '') {
+    const s = String(status || '').toLowerCase();
+    if (s === 'concluido') return { cor: '#38a169', texto: 'Concluído' };
+    if (s === 'pendente' || s === 'pausado') return { cor: '#d97706', texto: 'Pendente' };
+    if (s === 'em_andamento') return { cor: '#2563eb', texto: 'Em andamento' };
+    return { cor: '#64748b', texto: 'Sem inventário' };
+};
+
+window.obterResumoInventarioLocal = function(unidade = '', setor = '') {
+    const docs = (window.inventariosAtivosData || []).filter(item => {
+        const data = item.data || {};
+        if (String(data.unidade || '') !== String(unidade || '')) return false;
+        if (setor && String(data.setor || '') !== String(setor || '')) return false;
+        return true;
+    });
+
+    if (!docs.length) {
+        return {
+            status: 'sem_inventario',
+            badge: window.obterStatusInventarioBadge(''),
+            totalEsperado: 0,
+            totalLido: 0,
+            pendentes: 0,
+            divergencias: 0,
+            atualizadoEm: ''
+        };
+    }
+
+    docs.sort((a, b) => String(b.data?.atualizado_em || b.data?.iniciado_em || '').localeCompare(String(a.data?.atualizado_em || a.data?.iniciado_em || '')));
+    const ultimo = docs[0].data || {};
+    const totalEsperado = Array.isArray(ultimo.itensEsperadosIds) ? ultimo.itensEsperadosIds.length : Number(ultimo.totalEsperado || 0);
+    const totalLido = Array.isArray(ultimo.itensLidosIds) ? ultimo.itensLidosIds.length : Number(ultimo.totalLido || 0);
+    const pendentes = Array.isArray(ultimo.itensPendentesIds) ? ultimo.itensPendentesIds.length : Math.max(0, totalEsperado - totalLido);
+    const divergencias = Array.isArray(ultimo.itensDivergentes) ? ultimo.itensDivergentes.length : 0;
+    return {
+        status: ultimo.status || '',
+        badge: window.obterStatusInventarioBadge(ultimo.status || ''),
+        totalEsperado,
+        totalLido,
+        pendentes,
+        divergencias,
+        atualizadoEm: ultimo.atualizado_em || ultimo.iniciado_em || ''
+    };
+};
+
+window.obterUnidadesAtivos = function() {
+    const ativos = window.dadosGlobaisAbas['ativos'] || [];
+    const set = new Set();
+    ativos.forEach(item => set.add(window.obterUnidadeAtivo(item.data || {})));
+    if (!set.size && Array.isArray(locaisGlobais)) locaisGlobais.filter(Boolean).forEach(l => set.add(String(l).trim()));
+    return Array.from(set).filter(Boolean).sort((a,b) => a.localeCompare(b));
+};
+
+window.obterSetoresPorUnidadeAtivos = function(unidade = '') {
+    const ativos = window.dadosGlobaisAbas['ativos'] || [];
+    const set = new Set();
+    ativos.forEach(item => {
+        const data = item.data || {};
+        if (window.obterUnidadeAtivo(data) === unidade) set.add(window.obterSetorAtivo(data));
+    });
+    return Array.from(set).filter(Boolean).sort((a,b) => a.localeCompare(b));
+};
+
+window.obterAtivosPorUnidadeESetor = function(unidade = '', setor = '') {
+    return (window.dadosGlobaisAbas['ativos'] || []).filter(item => {
+        const data = item.data || {};
+        return window.obterUnidadeAtivo(data) === unidade && window.obterSetorAtivo(data) === setor;
+    });
+};
+
+window.atualizarCabecalhoAtivosFase1 = function() {
+    const infoEl = document.querySelector('#tab-ativos #ativos-view-folders .flex-between p.text-muted');
+    const titleEl = document.getElementById('titulo-pasta-ativos');
+
+    if (infoEl) {
+        if (!window.ativosUnidadeAtual) infoEl.textContent = 'Selecione a unidade da empresa para navegar pelos setores e ativos.';
+        else infoEl.textContent = `Unidade atual: ${window.ativosUnidadeAtual}. Selecione um setor para ver os ativos.`;
+    }
+
+    if (titleEl) {
+        if (window.ativosUnidadeAtual && window.ativosSetorAtual) titleEl.innerHTML = `<i class="ri-building-4-line"></i> ${window.escapeHTML(window.ativosUnidadeAtual)} / ${window.escapeHTML(window.ativosSetorAtual)}`;
+        else titleEl.innerHTML = '<i class="ri-building-4-line"></i> Ativos';
+    }
+};
+
+window.renderizarOverviewInventarioAtivos = function() {
+    const wrap = document.getElementById('ativos-inventario-overview');
+    if (!wrap) return;
+    const inventarios = window.inventariosAtivosData || [];
+    const total = inventarios.length;
+    const andamento = inventarios.filter(i => String(i.data?.status || '') === 'em_andamento').length;
+    const pendentes = inventarios.filter(i => ['pendente', 'pausado'].includes(String(i.data?.status || ''))).length;
+    const concluidos = inventarios.filter(i => String(i.data?.status || '') === 'concluido').length;
+
+    wrap.innerHTML = `
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:140px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Inventários</div>
+                <div style="font-size:20px; color:#0f172a; font-weight:800;">${total}</div>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:140px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Em andamento</div>
+                <div style="font-size:20px; color:#2563eb; font-weight:800;">${andamento}</div>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:140px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Pendentes</div>
+                <div style="font-size:20px; color:#d97706; font-weight:800;">${pendentes}</div>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:140px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Concluídos</div>
+                <div style="font-size:20px; color:#38a169; font-weight:800;">${concluidos}</div>
+            </div>
+        </div>
+    `;
+};
+
+window.renderizarPastasAtivosFase1 = function() {
+    const grid = document.getElementById('grid-ativos-folders');
+    if (!grid) return;
+
+    const ativos = window.dadosGlobaisAbas['ativos'] || [];
+    grid.innerHTML = '';
+    window.atualizarCabecalhoAtivosFase1();
+    window.renderizarOverviewInventarioAtivos();
+
+    if (!ativos.length) {
+        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Nenhum ativo cadastrado ainda.</p>';
+        return;
+    }
+
+    if (!window.ativosUnidadeAtual) {
+        const unidades = window.obterUnidadesAtivos();
+        unidades.forEach(unidade => {
+            const itens = ativos.filter(item => window.obterUnidadeAtivo(item.data || {}) === unidade);
+            const setores = new Set(itens.map(item => window.obterSetorAtivo(item.data || {})));
+            const resumo = window.obterResumoInventarioLocal(unidade, '');
+            grid.innerHTML += `
+                <div class="shortcut-card" onclick="window.abrirPastaGenerica('ativos', '${unidade.replace(/'/g, "\\'")}')" style="text-align:left; padding:20px; border-left:6px solid ${resumo.badge.cor};">
+                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:12px;">
+                        <div style="background:var(--bg-color); padding:15px; border-radius:12px; color:${resumo.badge.cor}; font-size:24px;"><i class="ri-building-4-line"></i></div>
+                        <div>
+                            <div style="font-size:16px; font-weight:700;">${window.escapeHTML(unidade)}</div>
+                            <div style="font-size:12px; color:#64748b;">${itens.length} ativo(s) • ${setores.size} setor(es)</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:#f8fafc; padding:10px; border-radius:10px; font-size:12px;">
+                        <span style="color:${resumo.badge.cor}; font-weight:700;">${resumo.badge.texto}</span>
+                        <span style="color:#475569;">Pendentes: <b>${resumo.pendentes}</b></span>
+                    </div>
+                </div>
+            `;
+        });
+        return;
+    }
+
+    const setores = window.obterSetoresPorUnidadeAtivos(window.ativosUnidadeAtual);
+    if (!setores.length) {
+        grid.innerHTML = '<p style="color: var(--text-muted); font-size: 14px;">Nenhum setor com ativos nesta unidade.</p>';
+        return;
+    }
+
+    setores.forEach(setor => {
+        const itens = window.obterAtivosPorUnidadeESetor(window.ativosUnidadeAtual, setor);
+        const resumo = window.obterResumoInventarioLocal(window.ativosUnidadeAtual, setor);
+        grid.innerHTML += `
+            <div class="shortcut-card" onclick="window.abrirPastaGenerica('ativos', '${setor.replace(/'/g, "\\'")}')" style="text-align:left; padding:20px; border-left:6px solid ${resumo.badge.cor};">
+                <div style="display:flex; align-items:center; gap:15px; margin-bottom:12px;">
+                    <div style="background:var(--bg-color); padding:15px; border-radius:12px; color:${resumo.badge.cor}; font-size:24px;"><i class="ri-folder-3-line"></i></div>
+                    <div>
+                        <div style="font-size:16px; font-weight:700;">${window.escapeHTML(setor)}</div>
+                        <div style="font-size:12px; color:#64748b;">${itens.length} ativo(s) neste setor</div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:#f8fafc; padding:10px; border-radius:10px; font-size:12px; flex-wrap:wrap;">
+                    <span style="color:${resumo.badge.cor}; font-weight:700;">${resumo.badge.texto}</span>
+                    <span style="color:#475569;">Lidos: <b>${resumo.totalLido}</b> / ${resumo.totalEsperado || itens.length}</span>
+                    <span style="color:#475569;">Pendentes: <b>${resumo.pendentes}</b></span>
+                </div>
+            </div>
+        `;
+    });
+};
+
+window.renderizarListaAtivosFase1 = function() {
+    const grid = document.getElementById('grid-ativos-list');
+    if (!grid) return;
+    grid.innerHTML = '';
+    window.atualizarCabecalhoAtivosFase1();
+
+    if (!window.ativosUnidadeAtual || !window.ativosSetorAtual) {
+        grid.innerHTML = '<div style="grid-column:1/-1; color: var(--text-muted); font-size:14px; padding: 10px 0;">Selecione uma unidade e um setor para ver os ativos.</div>';
+        return;
+    }
+
+    const itens = window.obterAtivosPorUnidadeESetor(window.ativosUnidadeAtual, window.ativosSetorAtual)
+        .sort((a,b) => window.obterNomeAtivo(a.data || {}).localeCompare(window.obterNomeAtivo(b.data || {})));
+
+    if (!itens.length) {
+        grid.innerHTML = '<div style="grid-column:1/-1; color: var(--text-muted); font-size:14px; padding: 10px 0;">Nenhum ativo encontrado neste setor.</div>';
+        return;
+    }
+
+    itens.forEach(item => { grid.innerHTML += window.gerarHTMLCard('ativos', item.id, item.data); });
+};
+
+(function(){
+    const oldRenderPastasGenericas = window.renderizarPastasGenericas;
+    const oldRenderizarListaGenerica = window.renderizarListaGenerica;
+    const oldAbrirPastaGenerica = window.abrirPastaGenerica;
+    const oldFecharPastaGenerica = window.fecharPastaGenerica;
+    const oldAbrirModal = window.abrirModal;
+    const oldRenderizarGraficoAtivos = window.renderizarGraficoAtivos;
+
+    window.renderizarPastasGenericas = function(colecao) {
+        if (colecao === 'ativos') return window.renderizarPastasAtivosFase1();
+        return oldRenderPastasGenericas(colecao);
+    };
+
+    window.renderizarListaGenerica = function(colecao) {
+        if (colecao === 'ativos') return window.renderizarListaAtivosFase1();
+        return oldRenderizarListaGenerica(colecao);
+    };
+
+    window.abrirPastaGenerica = function(colecao, valorPasta, docIdDestino = null) {
+        if (colecao !== 'ativos') return oldAbrirPastaGenerica(colecao, valorPasta, docIdDestino);
+        if (!window.ativosUnidadeAtual) {
+            window.ativosUnidadeAtual = valorPasta;
+            window.ativosSetorAtual = null;
+            window.pasta_ativos_Atual = null;
+            document.getElementById('ativos-view-folders').style.display = 'block';
+            document.getElementById('ativos-view-list').style.display = 'none';
+            window.renderizarPastasAtivosFase1();
+            return;
+        }
+        window.ativosSetorAtual = valorPasta;
+        window.pasta_ativos_Atual = valorPasta;
+        document.getElementById('ativos-view-folders').style.display = 'none';
+        document.getElementById('ativos-view-list').style.display = 'block';
+        window.renderizarListaAtivosFase1();
+        if (docIdDestino) window.destacarCard(docIdDestino);
+    };
+
+    window.fecharPastaGenerica = function(colecao) {
+        if (colecao !== 'ativos') return oldFecharPastaGenerica(colecao);
+        if (window.ativosSetorAtual) {
+            window.ativosSetorAtual = null;
+            window.pasta_ativos_Atual = null;
+            document.getElementById('ativos-view-folders').style.display = 'block';
+            document.getElementById('ativos-view-list').style.display = 'none';
+            window.renderizarPastasAtivosFase1();
+            return;
+        }
+        window.ativosUnidadeAtual = null;
+        window.ativosSetorAtual = null;
+        window.pasta_ativos_Atual = null;
+        document.getElementById('ativos-view-folders').style.display = 'block';
+        document.getElementById('ativos-view-list').style.display = 'none';
+        window.renderizarPastasAtivosFase1();
+    };
+
+    window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
+        oldAbrirModal(colecao, docId, dadosAntigos);
+        if (colecao !== 'ativos') return;
+
+        const unidadeInput = document.getElementById('input-Unidade Local');
+        const setorInput = document.getElementById('input-Setor');
+        const legadoInput = document.getElementById('input-Localização / Setor');
+        const categoriaInput = document.getElementById('input-Categoria');
+
+        const unidades = Array.from(new Set([
+            ...(Array.isArray(locaisGlobais) ? locaisGlobais.map(v => String(v).trim()).filter(Boolean) : []),
+            ...((window.dadosGlobaisAbas['ativos'] || []).map(item => window.obterUnidadeAtivo(item.data || {})).filter(Boolean))
+        ])).sort((a,b) => a.localeCompare(b));
+
+        const setores = Array.from(new Set([
+            ...(Array.isArray(setoresGlobais) ? setoresGlobais.map(v => String(v).trim()).filter(Boolean) : []),
+            ...((window.dadosGlobaisAbas['ativos'] || []).map(item => window.obterSetorAtivo(item.data || {})).filter(Boolean))
+        ])).sort((a,b) => a.localeCompare(b));
+
+        const replaceAsSelect = (input, values, placeholder, valorAtual) => {
+            if (!input) return null;
+            const select = document.createElement('select');
+            select.id = input.id;
+            select.className = input.className;
+            select.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${window.escapeAttr(v)}">${window.escapeHTML(v)}</option>`).join('');
+            select.value = valorAtual || input.value || '';
+            input.parentNode.replaceChild(select, input);
+            return select;
+        };
+
+        const unidadeAtual = (dadosAntigos && (dadosAntigos['Unidade Local'] || '')) || '';
+        const setorAtual = (dadosAntigos && (dadosAntigos['Setor'] || dadosAntigos['Localização / Setor'] || '')) || '';
+
+        const unidadeSelect = replaceAsSelect(unidadeInput, unidades, 'Selecione a unidade...', unidadeAtual);
+        const setorSelect = replaceAsSelect(setorInput, setores, 'Selecione o setor...', setorAtual);
+
+        if (legadoInput) {
+            legadoInput.value = setorAtual || legadoInput.value || '';
+            legadoInput.style.display = 'none';
+            legadoInput.setAttribute('data-sync-legado', 'true');
+        }
+
+        if (setorSelect && legadoInput) {
+            setorSelect.addEventListener('change', () => { legadoInput.value = setorSelect.value || ''; });
+        }
+
+        if (unidadeSelect) unidadeSelect.setAttribute('title', 'Campo obrigatório para a nova navegação de ativos');
+        if (setorSelect) setorSelect.setAttribute('title', 'Campo obrigatório para a nova navegação de ativos');
+        if (categoriaInput) categoriaInput.placeholder = 'Categoria / Tipo do ativo';
+    };
+
+    window.renderizarGraficoAtivos = function() {
+        oldRenderizarGraficoAtivos();
+        window.renderizarOverviewInventarioAtivos();
+    };
+})();
+
+window.criarBotoesFase1InventarioAtivos = function() {
+    document.querySelectorAll('#tab-ativos .flex-gap-10').forEach(wrap => {
+        if (wrap.querySelector('.btn-inventario-ativos-fase1')) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-hover color-5 admin-only btn-inventario-ativos-fase1';
+        btn.style.display = 'none';
+        btn.innerHTML = '<i class="ri-archive-drawer-line"></i> Inventário';
+        btn.onclick = window.abrirModalInventarioAtivos;
+        wrap.insertBefore(btn, wrap.firstChild);
+    });
+};
+
+window.preencherSelectInventarioAtivos = function() {
+    const unidadeSel = document.getElementById('inventario-unidade-select');
+    const setorSel = document.getElementById('inventario-setor-select');
+    if (!unidadeSel || !setorSel) return;
+
+    const unidades = window.obterUnidadesAtivos();
+    const unidadeAtual = window.ativosUnidadeAtual || unidadeSel.value || '';
+    unidadeSel.innerHTML = '<option value="">Selecione a unidade</option>' + unidades.map(u => `<option value="${window.escapeAttr(u)}">${window.escapeHTML(u)}</option>`).join('');
+    if (unidades.includes(unidadeAtual)) unidadeSel.value = unidadeAtual;
+
+    const setores = unidadeSel.value ? window.obterSetoresPorUnidadeAtivos(unidadeSel.value) : [];
+    const setorAtual = window.ativosSetorAtual || setorSel.value || '';
+    setorSel.innerHTML = '<option value="">Selecione o setor</option>' + setores.map(s => `<option value="${window.escapeAttr(s)}">${window.escapeHTML(s)}</option>`).join('');
+    if (setores.includes(setorAtual)) setorSel.value = setorAtual;
+};
+
+window.escutarInventariosAtivos = function() {
+    if (window._inventariosAtivosEscutando) return;
+    window._inventariosAtivosEscutando = true;
+    onSnapshot(collection(db, 'inventarios_ativos'), (snapshot) => {
+        const itens = [];
+        snapshot.forEach(docSnap => itens.push({ id: docSnap.id, data: docSnap.data() }));
+        window.inventariosAtivosData = itens;
+        if (abaAtual === 'ativos') {
+            window.renderizarOverviewInventarioAtivos();
+            window.renderizarPastasAtivosFase1();
+        }
+        window.renderizarListaInventariosEmAberto();
+    }, (error) => {
+        console.error('Erro ao escutar inventários de ativos:', error);
+    });
+};
+
+window.abrirModalInventarioAtivos = function() {
+    window.preencherSelectInventarioAtivos();
+    window.renderizarListaInventariosEmAberto();
+    const modal = document.getElementById('modal-inventario-ativos');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.fecharModalInventarioAtivos = function() {
+    const modal = document.getElementById('modal-inventario-ativos');
+    if (modal) modal.style.display = 'none';
+};
+
+window.renderizarListaInventariosEmAberto = function() {
+    const box = document.getElementById('inventario-lista-abertos');
+    if (!box) return;
+    const docs = (window.inventariosAtivosData || []).filter(item => ['em_andamento', 'pausado', 'pendente'].includes(String(item.data?.status || '')));
+    if (!docs.length) {
+        box.innerHTML = '<div style="color:#64748b; font-size:13px;">Nenhum inventário em aberto no momento.</div>';
+        return;
+    }
+    box.innerHTML = docs
+        .sort((a, b) => String(b.data?.atualizado_em || '').localeCompare(String(a.data?.atualizado_em || '')))
+        .map(item => {
+            const data = item.data || {};
+            const badge = window.obterStatusInventarioBadge(data.status || '');
+            const esperado = Array.isArray(data.itensEsperadosIds) ? data.itensEsperadosIds.length : 0;
+            const lidos = Array.isArray(data.itensLidosIds) ? data.itensLidosIds.length : 0;
+            return `
+                <div style="border:1px solid #e2e8f0; border-radius:12px; padding:12px; background:#fff; display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:10px;">
+                    <div>
+                        <div style="font-weight:700; color:#0f172a;">${window.escapeHTML(data.unidade || '-')} / ${window.escapeHTML(data.setor || '-')}</div>
+                        <div style="font-size:12px; color:${badge.cor}; font-weight:700;">${badge.texto}</div>
+                        <div style="font-size:12px; color:#64748b;">Lidos ${lidos} de ${esperado}</div>
+                    </div>
+                    <button type="button" class="btn-hover color-11" style="height:34px; font-size:12px;" onclick="window.retomarInventarioAtivo('${item.id}')"><i class="ri-play-circle-line"></i> Retomar</button>
+                </div>
+            `;
+        }).join('');
+};
+
+window.gerarIdInventarioAtivo = function() {
+    return `inv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+window.persistirInventarioAtivo = async function() {
+    if (!window.inventarioAtivoSession) return;
+    const s = window.inventarioAtivoSession;
+    s.atualizado_em = new Date().toISOString();
+    s.itensPendentesIds = s.itensEsperadosIds.filter(id => !s.itensLidosIds.includes(id));
+    s.totalEsperado = s.itensEsperadosIds.length;
+    s.totalLido = s.itensLidosIds.length;
+    try {
+        await window.setDoc(window.doc(window.db, 'inventarios_ativos', s.id), s, { merge: true });
+    } catch (error) {
+        console.error('Erro ao persistir inventário:', error);
+    }
+};
+
+window.iniciarInventarioAtivos = async function() {
+    const unidadeSel = document.getElementById('inventario-unidade-select');
+    const setorSel = document.getElementById('inventario-setor-select');
+    const unidade = unidadeSel ? unidadeSel.value : '';
+    const setor = setorSel ? setorSel.value : '';
+
+    if (!unidade || !setor) {
+        alert('Selecione a unidade e o setor antes de iniciar o inventário.');
+        return;
+    }
+
+    const itens = window.obterAtivosPorUnidadeESetor(unidade, setor);
+    if (!itens.length) {
+        alert('Não existem ativos cadastrados para este setor.');
+        return;
+    }
+
+    const session = {
+        id: window.gerarIdInventarioAtivo(),
+        unidade,
+        setor,
+        status: 'em_andamento',
+        usuario: emailLogado || 'Gestor',
+        iniciado_em: new Date().toISOString(),
+        atualizado_em: new Date().toISOString(),
+        itensEsperadosIds: itens.map(item => item.id),
+        itensLidosIds: [],
+        itensDivergentes: [],
+        logs: [`Inventário iniciado em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`],
+        totalEsperado: itens.length,
+        totalLido: 0,
+        itensPendentesIds: itens.map(item => item.id)
+    };
+
+    window.inventarioAtivoSession = session;
+    await window.persistirInventarioAtivo();
+    window.fecharModalInventarioAtivos();
+    window.abrirExecucaoInventarioAtivo();
+};
+
+window.retomarInventarioAtivo = async function(docId) {
+    const registro = (window.inventariosAtivosData || []).find(item => item.id === docId);
+    if (!registro) {
+        alert('Inventário não encontrado.');
+        return;
+    }
+    window.inventarioAtivoSession = {
+        id: registro.id,
+        ...(registro.data || {})
+    };
+    window.inventarioAtivoSession.status = 'em_andamento';
+    window.inventarioAtivoSession.logs = Array.isArray(window.inventarioAtivoSession.logs) ? window.inventarioAtivoSession.logs : [];
+    window.inventarioAtivoSession.logs.push(`Inventário retomado em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`);
+    await window.persistirInventarioAtivo();
+    window.fecharModalInventarioAtivos();
+    window.abrirExecucaoInventarioAtivo();
+};
+
+window.abrirExecucaoInventarioAtivo = function() {
+    if (!window.inventarioAtivoSession) return;
+    const modal = document.getElementById('modal-inventario-execucao');
+    const titulo = document.getElementById('inventario-execucao-titulo');
+    if (titulo) titulo.textContent = `${window.inventarioAtivoSession.unidade} / ${window.inventarioAtivoSession.setor}`;
+    if (modal) modal.style.display = 'flex';
+    window.renderizarPainelInventarioAtivo();
+    setTimeout(() => { window.iniciarScannerInventarioAtivo(); }, 100);
+};
+
+window.fecharExecucaoInventarioAtivo = async function() {
+    await window.pararScannerInventarioAtivo();
+    const modal = document.getElementById('modal-inventario-execucao');
+    if (modal) modal.style.display = 'none';
+};
+
+window.iniciarScannerInventarioAtivo = async function() {
+    if (!window.inventarioAtivoSession) return;
+    if (window.html5QrcodeInventario) return;
+    if (typeof Html5Qrcode === 'undefined') {
+        alert('A biblioteca da câmara ainda não carregou.');
+        return;
+    }
+
+    const readerId = 'inventario-qr-reader';
+    const readerWrap = document.getElementById(readerId);
+    if (!readerWrap) return;
+    readerWrap.innerHTML = '';
+
+    try {
+        const html5QrCode = new Html5Qrcode(readerId);
+        await html5QrCode.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            window.onScanInventarioAtivoSuccess,
+            () => {}
+        );
+        window.html5QrcodeInventario = html5QrCode;
+    } catch (error) {
+        console.error('Erro ao iniciar scanner do inventário:', error);
+        alert('Não foi possível iniciar a câmera do inventário. Verifique as permissões do navegador.');
+    }
+};
+
+window.pararScannerInventarioAtivo = async function() {
+    if (!window.html5QrcodeInventario) return;
+    try {
+        await window.html5QrcodeInventario.stop();
+        await window.html5QrcodeInventario.clear();
+    } catch (error) {
+        console.error('Erro ao parar scanner do inventário:', error);
+    }
+    window.html5QrcodeInventario = null;
+};
+
+window.notificarInventarioAtivo = function(texto, cor = '#0f172a') {
+    const el = document.getElementById('inventario-aviso-rapido');
+    if (!el) return;
+    el.textContent = texto;
+    el.style.color = cor;
+};
+
+window.onScanInventarioAtivoSuccess = async function(decodedText) {
+    if (!window.inventarioAtivoSession) return;
+    const agora = Date.now();
+    if (window._inventarioUltimoCodigo === decodedText && (agora - window._inventarioUltimaLeituraEm) < 1600) return;
+    window._inventarioUltimoCodigo = decodedText;
+    window._inventarioUltimaLeituraEm = agora;
+
+    const ativos = window.dadosGlobaisAbas['ativos'] || [];
+    const ativo = ativos.find(item => item.id === decodedText || String(item.data?.['Número de Patrimônio'] || '') === String(decodedText));
+
+    if (!ativo) {
+        window.notificarInventarioAtivo('QR Code lido, mas o item não foi encontrado no sistema.', '#dc2626');
+        return;
+    }
+
+    const codigoBase = ativo.id;
+    if (window.inventarioAtivoSession.itensLidosIds.includes(codigoBase)) {
+        window.notificarInventarioAtivo('Item já verificado neste inventário.', '#d97706');
+        return;
+    }
+
+    const data = ativo.data || {};
+    const unidadeOrigem = window.obterUnidadeAtivo(data);
+    const setorOrigem = window.obterSetorAtivo(data);
+    const nome = window.obterNomeAtivo(data);
+    const patrimonio = String(data['Número de Patrimônio'] || ativo.id);
+
+    if (unidadeOrigem !== window.inventarioAtivoSession.unidade || setorOrigem !== window.inventarioAtivoSession.setor) {
+        const divergencia = {
+            id: ativo.id,
+            nome,
+            patrimonio,
+            unidadeOrigem,
+            setorOrigem,
+            lidoEm: new Date().toISOString(),
+            mensagem: `Item de ${unidadeOrigem} / ${setorOrigem} lido em ${window.inventarioAtivoSession.unidade} / ${window.inventarioAtivoSession.setor}`
+        };
+        const jaExiste = (window.inventarioAtivoSession.itensDivergentes || []).some(item => item.id === divergencia.id);
+        if (!jaExiste) window.inventarioAtivoSession.itensDivergentes.push(divergencia);
+        window.inventarioAtivoSession.logs.push(`Divergência detectada: ${divergencia.mensagem}`);
+        window.notificarInventarioAtivo(`Divergência: ${nome} pertence a ${unidadeOrigem} / ${setorOrigem}.`, '#dc2626');
+    } else {
+        window.inventarioAtivoSession.itensLidosIds.push(codigoBase);
+        window.inventarioAtivoSession.logs.push(`Item verificado: ${nome} (${patrimonio}) em ${new Date().toLocaleString('pt-BR')}`);
+        window.notificarInventarioAtivo(`Item confirmado: ${nome}`, '#16a34a');
+    }
+
+    await window.persistirInventarioAtivo();
+    window.renderizarPainelInventarioAtivo();
+};
+
+window.renderizarPainelInventarioAtivo = function() {
+    const session = window.inventarioAtivoSession;
+    if (!session) return;
+
+    const totalEsperado = Array.isArray(session.itensEsperadosIds) ? session.itensEsperadosIds.length : 0;
+    const totalLido = Array.isArray(session.itensLidosIds) ? session.itensLidosIds.length : 0;
+    const pendentes = session.itensEsperadosIds.filter(id => !session.itensLidosIds.includes(id));
+    const divergencias = Array.isArray(session.itensDivergentes) ? session.itensDivergentes : [];
+
+    const resumo = document.getElementById('inventario-resumo-cards');
+    if (resumo) {
+        resumo.innerHTML = `
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:120px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Esperados</div>
+                <div style="font-size:20px; color:#0f172a; font-weight:800;">${totalEsperado}</div>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:120px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Lidos</div>
+                <div style="font-size:20px; color:#16a34a; font-weight:800;">${totalLido}</div>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:120px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Pendentes</div>
+                <div style="font-size:20px; color:#d97706; font-weight:800;">${pendentes.length}</div>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px; min-width:120px;">
+                <div style="font-size:11px; color:#64748b; text-transform:uppercase; font-weight:700;">Divergências</div>
+                <div style="font-size:20px; color:#dc2626; font-weight:800;">${divergencias.length}</div>
+            </div>
+        `;
+    }
+
+    const listaLidos = document.getElementById('inventario-lista-lidos');
+    if (listaLidos) {
+        const itens = (window.dadosGlobaisAbas['ativos'] || []).filter(item => session.itensLidosIds.includes(item.id));
+        listaLidos.innerHTML = itens.length ? itens.map(item => `<div style="padding:8px 10px; border-bottom:1px dashed #cbd5e1;"><strong>${window.escapeHTML(window.obterNomeAtivo(item.data || {}))}</strong><br><span style="font-size:12px; color:#64748b;">Patrimônio: ${window.escapeHTML(String(item.data?.['Número de Patrimônio'] || item.id))}</span></div>`).join('') : '<div style="color:#64748b; font-size:13px;">Nenhum item lido ainda.</div>';
+    }
+
+    const listaPendentes = document.getElementById('inventario-lista-pendentes');
+    if (listaPendentes) {
+        const itens = (window.dadosGlobaisAbas['ativos'] || []).filter(item => pendentes.includes(item.id));
+        listaPendentes.innerHTML = itens.length ? itens.map(item => `<div style="padding:8px 10px; border-bottom:1px dashed #cbd5e1;"><strong>${window.escapeHTML(window.obterNomeAtivo(item.data || {}))}</strong><br><span style="font-size:12px; color:#64748b;">Patrimônio: ${window.escapeHTML(String(item.data?.['Número de Patrimônio'] || item.id))}</span></div>`).join('') : '<div style="color:#16a34a; font-size:13px;">Nenhum pendente.</div>';
+    }
+
+    const listaDivergencias = document.getElementById('inventario-lista-divergencias');
+    if (listaDivergencias) {
+        listaDivergencias.innerHTML = divergencias.length ? divergencias.map(item => `<div style="padding:8px 10px; border-bottom:1px dashed #cbd5e1;"><strong>${window.escapeHTML(item.nome)}</strong><br><span style="font-size:12px; color:#64748b;">Origem: ${window.escapeHTML(item.unidadeOrigem)} / ${window.escapeHTML(item.setorOrigem)}</span></div>`).join('') : '<div style="color:#64748b; font-size:13px;">Nenhuma divergência até agora.</div>';
+    }
+};
+
+window.pausarInventarioAtivo = async function() {
+    if (!window.inventarioAtivoSession) return;
+    window.inventarioAtivoSession.status = 'pausado';
+    window.inventarioAtivoSession.logs.push(`Inventário pausado em ${new Date().toLocaleString('pt-BR')}`);
+    await window.persistirInventarioAtivo();
+    await window.pararScannerInventarioAtivo();
+    window.renderizarPainelInventarioAtivo();
+    window.notificarInventarioAtivo('Inventário pausado com sucesso.', '#d97706');
+};
+
+window.finalizarInventarioAtivo = async function() {
+    if (!window.inventarioAtivoSession) return;
+    const pendentes = window.inventarioAtivoSession.itensEsperadosIds.filter(id => !window.inventarioAtivoSession.itensLidosIds.includes(id));
+    window.inventarioAtivoSession.itensPendentesIds = pendentes;
+    window.inventarioAtivoSession.status = pendentes.length ? 'pendente' : 'concluido';
+    window.inventarioAtivoSession.logs.push(`Inventário finalizado em ${new Date().toLocaleString('pt-BR')} com status ${window.inventarioAtivoSession.status}`);
+    await window.persistirInventarioAtivo();
+    await window.pararScannerInventarioAtivo();
+    window.renderizarPainelInventarioAtivo();
+    alert(pendentes.length ? `Inventário finalizado com ${pendentes.length} item(ns) pendente(s).` : 'Inventário finalizado com todos os itens conferidos.');
+};
+
+window.inserirEstruturaFase1InventarioAtivos = function() {
+    if (!document.getElementById('ativos-inventario-overview')) {
+        const resumo = document.getElementById('ativos-status-resumo');
+        if (resumo && resumo.parentNode) {
+            const div = document.createElement('div');
+            div.id = 'ativos-inventario-overview';
+            resumo.parentNode.insertBefore(div, resumo.nextSibling);
+        }
+    }
+
+    if (!document.getElementById('modal-inventario-ativos')) {
+        const modal = document.createElement('div');
+        modal.id = 'modal-inventario-ativos';
+        modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,23,42,.58); z-index:99997; align-items:center; justify-content:center; padding:18px;';
+        modal.innerHTML = `
+            <div style="background:#fff; width:min(760px, 100%); border-radius:20px; padding:22px; box-shadow:0 24px 60px rgba(0,0,0,.22); position:relative; max-height:90vh; overflow:auto;">
+                <button onclick="window.fecharModalInventarioAtivos()" style="position:absolute; top:12px; right:12px; background:#f1f5f9; border:none; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:18px;">×</button>
+                <div style="font-size:22px; font-weight:800; color:#8B252C; margin-bottom:8px;">Inventário por Setor</div>
+                <p style="margin:0 0 18px; color:#64748b; font-size:13px;">Selecione a unidade e o setor para iniciar ou retomar um inventário rápido via QR Code.</p>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:14px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Unidade</label>
+                        <select id="inventario-unidade-select" class="form-input" onchange="window.preencherSelectInventarioAtivos()"></select>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; font-weight:700; color:#475569; display:block; margin-bottom:6px;">Setor</label>
+                        <select id="inventario-setor-select" class="form-input"></select>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom:20px;">
+                    <button class="btn-hover color-8" type="button" onclick="window.fecharModalInventarioAtivos()"><i class="ri-close-line"></i> Fechar</button>
+                    <button class="btn-hover color-11" type="button" onclick="window.iniciarInventarioAtivos()"><i class="ri-play-circle-line"></i> Iniciar Inventário</button>
+                </div>
+                <div>
+                    <div style="font-size:15px; font-weight:700; color:#0f172a; margin-bottom:10px;">Inventários em aberto</div>
+                    <div id="inventario-lista-abertos"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    if (!document.getElementById('modal-inventario-execucao')) {
+        const modal = document.createElement('div');
+        modal.id = 'modal-inventario-execucao';
+        modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,23,42,.72); z-index:100001; align-items:center; justify-content:center; padding:18px;';
+        modal.innerHTML = `
+            <div style="background:#fff; width:min(1100px, 100%); border-radius:22px; padding:22px; box-shadow:0 24px 60px rgba(0,0,0,.22); position:relative; max-height:94vh; overflow:auto;">
+                <button onclick="window.fecharExecucaoInventarioAtivo()" style="position:absolute; top:12px; right:12px; background:#f1f5f9; border:none; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:18px;">×</button>
+                <div style="display:flex; justify-content:space-between; gap:14px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
+                    <div>
+                        <div style="font-size:22px; font-weight:800; color:#8B252C;">Execução do Inventário</div>
+                        <div id="inventario-execucao-titulo" style="font-size:14px; color:#334155; font-weight:700;"></div>
+                        <div id="inventario-aviso-rapido" style="font-size:13px; color:#0f172a; margin-top:6px;">Aponte a câmera para o QR Code do ativo.</div>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn-hover color-8" type="button" onclick="window.pausarInventarioAtivo()"><i class="ri-pause-circle-line"></i> Pausar</button>
+                        <button class="btn-hover color-11" type="button" onclick="window.finalizarInventarioAtivo()"><i class="ri-check-double-line"></i> Finalizar</button>
+                    </div>
+                </div>
+                <div id="inventario-resumo-cards" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px;"></div>
+                <div style="display:grid; grid-template-columns:minmax(320px, 380px) 1fr; gap:16px; align-items:start;">
+                    <div>
+                        <div id="inventario-qr-reader" style="width:100%; min-height:320px; border-radius:16px; overflow:hidden; border:2px solid var(--primary-color); background:#0f172a;"></div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+                        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden;">
+                            <div style="padding:10px 12px; font-size:13px; font-weight:700; color:#16a34a; background:#f0fdf4;">Encontrados</div>
+                            <div id="inventario-lista-lidos" style="max-height:300px; overflow:auto;"></div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden;">
+                            <div style="padding:10px 12px; font-size:13px; font-weight:700; color:#d97706; background:#fffbeb;">Pendentes</div>
+                            <div id="inventario-lista-pendentes" style="max-height:300px; overflow:auto;"></div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; grid-column:1/-1;">
+                            <div style="padding:10px 12px; font-size:13px; font-weight:700; color:#dc2626; background:#fef2f2;">Divergências</div>
+                            <div id="inventario-lista-divergencias" style="max-height:220px; overflow:auto;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+    window.inserirEstruturaFase1InventarioAtivos();
+    window.criarBotoesFase1InventarioAtivos();
+    window.escutarInventariosAtivos();
+    setTimeout(() => {
+        if (abaAtual === 'ativos') {
+            window.renderizarPastasAtivosFase1();
+            window.renderizarOverviewInventarioAtivos();
+        }
+    }, 400);
+});
