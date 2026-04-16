@@ -4390,3 +4390,19 @@ window.atualizarBotaoVoltarInicioAtivos = function() {
         window.atualizarBotaoVoltarInicioAtivos();
     };
 })();
+
+
+// ==========================================
+// AJUSTE UI - RECARREGAR GRÁFICOS DOS ATIVOS AO VOLTAR PARA A VISÃO INICIAL
+// ==========================================
+(function() {
+    const oldRenderPastasAtivosFase1Reload = window.renderizarPastasAtivosFase1;
+    window.renderizarPastasAtivosFase1 = function() {
+        oldRenderPastasAtivosFase1Reload();
+        setTimeout(() => {
+            if (typeof window.renderizarGraficoAtivos === 'function') {
+                window.renderizarGraficoAtivos();
+            }
+        }, 120);
+    };
+})();
