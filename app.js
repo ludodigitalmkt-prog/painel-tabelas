@@ -4586,3 +4586,384 @@ window.aplicarSugestoesNomeAtivoModal = function() {
         }
     };
 })();
+
+
+// ==========================================
+// MÓDULO AGENDA DE TRABALHO - FASE 1
+// ==========================================
+window.todosAgendaTrabalho = [];
+window.agendaTrabalhoView = 'calendario';
+window.agendaListenerAtivo = false;
+window.agendaDragTaskId = null;
+
+window.agendaStatusColunas = ['A fazer', 'Em andamento', 'Em revisão', 'Enviado', 'Publicado', 'Concluído'];
+window.agendaStatusConclusivos = ['Enviado', 'Publicado', 'Concluído'];
+
+window.getAgendaMesAtual = function() {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+};
+
+window.normalizarAgendaData = function(data = {}) {
+    return {
+        titulo: String(data.titulo || '').trim(),
+        descricao: String(data.descricao || '').trim(),
+        responsavel: String(data.responsavel || '').trim(),
+        urgencia: String(data.urgencia || 'Média').trim(),
+        status: String(data.status || 'A fazer').trim(),
+        visibilidade: String(data.visibilidade || 'ambos').trim(),
+        dataPrincipal: String(data.dataPrincipal || '').trim(),
+        datasExtras: Array.isArray(data.datasExtras) ? data.datasExtras : String(data.datasExtras || '').split(',').map(v => v.trim()).filter(Boolean),
+        link: String(data.link || '').trim(),
+        iframeUrl: String(data.iframeUrl || '').trim(),
+        destaqueEspecial: !!data.destaqueEspecial,
+        temaEspecial: String(data.temaEspecial || '').trim(),
+        historico: Array.isArray(data.historico) ? data.historico : [],
+        criadoEm: data.criadoEm || '',
+        atualizadoEm: data.atualizadoEm || ''
+    };
+};
+
+window.obterDatasAgendaDaTarefa = function(data = {}) {
+    const normalizada = window.normalizarAgendaData(data);
+    const set = new Set();
+    if (normalizada.dataPrincipal) set.add(normalizada.dataPrincipal);
+    normalizada.datasExtras.forEach(dt => { if (dt) set.add(dt); });
+    return Array.from(set).sort();
+};
+
+window.agendaEstaNoMes = function(data = {}, mes = '') {
+    const datas = window.obterDatasAgendaDaTarefa(data);
+    return datas.some(dt => dt.startsWith(mes));
+};
+
+window.agendaCorUrgenciaClass = function(urgencia = '') {
+    const u = String(urgencia || '').toLowerCase();
+    if (u.includes('crítica') || u.includes('critica')) return 'urgencia-crítica';
+    if (u.includes('alta')) return 'urgencia-alta';
+    if (u.includes('média') || u.includes('media')) return 'urgencia-média';
+    return 'urgencia-baixa';
+};
+
+window.escutarAgendaTrabalho = function() {
+    if (window.agendaListenerAtivo) return;
+    window.agendaListenerAtivo = true;
+    onSnapshot(collection(db, 'agenda_trabalho'), (snapshot) => {
+        const itens = [];
+        snapshot.forEach(docSnap => itens.push({ id: docSnap.id, data: window.normalizarAgendaData(docSnap.data()) }));
+        window.todosAgendaTrabalho = itens;
+        if (abaAtual === 'agenda-trabalho') window.renderizarAgendaTrabalho();
+    }, (error) => {
+        console.error('Erro ao escutar agenda de trabalho:', error);
+    });
+};
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        window.escutarAgendaTrabalho();
+    } else {
+        window.todosAgendaTrabalho = [];
+        window.agendaListenerAtivo = false;
+    }
+});
+
+window.preencherResponsaveisAgenda = function(valorAtual = '') {
+    const select = document.getElementById('agenda-responsavel');
+    if (!select) return;
+    const colaboradores = (window.todosOsDadosDoSistema['colaboradores'] || []).map(item => item.data || {});
+    const nomes = Array.from(new Set(colaboradores.map(c => String(c['Nome Completo do Colaborador'] || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b));
+    select.innerHTML = '<option value="">Responsável</option>' + nomes.map(nome => `<option value="${window.escapeAttr(nome)}">${window.escapeHTML(nome)}</option>`).join('');
+    if (valorAtual && nomes.includes(valorAtual)) select.value = valorAtual;
+};
+
+window.abrirModalAgendaTrabalho = function(docId = null) {
+    const modal = document.getElementById('modal-agenda-trabalho');
+    if (!modal) return;
+    const item = docId ? (window.todosAgendaTrabalho.find(t => t.id === docId) || null) : null;
+    const data = item ? window.normalizarAgendaData(item.data) : window.normalizarAgendaData({ dataPrincipal: new Date().toISOString().slice(0,10) });
+
+    document.getElementById('agenda-doc-id').value = item ? item.id : '';
+    document.getElementById('agenda-modal-title').textContent = item ? 'Editar Demanda' : 'Nova Demanda';
+    document.getElementById('agenda-titulo').value = data.titulo || '';
+    document.getElementById('agenda-descricao').value = data.descricao || '';
+    document.getElementById('agenda-urgencia').value = data.urgencia || 'Média';
+    document.getElementById('agenda-status').value = data.status || 'A fazer';
+    document.getElementById('agenda-visibilidade').value = data.visibilidade || 'ambos';
+    document.getElementById('agenda-data-principal').value = data.dataPrincipal || '';
+    document.getElementById('agenda-datas-extras').value = (data.datasExtras || []).join(', ');
+    document.getElementById('agenda-tema-especial').value = data.temaEspecial || '';
+    document.getElementById('agenda-destaque-especial').checked = !!data.destaqueEspecial;
+    document.getElementById('agenda-link').value = data.link || '';
+    document.getElementById('agenda-iframe').value = data.iframeUrl || '';
+    document.getElementById('agenda-historico-preview').value = (data.historico || []).join('\n');
+    window.preencherResponsaveisAgenda(data.responsavel || '');
+    modal.style.display = 'flex';
+};
+
+window.fecharModalAgendaTrabalho = function() {
+    const modal = document.getElementById('modal-agenda-trabalho');
+    if (modal) modal.style.display = 'none';
+};
+
+window.salvarAgendaTrabalho = async function() {
+    const docId = document.getElementById('agenda-doc-id').value;
+    const titulo = String(document.getElementById('agenda-titulo').value || '').trim();
+    if (!titulo) { alert('Informe o título da demanda.'); return; }
+
+    const dataAntiga = docId ? (window.todosAgendaTrabalho.find(t => t.id === docId)?.data || {}) : {};
+    const historicoAntigo = Array.isArray(dataAntiga.historico) ? dataAntiga.historico : [];
+    const dataAgora = new Date().toISOString();
+
+    const dados = {
+        titulo,
+        descricao: String(document.getElementById('agenda-descricao').value || '').trim(),
+        responsavel: String(document.getElementById('agenda-responsavel').value || '').trim(),
+        urgencia: String(document.getElementById('agenda-urgencia').value || 'Média').trim(),
+        status: String(document.getElementById('agenda-status').value || 'A fazer').trim(),
+        visibilidade: String(document.getElementById('agenda-visibilidade').value || 'ambos').trim(),
+        dataPrincipal: String(document.getElementById('agenda-data-principal').value || '').trim(),
+        datasExtras: String(document.getElementById('agenda-datas-extras').value || '').split(',').map(v => v.trim()).filter(Boolean),
+        temaEspecial: String(document.getElementById('agenda-tema-especial').value || '').trim(),
+        destaqueEspecial: !!document.getElementById('agenda-destaque-especial').checked,
+        link: String(document.getElementById('agenda-link').value || '').trim(),
+        iframeUrl: String(document.getElementById('agenda-iframe').value || '').trim(),
+        criadoEm: dataAntiga.criadoEm || dataAgora,
+        atualizadoEm: dataAgora
+    };
+
+    const novoHistorico = [...historicoAntigo, `${docId ? 'Atualizada' : 'Criada'} em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`];
+    dados.historico = novoHistorico.slice(-80);
+
+    try {
+        if (docId) {
+            await window.setDoc(window.doc(window.db, 'agenda_trabalho', docId), dados, { merge: true });
+        } else {
+            await window.addDoc(window.collection(window.db, 'agenda_trabalho'), dados);
+        }
+        window.fecharModalAgendaTrabalho();
+    } catch (error) {
+        alert('Erro ao salvar demanda: ' + error.message);
+    }
+};
+
+window.alternarViewAgenda = function(view = 'calendario') {
+    window.agendaTrabalhoView = view;
+    ['calendario', 'board', 'direcao'].forEach(tipo => {
+        const el = document.getElementById(`agenda-view-${tipo}`);
+        if (el) el.style.display = tipo === view ? 'block' : 'none';
+    });
+    window.renderizarAgendaTrabalho();
+};
+
+window.obterAgendaMesSelecionado = function() {
+    const input = document.getElementById('agenda-filtro-mes');
+    if (!input) return window.getAgendaMesAtual();
+    if (!input.value) input.value = window.getAgendaMesAtual();
+    return input.value;
+};
+
+window.renderizarCardsColaboradoresAgenda = function() {
+    const grid = document.getElementById('agenda-colaboradores-grid');
+    if (!grid) return;
+    const mes = window.obterAgendaMesSelecionado();
+    const colaboradores = (window.todosOsDadosDoSistema['colaboradores'] || []).map(item => item.data || {});
+    if (!colaboradores.length) {
+        grid.innerHTML = '<div style="color:#64748b; font-size:13px;">Nenhum colaborador cadastrado.</div>';
+        return;
+    }
+
+    grid.innerHTML = colaboradores.map(colab => {
+        const nome = String(colab['Nome Completo do Colaborador'] || '').trim();
+        const setor = String(colab['Setor da Clínica'] || 'Geral').trim();
+        const foto = String(colab['Link da Foto'] || colab['Foto'] || '').trim();
+        const aniversario = String(colab['Data de Aniversário'] || colab['Aniversário'] || 'Não informado').trim();
+        const info = String(colab['Informações Gerais'] || colab['Observações'] || 'Sem observações').trim();
+        const minhas = window.todosAgendaTrabalho.filter(item => item.data.responsavel === nome && window.agendaEstaNoMes(item.data, mes));
+        const pendentes = minhas.filter(item => !window.agendaStatusConclusivos.includes(item.data.status)).length;
+        return `
+            <div class="agenda-colaborador-card">
+                <div class="agenda-colaborador-avatar">${foto ? `<img src="${window.escapeAttr(foto)}" alt="${window.escapeAttr(nome)}" onerror="this.parentElement.innerHTML='<i class=\\"ri-user-3-line\\"></i>'">` : '<i class="ri-user-3-line"></i>'}</div>
+                <div class="agenda-colaborador-meta">
+                    <h4>${window.escapeHTML(nome || 'Colaborador')}</h4>
+                    <p><strong>Setor:</strong> ${window.escapeHTML(setor)}</p>
+                    <p><strong>Aniversário:</strong> ${window.escapeHTML(aniversario)}</p>
+                    <p>${window.escapeHTML(info)}</p>
+                    <span class="agenda-badge-pendente"><i class="ri-notification-3-line"></i> ${pendentes} pendente(s) no mês</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+window.gerarDiasDoMesAgenda = function(mes = '') {
+    const [ano, mesNum] = mes.split('-').map(Number);
+    if (!ano || !mesNum) return [];
+    const dias = new Date(ano, mesNum, 0).getDate();
+    const arr = [];
+    for (let dia = 1; dia <= dias; dia++) {
+        const data = new Date(ano, mesNum - 1, dia);
+        arr.push({
+            iso: `${ano}-${String(mesNum).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
+            label: data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            semana: data.toLocaleDateString('pt-BR', { weekday: 'short' })
+        });
+    }
+    return arr;
+};
+
+window.abrirPreviewAgenda = function(url = '', titulo = 'Preview da Demanda') {
+    const link = String(url || '').trim();
+    if (!link) return;
+    if (typeof window.abrirMidiaFlutuante === 'function') window.abrirMidiaFlutuante(link, titulo);
+    else window.open(link, '_blank', 'noopener,noreferrer');
+};
+
+window.gerarCardAgendaTarefa = function(item = {}, opts = {}) {
+    const data = window.normalizarAgendaData(item.data || {});
+    const podeEditar = opts.podeEditar !== false;
+    return `
+        <div class="agenda-task-card" draggable="true" data-task-id="${item.id}" style="border-left-color:${data.destaqueEspecial ? '#f59e0b' : 'var(--primary-color)'};">
+            <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+                <h5>${data.destaqueEspecial ? '<span class="agenda-estrela">★</span> ' : ''}${window.escapeHTML(data.titulo || 'Demanda')}</h5>
+                ${podeEditar ? `<button type="button" class="btn-action btn-edit" style="width:28px; height:28px; font-size:14px;" onclick="window.abrirModalAgendaTrabalho('${item.id}')"><i class="ri-pencil-line"></i></button>` : ''}
+            </div>
+            <p>${window.escapeHTML(data.descricao || 'Sem descrição.')}</p>
+            ${data.temaEspecial ? `<p><strong>Tema:</strong> ${window.escapeHTML(data.temaEspecial)}</p>` : ''}
+            <p><strong>Responsável:</strong> ${window.escapeHTML(data.responsavel || 'Não definido')}</p>
+            <div class="agenda-task-meta">
+                <span class="agenda-mini-badge ${window.agendaCorUrgenciaClass(data.urgencia)}">${window.escapeHTML(data.urgencia)}</span>
+                <span class="agenda-mini-badge">${window.escapeHTML(data.status)}</span>
+                <span class="agenda-mini-badge">${window.escapeHTML(data.visibilidade)}</span>
+            </div>
+            ${data.link || data.iframeUrl ? `<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                ${data.link ? `<button class="btn-hover color-8" style="height:30px; font-size:11px; padding:0 12px;" type="button" onclick="window.abrirPreviewAgenda('${window.escapeAttr(data.link)}','${window.escapeAttr(data.titulo)}')"><i class="ri-link"></i> Link</button>` : ''}
+                ${data.iframeUrl ? `<button class="btn-hover color-9" style="height:30px; font-size:11px; padding:0 12px;" type="button" onclick="window.abrirPreviewAgenda('${window.escapeAttr(data.iframeUrl)}','${window.escapeAttr(data.titulo)}')"><i class="ri-layout-window-line"></i> Preview</button>` : ''}
+            </div>` : ''}
+        </div>
+    `;
+};
+
+window.aplicarDnDAgenda = function() {
+    document.querySelectorAll('.agenda-task-card[data-task-id]').forEach(card => {
+        card.addEventListener('dragstart', () => { window.agendaDragTaskId = card.getAttribute('data-task-id'); });
+        card.addEventListener('dragend', () => { window.agendaDragTaskId = null; });
+    });
+
+    document.querySelectorAll('.agenda-day-column').forEach(col => {
+        col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            const taskId = window.agendaDragTaskId;
+            const novaData = col.getAttribute('data-date');
+            if (!taskId || !novaData) return;
+            const item = window.todosAgendaTrabalho.find(t => t.id === taskId);
+            if (!item) return;
+            const hist = Array.isArray(item.data.historico) ? item.data.historico : [];
+            hist.push(`Data principal movida para ${novaData} em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`);
+            await window.setDoc(window.doc(window.db, 'agenda_trabalho', taskId), { dataPrincipal: novaData, atualizadoEm: new Date().toISOString(), historico: hist.slice(-80) }, { merge: true });
+        });
+    });
+
+    document.querySelectorAll('.agenda-board-column').forEach(col => {
+        col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            const taskId = window.agendaDragTaskId;
+            const novoStatus = col.getAttribute('data-status');
+            if (!taskId || !novoStatus) return;
+            const item = window.todosAgendaTrabalho.find(t => t.id === taskId);
+            if (!item) return;
+            const hist = Array.isArray(item.data.historico) ? item.data.historico : [];
+            hist.push(`Status alterado para ${novoStatus} em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`);
+            await window.setDoc(window.doc(window.db, 'agenda_trabalho', taskId), { status: novoStatus, atualizadoEm: new Date().toISOString(), historico: hist.slice(-80) }, { merge: true });
+        });
+    });
+};
+
+window.renderizarAgendaCalendario = function() {
+    const grid = document.getElementById('agenda-calendario-grid');
+    if (!grid) return;
+    const mes = window.obterAgendaMesSelecionado();
+    const dias = window.gerarDiasDoMesAgenda(mes);
+    const tarefas = window.todosAgendaTrabalho.filter(item => window.agendaEstaNoMes(item.data, mes));
+
+    grid.innerHTML = dias.map(dia => {
+        const tarefasDia = tarefas.filter(item => window.obterDatasAgendaDaTarefa(item.data).includes(dia.iso));
+        return `
+            <div class="agenda-day-column" data-date="${dia.iso}">
+                <div class="agenda-day-header">
+                    <strong>${dia.label}</strong>
+                    <span>${window.escapeHTML(dia.semana)}</span>
+                </div>
+                <div>${tarefasDia.map(item => window.gerarCardAgendaTarefa(item)).join('') || '<p style="font-size:12px; color:#94a3b8;">Sem demandas</p>'}</div>
+            </div>
+        `;
+    }).join('');
+    window.aplicarDnDAgenda();
+};
+
+window.renderizarAgendaBoard = function() {
+    const grid = document.getElementById('agenda-board-grid');
+    if (!grid) return;
+    const mes = window.obterAgendaMesSelecionado();
+    const tarefas = window.todosAgendaTrabalho.filter(item => window.agendaEstaNoMes(item.data, mes));
+    grid.innerHTML = window.agendaStatusColunas.map(status => {
+        const col = tarefas.filter(item => item.data.status === status);
+        return `
+            <div class="agenda-board-column" data-status="${window.escapeAttr(status)}">
+                <h4>${window.escapeHTML(status)} <span style="color:#94a3b8;">(${col.length})</span></h4>
+                ${col.map(item => window.gerarCardAgendaTarefa(item)).join('') || '<p style="font-size:12px; color:#94a3b8;">Sem itens</p>'}
+            </div>
+        `;
+    }).join('');
+    window.aplicarDnDAgenda();
+};
+
+window.renderizarAgendaDirecao = function() {
+    const grid = document.getElementById('agenda-direcao-grid');
+    if (!grid) return;
+    const mes = window.obterAgendaMesSelecionado();
+    const tarefas = window.todosAgendaTrabalho.filter(item => ['direcao', 'ambos'].includes(item.data.visibilidade) && window.agendaEstaNoMes(item.data, mes));
+    const hoje = new Date().toISOString().slice(0,10);
+    const feitasHoje = tarefas.filter(item => window.agendaStatusConclusivos.includes(item.data.status) && window.obterDatasAgendaDaTarefa(item.data).includes(hoje));
+    const futuras = tarefas.filter(item => item.data.dataPrincipal >= hoje && !window.agendaStatusConclusivos.includes(item.data.status));
+    const historico = tarefas.filter(item => window.agendaStatusConclusivos.includes(item.data.status)).sort((a,b) => String(b.data.atualizadoEm || '').localeCompare(String(a.data.atualizadoEm || ''))).slice(0,12);
+
+    const renderLista = (lista) => lista.length ? `<div class="agenda-direcao-list">${lista.map(item => `<div class="agenda-direcao-item"><strong>${window.escapeHTML(item.data.titulo)}</strong><br><span style="font-size:12px; color:#64748b;">${window.escapeHTML(item.data.responsavel || 'Sem responsável')} • ${window.escapeHTML(item.data.status)}</span></div>`).join('')}</div>` : '<p style="font-size:12px; color:#94a3b8;">Nenhum item nesta visão.</p>';
+
+    grid.innerHTML = `
+        <div class="agenda-direcao-card">
+            <h4>Feito / enviado hoje</h4>
+            ${renderLista(feitasHoje)}
+        </div>
+        <div class="agenda-direcao-card">
+            <h4>Próximas entregas</h4>
+            ${renderLista(futuras.slice(0, 12))}
+        </div>
+        <div class="agenda-direcao-card">
+            <h4>Histórico recente</h4>
+            ${renderLista(historico)}
+        </div>
+    `;
+};
+
+window.renderizarAgendaTrabalho = function() {
+    const inputMes = document.getElementById('agenda-filtro-mes');
+    if (inputMes && !inputMes.value) inputMes.value = window.getAgendaMesAtual();
+    window.renderizarCardsColaboradoresAgenda();
+    if (window.agendaTrabalhoView === 'board') window.renderizarAgendaBoard();
+    else if (window.agendaTrabalhoView === 'direcao') window.renderizarAgendaDirecao();
+    else window.renderizarAgendaCalendario();
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+    const filtroMes = document.getElementById('agenda-filtro-mes');
+    if (filtroMes) {
+        filtroMes.value = window.getAgendaMesAtual();
+        filtroMes.addEventListener('change', () => window.renderizarAgendaTrabalho());
+    }
+});
