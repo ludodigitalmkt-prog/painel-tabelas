@@ -5049,3 +5049,73 @@ window.addEventListener('DOMContentLoaded', () => {
         window.renderizarAgendaTrabalho();
     }, 250);
 });
+
+
+// ==========================================
+// AJUSTES AGENDA - DIREÇÃO + ERRO AMIGÁVEL DE PERMISSÃO
+// ==========================================
+window.renderizarAgendaDirecao = function() {
+    const grid = document.getElementById('agenda-direcao-grid');
+    if (!grid) return;
+    const mes = window.obterAgendaMesSelecionado();
+    const tarefas = window.todosAgendaTrabalho.filter(item => ['direcao', 'ambos'].includes(item.data.visibilidade) && (window.agendaEstaNoMes(item.data, mes) || !item.data.dataPrincipal));
+    const hoje = new Date().toISOString().slice(0,10);
+    const feitasHoje = tarefas.filter(item => window.agendaStatusConclusivos.includes(item.data.status) && (window.obterDatasAgendaDaTarefa(item.data).includes(hoje) || String(item.data.atualizadoEm || '').startsWith(hoje)));
+    const emProducao = tarefas.filter(item => ['A fazer', 'Em andamento', 'Em revisão', 'Enviado'].includes(item.data.status));
+    const futuras = tarefas.filter(item => !window.agendaStatusConclusivos.includes(item.data.status) && (!item.data.dataPrincipal || item.data.dataPrincipal >= hoje));
+    const historico = tarefas.filter(item => window.agendaStatusConclusivos.includes(item.data.status)).sort((a,b) => String(b.data.atualizadoEm || '').localeCompare(String(a.data.atualizadoEm || ''))).slice(0,12);
+
+    const renderLista = (lista) => lista.length ? `<div class="agenda-direcao-list">${lista.map(item => `<div class="agenda-direcao-item"><strong>${window.escapeHTML(item.data.titulo)}</strong><br><span style="font-size:12px; color:#64748b;">${window.escapeHTML(item.data.responsavel || 'Sem responsável')} • ${window.escapeHTML(item.data.status)}${item.data.dataPrincipal ? ` • ${window.escapeHTML(item.data.dataPrincipal)}` : ''}</span></div>`).join('')}</div>` : '<p style="font-size:12px; color:#94a3b8;">Nenhum item nesta visão.</p>';
+
+    grid.innerHTML = `
+        <div class="agenda-direcao-card">
+            <h4>Em produção / enviado</h4>
+            ${renderLista(emProducao.slice(0, 12))}
+        </div>
+        <div class="agenda-direcao-card">
+            <h4>Próximas entregas</h4>
+            ${renderLista(futuras.slice(0, 12))}
+        </div>
+        <div class="agenda-direcao-card">
+            <h4>Feito hoje + histórico</h4>
+            ${renderLista([...feitasHoje, ...historico].slice(0, 12))}
+        </div>
+    `;
+};
+
+(function() {
+    const oldAplicarDnDAgenda = window.aplicarDnDAgenda;
+    window.aplicarDnDAgenda = function() {
+        oldAplicarDnDAgenda();
+        document.querySelectorAll('.agenda-board-column').forEach(col => {
+            const novo = col.cloneNode(true);
+            if (col.parentNode) col.parentNode.replaceChild(novo, col);
+        });
+        // reaplica handlers com mensagens mais claras
+        document.querySelectorAll('.agenda-task-card[data-task-id]').forEach(card => {
+            card.addEventListener('dragstart', () => { window.agendaDragTaskId = card.getAttribute('data-task-id'); });
+            card.addEventListener('dragend', () => { window.agendaDragTaskId = null; });
+        });
+        document.querySelectorAll('.agenda-board-column').forEach(col => {
+            col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
+            col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+            col.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                col.classList.remove('drag-over');
+                const taskId = window.agendaDragTaskId;
+                const novoStatus = col.getAttribute('data-status');
+                if (!taskId || !novoStatus) return;
+                const item = window.todosAgendaTrabalho.find(t => t.id === taskId);
+                if (!item) return;
+                const hist = Array.isArray(item.data.historico) ? item.data.historico : [];
+                hist.push(`Status alterado para ${novoStatus} em ${new Date().toLocaleString('pt-BR')} por ${emailLogado || 'Gestor'}`);
+                try {
+                    await window.setDoc(window.doc(window.db, 'agenda_trabalho', taskId), { status: novoStatus, atualizadoEm: new Date().toISOString(), historico: hist.slice(-80) }, { merge: true });
+                } catch (error) {
+                    console.error(error);
+                    alert('O status não foi alterado porque a coleção agenda_trabalho está bloqueada nas Rules do Firestore.');
+                }
+            });
+        });
+    };
+})();
