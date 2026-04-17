@@ -411,3 +411,50 @@ body.is-auth-loading { cursor: progress; }
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 18px;
 }
+
+
+/* ==========================================
+   AGENDA DE TRABALHO
+========================================== */
+.agenda-shell { display:flex; flex-direction:column; gap:20px; }
+.agenda-topbar { display:flex; justify-content:space-between; gap:15px; align-items:flex-start; flex-wrap:wrap; }
+.agenda-top-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.agenda-month-input { width:160px; margin-bottom:0; }
+.agenda-panel-title { font-size:16px; font-weight:700; color:var(--text-main); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.agenda-view-panel, .agenda-operadores-card { background:#fff; border:1px solid var(--border-color); border-radius:18px; padding:18px; box-shadow:var(--shadow-soft); }
+.agenda-colaboradores-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr)); gap:14px; }
+.agenda-colaborador-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:14px; display:flex; gap:12px; align-items:flex-start; }
+.agenda-colaborador-avatar { width:54px; height:54px; border-radius:50%; background:#e2e8f0; color:#475569; display:flex; align-items:center; justify-content:center; font-size:24px; overflow:hidden; flex-shrink:0; }
+.agenda-colaborador-avatar img { width:100%; height:100%; object-fit:cover; }
+.agenda-colaborador-meta h4 { font-size:15px; margin-bottom:4px; }
+.agenda-colaborador-meta p { font-size:12px; color:var(--text-muted); margin-bottom:4px; }
+.agenda-badge-pendente { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; background:#fff7ed; color:#c2410c; border-radius:999px; font-size:11px; font-weight:700; margin-top:6px; }
+.agenda-calendario-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:14px; }
+.agenda-day-column, .agenda-board-column, .agenda-direcao-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:14px; min-height:180px; }
+.agenda-day-column.drag-over, .agenda-board-column.drag-over { border-color:var(--primary-color); background:#fff5f5; }
+.agenda-day-header { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+.agenda-day-header strong { font-size:14px; }
+.agenda-day-header span { font-size:11px; color:var(--text-muted); }
+.agenda-task-card { background:#fff; border:1px solid #e2e8f0; border-left:5px solid var(--primary-color); border-radius:14px; padding:12px; margin-bottom:10px; cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.agenda-task-card:last-child { margin-bottom:0; }
+.agenda-task-card h5 { font-size:14px; margin-bottom:6px; line-height:1.35; }
+.agenda-task-card p { font-size:12px; color:var(--text-muted); margin-bottom:5px; line-height:1.4; }
+.agenda-task-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.agenda-mini-badge { padding:4px 8px; border-radius:999px; font-size:10px; font-weight:700; background:#edf2f7; color:#475569; }
+.agenda-mini-badge.urgencia-alta, .agenda-mini-badge.urgencia-crítica { background:#fef2f2; color:#dc2626; }
+.agenda-mini-badge.urgencia-média { background:#fffbeb; color:#d97706; }
+.agenda-mini-badge.urgencia-baixa { background:#f0fdf4; color:#15803d; }
+.agenda-estrela { color:#f59e0b; font-size:16px; }
+.agenda-board-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+.agenda-board-column h4 { font-size:14px; margin-bottom:10px; }
+.agenda-direcao-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+.agenda-direcao-card h4 { font-size:14px; margin-bottom:10px; }
+.agenda-direcao-list { display:flex; flex-direction:column; gap:10px; }
+.agenda-direcao-item { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:10px; }
+.agenda-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.agenda-checkline { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-main); background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:0 12px; min-height:48px; }
+@media (max-width: 900px) {
+  .agenda-topbar { flex-direction:column; }
+  .agenda-top-actions { width:100%; }
+  .agenda-top-actions .btn-hover { flex:1; }
+}
