@@ -1,7 +1,7 @@
 // ==========================================
 // 1. CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
 // ==========================================
-console.log('APP NOVO 3.5.2 CARREGADO');
+console.log('APP NOVO 3.5.3 CARREGADO');
 const configuracaoAbas = {
     'colaboradores': { titulo: 'Colaborador (Equipe)', campos: ['Nome Completo do Colaborador', 'Setor da Clínica', 'PIN de Acesso (Treinamentos)'] },
     
@@ -73,6 +73,7 @@ window.dadosGlobaisAbas = {}; window.todosOsDadosDoSistema = {}; window.dadosBol
 window.pastaBoletimAtual = null; window.pastaPrivadoAtual = null; window.alunoLogado = null; 
 
 window.corStatusPendente = "#e53e3e"; window.corStatusConcluido = "#38a169";
+window._habilitarEscutaRestritaManual = false;
 
 window.safeParseJSON = function(raw, fallback = null) {
     if (raw === undefined || raw === null || raw === '' || raw === 'undefined' || raw === 'null') return fallback;
@@ -3952,6 +3953,11 @@ window.preencherSelectInventarioAtivos = function() {
 
 window.escutarInventariosAtivos = function() {
     const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+    if (!window._habilitarEscutaRestritaManual) {
+        window.inventariosAtivosData = [];
+        window._inventariosAtivosEscutando = false;
+        return;
+    }
     if (!window.podeVerAbasRestritas || !window.podeVerAbasRestritas(emailAtual)) {
         window.inventariosAtivosData = [];
         window._inventariosAtivosEscutando = false;
@@ -4656,6 +4662,11 @@ window.agendaCorUrgenciaClass = function(urgencia = '') {
 
 window.escutarAgendaTrabalho = function() {
     const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+    if (!window._habilitarEscutaRestritaManual) {
+        window.todosAgendaTrabalho = [];
+        window.agendaListenerAtivo = false;
+        return;
+    }
     if (!window.podeVerAbasRestritas || !window.podeVerAbasRestritas(emailAtual)) {
         window.todosAgendaTrabalho = [];
         window.agendaListenerAtivo = false;
@@ -4677,6 +4688,7 @@ window.escutarAgendaTrabalho = function() {
 onAuthStateChanged(auth, (user) => {
     const emailAtual = String(user?.email || emailLogado || '').toLowerCase().trim();
     if (!(user && window.podeVerAbasRestritas && window.podeVerAbasRestritas(emailAtual))) {
+        window._habilitarEscutaRestritaManual = false;
         window.todosAgendaTrabalho = [];
         window.inventariosAtivosData = [];
         window.agendaListenerAtivo = false;
@@ -5399,6 +5411,7 @@ window.inicializarListenersRestritosSobDemanda = function() {
         btnAtivos.addEventListener('click', () => {
             const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
             if (window.podeVerAbasRestritas && window.podeVerAbasRestritas(emailAtual) && window.escutarInventariosAtivos) {
+                window._habilitarEscutaRestritaManual = true;
                 window.escutarInventariosAtivos();
             }
         });
@@ -5409,6 +5422,7 @@ window.inicializarListenersRestritosSobDemanda = function() {
         btnAgenda.addEventListener('click', () => {
             const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
             if (window.podeVerAbasRestritas && window.podeVerAbasRestritas(emailAtual) && window.escutarAgendaTrabalho) {
+                window._habilitarEscutaRestritaManual = true;
                 window.escutarAgendaTrabalho();
             }
         });
