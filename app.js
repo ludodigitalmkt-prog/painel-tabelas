@@ -3950,6 +3950,12 @@ window.preencherSelectInventarioAtivos = function() {
 };
 
 window.escutarInventariosAtivos = function() {
+    const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+    if (!window.podeVerAbasRestritas || !window.podeVerAbasRestritas(emailAtual)) {
+        window.inventariosAtivosData = [];
+        window._inventariosAtivosEscutando = false;
+        return;
+    }
     if (window._inventariosAtivosEscutando) return;
     window._inventariosAtivosEscutando = true;
     onSnapshot(collection(db, 'inventarios_ativos'), (snapshot) => {
@@ -3963,6 +3969,7 @@ window.escutarInventariosAtivos = function() {
         window.renderizarListaInventariosEmAberto();
     }, (error) => {
         console.error('Erro ao escutar inventários de ativos:', error);
+        window._inventariosAtivosEscutando = false;
     });
 };
 
@@ -4355,7 +4362,7 @@ window.inserirEstruturaFase1InventarioAtivos = function() {
 window.addEventListener('DOMContentLoaded', () => {
     window.inserirEstruturaFase1InventarioAtivos();
     window.criarBotoesFase1InventarioAtivos();
-    window.escutarInventariosAtivos();
+
     setTimeout(() => {
         if (abaAtual === 'ativos') {
             window.renderizarPastasAtivosFase1();
@@ -4647,6 +4654,12 @@ window.agendaCorUrgenciaClass = function(urgencia = '') {
 };
 
 window.escutarAgendaTrabalho = function() {
+    const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+    if (!window.podeVerAbasRestritas || !window.podeVerAbasRestritas(emailAtual)) {
+        window.todosAgendaTrabalho = [];
+        window.agendaListenerAtivo = false;
+        return;
+    }
     if (window.agendaListenerAtivo) return;
     window.agendaListenerAtivo = true;
     onSnapshot(collection(db, 'agenda_trabalho'), (snapshot) => {
@@ -4656,15 +4669,17 @@ window.escutarAgendaTrabalho = function() {
         if (abaAtual === 'agenda-trabalho') window.renderizarAgendaTrabalho();
     }, (error) => {
         console.error('Erro ao escutar agenda de trabalho:', error);
+        window.agendaListenerAtivo = false;
     });
 };
 
 onAuthStateChanged(auth, (user) => {
-    if (user) {
-        window.escutarAgendaTrabalho();
-    } else {
+    const emailAtual = String(user?.email || emailLogado || '').toLowerCase().trim();
+    if (!(user && window.podeVerAbasRestritas && window.podeVerAbasRestritas(emailAtual))) {
         window.todosAgendaTrabalho = [];
+        window.inventariosAtivosData = [];
         window.agendaListenerAtivo = false;
+        window._inventariosAtivosEscutando = false;
     }
 });
 
@@ -5183,8 +5198,9 @@ window.gerarCardAgendaTarefa = function(item = {}, opts = {}) {
 // ==========================================
 // RESTRIÇÃO DE ACESSO: ATIVOS E AGENDA DE TRABALHO (ARQUIVO COMPLETO)
 // ==========================================
-window.podeVerAbasRestritas = function() {
-    return EMAILS_ABAS_RESTRITAS.includes(String(emailLogado || '').toLowerCase());
+window.podeVerAbasRestritas = function(email = '') {
+    const baseEmail = String(email || emailLogado || auth?.currentUser?.email || '').toLowerCase().trim();
+    return EMAILS_ABAS_RESTRITAS.includes(baseEmail);
 };
 
 window.atualizarVisibilidadeAbasRestritas = function() {
@@ -5368,3 +5384,40 @@ onAuthStateChanged(auth, (user) => {
         `;
     };
 })();
+
+
+// ==========================================
+// LAZY LOAD DOS LISTENERS RESTRITOS
+// ==========================================
+window.inicializarListenersRestritosSobDemanda = function() {
+    const btnAtivos = document.querySelector('.nav-btn[data-tab="ativos"]');
+    const btnAgenda = document.querySelector('.nav-btn[data-tab="agenda-trabalho"]');
+
+    if (btnAtivos && btnAtivos.dataset.listenerRestritoHooked !== '1') {
+        btnAtivos.dataset.listenerRestritoHooked = '1';
+        btnAtivos.addEventListener('click', () => {
+            const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+            if (window.podeVerAbasRestritas && window.podeVerAbasRestritas(emailAtual) && window.escutarInventariosAtivos) {
+                window.escutarInventariosAtivos();
+            }
+        });
+    }
+
+    if (btnAgenda && btnAgenda.dataset.listenerRestritoHooked !== '1') {
+        btnAgenda.dataset.listenerRestritoHooked = '1';
+        btnAgenda.addEventListener('click', () => {
+            const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+            if (window.podeVerAbasRestritas && window.podeVerAbasRestritas(emailAtual) && window.escutarAgendaTrabalho) {
+                window.escutarAgendaTrabalho();
+            }
+        });
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if (window.inicializarListenersRestritosSobDemanda) {
+            window.inicializarListenersRestritosSobDemanda();
+        }
+    }, 150);
+});
