@@ -58,6 +58,7 @@ const auth = getAuth(app);
 window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot; window.setDoc = setDoc; window.getDoc = getDoc; window.runTransaction = runTransaction;
 
 let isAdmin = false; let abaAtual = 'home'; let emailLogado = ""; 
+const EMAILS_ABAS_RESTRITAS = ['gerencia@clinica.com', 'marketing@clinica.com', 'gestao@clinica.com'];
 
 let listaColaboradoresGlobal = []; let locaisGlobais = []; let setoresGlobais = []; let especialidadesGlobais = []; let motivosGlobais = []; let imagemPadraoPastas = ""; 
 
@@ -5177,3 +5178,70 @@ window.gerarCardAgendaTarefa = function(item = {}, opts = {}) {
         </div>
     `;
 };
+
+
+// ==========================================
+// RESTRIÇÃO DE ACESSO: ATIVOS E AGENDA DE TRABALHO (ARQUIVO COMPLETO)
+// ==========================================
+window.podeVerAbasRestritas = function() {
+    return EMAILS_ABAS_RESTRITAS.includes(String(emailLogado || '').toLowerCase());
+};
+
+window.atualizarVisibilidadeAbasRestritas = function() {
+    const pode = window.podeVerAbasRestritas();
+    const btnAtivos = document.getElementById('btn-nav-ativos');
+    const btnAgenda = document.getElementById('btn-nav-agenda-trabalho');
+    const tabAtivos = document.getElementById('tab-ativos');
+    const tabAgenda = document.getElementById('tab-agenda-trabalho');
+
+    if (btnAtivos) btnAtivos.style.display = pode ? '' : 'none';
+    if (btnAgenda) btnAgenda.style.display = pode ? '' : 'none';
+
+    if (!pode) {
+        if (tabAtivos) tabAtivos.style.display = 'none';
+        if (tabAgenda) tabAgenda.style.display = 'none';
+        if (abaAtual === 'ativos' || abaAtual === 'agenda-trabalho') {
+            const homeBtn = document.querySelector('.nav-btn[data-tab="home"]');
+            if (homeBtn) homeBtn.click();
+        }
+    }
+};
+
+(function() {
+    const oldEscutarInventariosAtivos = window.escutarInventariosAtivos;
+    if (oldEscutarInventariosAtivos) {
+        window.escutarInventariosAtivos = function() {
+            if (!window.podeVerAbasRestritas()) return;
+            return oldEscutarInventariosAtivos();
+        };
+    }
+
+    const oldEscutarAgendaTrabalho = window.escutarAgendaTrabalho;
+    if (oldEscutarAgendaTrabalho) {
+        window.escutarAgendaTrabalho = function() {
+            if (!window.podeVerAbasRestritas()) return;
+            return oldEscutarAgendaTrabalho();
+        };
+    }
+})();
+
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => window.atualizarVisibilidadeAbasRestritas(), 120);
+
+    document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabDestino = btn.getAttribute('data-tab');
+            if (['ativos', 'agenda-trabalho'].includes(tabDestino) && !window.podeVerAbasRestritas()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                alert('Você não tem permissão para acessar esta área.');
+                const homeBtn = document.querySelector('.nav-btn[data-tab="home"]');
+                if (homeBtn) setTimeout(() => homeBtn.click(), 10);
+            }
+        }, true);
+    });
+});
+
+onAuthStateChanged(auth, (user) => {
+    setTimeout(() => window.atualizarVisibilidadeAbasRestritas(), 80);
+});
