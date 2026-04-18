@@ -6418,3 +6418,185 @@ window.addEventListener('DOMContentLoaded', () => {
         }, 160);
     });
 })();
+
+
+// ==========================================
+// AGENDA 3.6.1 - SELETOR VISUAL DE MÚLTIPLAS DATAS
+// ==========================================
+(function() {
+    window.aplicarEstilosAgendaDatasExtras = function() {
+        if (document.getElementById('agenda-style-361')) return;
+        const style = document.createElement('style');
+        style.id = 'agenda-style-361';
+        style.textContent = `
+            .agenda-datas-picker-box {
+                margin-bottom:16px;
+                padding:12px;
+                border:1px solid #dbe3ee;
+                border-radius:14px;
+                background:#f8fafc;
+            }
+            .agenda-datas-picker-title {
+                font-size:12px;
+                font-weight:700;
+                color:#334155;
+                margin-bottom:10px;
+            }
+            .agenda-datas-picker-row {
+                display:flex;
+                gap:8px;
+                flex-wrap:wrap;
+                align-items:center;
+            }
+            .agenda-datas-picker-row input[type="date"] {
+                flex:1;
+                min-width:180px;
+                margin-bottom:0;
+            }
+            .agenda-datas-tags {
+                display:flex;
+                flex-wrap:wrap;
+                gap:8px;
+                margin-top:12px;
+            }
+            .agenda-data-tag {
+                display:inline-flex;
+                align-items:center;
+                gap:8px;
+                padding:7px 10px;
+                border-radius:999px;
+                background:#eff6ff;
+                color:#1d4ed8;
+                font-size:12px;
+                font-weight:700;
+            }
+            .agenda-data-tag button {
+                border:none;
+                background:none;
+                color:#dc2626;
+                cursor:pointer;
+                font-size:14px;
+                line-height:1;
+                padding:0;
+            }
+            .agenda-datas-vazio {
+                margin-top:10px;
+                font-size:12px;
+                color:#64748b;
+            }
+        `;
+        document.head.appendChild(style);
+    };
+
+    window.agendaDatasExtrasSelecionadas = [];
+
+    window.sincronizarCampoDatasExtrasAgenda = function() {
+        const inputOriginal = document.getElementById('agenda-datas-extras');
+        if (!inputOriginal) return;
+        inputOriginal.value = (window.agendaDatasExtrasSelecionadas || []).join(', ');
+    };
+
+    window.renderizarDatasExtrasAgenda = function() {
+        const container = document.getElementById('agenda-datas-tags');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!window.agendaDatasExtrasSelecionadas.length) {
+            container.innerHTML = `<div class="agenda-datas-vazio">Nenhuma data extra selecionada.</div>`;
+            window.sincronizarCampoDatasExtrasAgenda();
+            return;
+        }
+
+        container.innerHTML = window.agendaDatasExtrasSelecionadas
+            .sort()
+            .map(data => `
+                <span class="agenda-data-tag">
+                    <i class="ri-calendar-line"></i> ${window.formatarDataAgenda ? window.formatarDataAgenda(data) : data}
+                    <button type="button" onclick="window.removerDataExtraAgenda('${data}')" title="Remover data">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </span>
+            `).join('');
+
+        window.sincronizarCampoDatasExtrasAgenda();
+    };
+
+    window.adicionarDataExtraAgenda = function() {
+        const inputPicker = document.getElementById('agenda-data-extra-picker');
+        if (!inputPicker) return;
+        const valor = String(inputPicker.value || '').trim();
+        if (!valor) return;
+        if (!window.agendaDatasExtrasSelecionadas.includes(valor)) {
+            window.agendaDatasExtrasSelecionadas.push(valor);
+        }
+        inputPicker.value = '';
+        window.renderizarDatasExtrasAgenda();
+    };
+
+    window.removerDataExtraAgenda = function(data = '') {
+        window.agendaDatasExtrasSelecionadas = (window.agendaDatasExtrasSelecionadas || []).filter(item => item !== data);
+        window.renderizarDatasExtrasAgenda();
+    };
+
+    window.configurarPickerDatasExtrasAgenda = function() {
+        window.aplicarEstilosAgendaDatasExtras();
+
+        const inputOriginal = document.getElementById('agenda-datas-extras');
+        if (!inputOriginal) return;
+
+        let box = document.getElementById('agenda-datas-picker-box');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'agenda-datas-picker-box';
+            box.className = 'agenda-datas-picker-box';
+            box.innerHTML = `
+                <div class="agenda-datas-picker-title">Datas extras da atividade</div>
+                <div class="agenda-datas-picker-row">
+                    <input type="date" id="agenda-data-extra-picker" class="form-input">
+                    <button type="button" id="agenda-btn-add-data-extra" class="btn-hover color-9" style="height:45px; padding:0 16px; font-size:12px;">
+                        <i class="ri-add-line"></i> Adicionar data
+                    </button>
+                </div>
+                <div id="agenda-datas-tags" class="agenda-datas-tags"></div>
+            `;
+            inputOriginal.parentElement?.insertBefore(box, inputOriginal.nextSibling);
+        }
+
+        inputOriginal.style.display = 'none';
+
+        const addBtn = document.getElementById('agenda-btn-add-data-extra');
+        const picker = document.getElementById('agenda-data-extra-picker');
+
+        if (addBtn && addBtn.dataset.bound !== '1') {
+            addBtn.dataset.bound = '1';
+            addBtn.addEventListener('click', window.adicionarDataExtraAgenda);
+        }
+        if (picker && picker.dataset.bound !== '1') {
+            picker.dataset.bound = '1';
+            picker.addEventListener('change', window.adicionarDataExtraAgenda);
+        }
+
+        window.agendaDatasExtrasSelecionadas = String(inputOriginal.value || '')
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean);
+
+        window.renderizarDatasExtrasAgenda();
+    };
+
+    const _oldAbrirModalAgenda361 = window.abrirModalAgendaTrabalho;
+    window.abrirModalAgendaTrabalho = function(docId = null) {
+        if (typeof _oldAbrirModalAgenda361 === 'function') _oldAbrirModalAgenda361(docId);
+        setTimeout(() => {
+            window.configurarPickerDatasExtrasAgenda();
+        }, 40);
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            if (document.getElementById('agenda-datas-extras')) {
+                window.configurarPickerDatasExtrasAgenda();
+            }
+        }, 180);
+    });
+})();
