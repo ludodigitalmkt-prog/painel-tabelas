@@ -41,7 +41,7 @@ const configuracaoAbas = {
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { initializeFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCVphiwmF-SBFyYYkjV-QvTvSFIigzIsoc",
@@ -53,7 +53,17 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, {});
+let db;
+try {
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
+    });
+} catch (firestoreCacheError) {
+    console.warn('Não foi possível ativar o cache persistente do Firestore. Seguindo com cache em memória.', firestoreCacheError);
+    db = initializeFirestore(app, {});
+}
 const auth = getAuth(app);
 
 window.db = db; window.updateDoc = updateDoc; window.doc = doc; window.arrayUnion = arrayUnion; window.arrayRemove = arrayRemove; window.addDoc = addDoc; window.collection = collection; window.deleteDoc = deleteDoc; window.onSnapshot = onSnapshot; window.setDoc = setDoc; window.getDoc = getDoc; window.runTransaction = runTransaction;
@@ -7886,6 +7896,482 @@ window.addEventListener('DOMContentLoaded', () => {
         const resto = totalCeldas % 7;
         const blanksFim = resto === 0 ? '' : Array.from({ length: 7 - resto }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
 
+        grid.classList.add('agenda-calendario-grid--mes');
+        grid.innerHTML = weekHeaders + blanksInicio + cellsDias + blanksFim;
+    };
+})();
+
+
+// ==========================================
+// AGENDA 3.8.0 - CACHE PERSISTENTE + LEITURA SOB DEMANDA + STATUS POR DATA CORRETO
+// ==========================================
+(function() {
+    const essentialCollections = new Set(['colaboradores']);
+    window._collectionListeners = window._collectionListeners || {};
+    window._rhListening = window._rhListening || false;
+    window._agendaUnsub = window._agendaUnsub || null;
+    window._inventarioUnsub = window._inventarioUnsub || null;
+
+    window.getAgendaStatusCanonico = function(status = '') {
+        const s = String(status || '').toLowerCase().trim();
+        if (!s) return 'A fazer';
+        if (s.includes('concluído') || s.includes('concluido')) return 'Concluído';
+        if (s.includes('publicado')) return 'Publicado';
+        if (s.includes('enviado')) return 'Enviado';
+        if (s.includes('em revisão') || s.includes('revisao')) return 'Em revisão';
+        if (s.includes('em andamento')) return 'Em andamento';
+        if (s.includes('a fazer')) return 'A fazer';
+        return String(status || 'A fazer').trim();
+    };
+
+    window.getAgendaStatusRank = function(status = '') {
+        const canon = window.getAgendaStatusCanonico(status);
+        return {
+            'A fazer': 1,
+            'Em andamento': 2,
+            'Em revisão': 3,
+            'Enviado': 4,
+            'Publicado': 5,
+            'Concluído': 6
+        }[canon] || 1;
+    };
+
+    window.pararListenerColecao = function(colecaoNome = '') {
+        const key = String(colecaoNome || '').trim();
+        if (!key) return;
+        if (window._collectionListeners[key]) {
+            try { window._collectionListeners[key](); } catch (e) {}
+            delete window._collectionListeners[key];
+        }
+    };
+
+    window._processarSnapshotColecao = function(colecaoNome, snapshot) {
+        const grid = document.getElementById(`grid-${colecaoNome}`);
+        if (snapshot.empty) {
+            if (colecaoNome === 'treinamentos') { window.todosTreinamentosData = []; if (window.alunoLogado) window.renderizarTrilhaAluno(); }
+            if (colecaoNome === 'boletins') { window.todosBoletinsData = []; window.verificarUrgentesHome(); window.renderizarGraficoHome(); }
+            if (colecaoNome === 'boletins-privados') { window.todosPrivadosData = []; window.verificarUrgentesHome(); window.renderizarGraficoPrivadosGeral(); }
+            if (configuracaoAbas[colecaoNome] && configuracaoAbas[colecaoNome].campoAgrupador) {
+                window.dadosGlobaisAbas[colecaoNome] = [];
+                if (abaAtual === colecaoNome) window.renderizarPastasGenericas(colecaoNome);
+            }
+            if (colecaoNome === 'ramais') {
+                window.todosOsDadosDoSistema['ramais'] = [];
+                if (typeof window.renderizarRamaisAgrupados === 'function') window.renderizarRamaisAgrupados();
+            }
+            if (grid) { grid.style.display = 'block'; grid.innerHTML = ''; }
+            return;
+        }
+
+        const itens = [];
+        snapshot.forEach(docSnap => itens.push({ id: docSnap.id, data: docSnap.data() }));
+        window.todosOsDadosDoSistema[colecaoNome] = itens;
+
+        if (colecaoNome === 'ramais') {
+            if (abaAtual === 'contatos' || document.getElementById('sub-ramais')?.style.display !== 'none') {
+                window.renderizarRamaisAgrupados();
+            }
+            return;
+        }
+
+        if (colecaoNome === 'colaboradores') {
+            listaColaboradoresGlobal = itens
+                .map(item => ({ nome: item.data['Nome Completo do Colaborador'], setor: item.data['Setor da Clínica'] || 'Geral' }))
+                .filter(c => c.nome)
+                .sort((a, b) => a.nome.localeCompare(b.nome));
+            if (abaAtual === 'colaboradores') window.renderizarListaGenerica(colecaoNome);
+            if (abaAtual === 'agenda-trabalho' && typeof window.renderizarCardsColaboradoresAgenda === 'function') window.renderizarCardsColaboradoresAgenda();
+            if (isAdmin && abaAtual === 'rh' && typeof window.renderizarDashboardRH === 'function') window.renderizarDashboardRH();
+        }
+        if (colecaoNome === 'boletins') {
+            window.todosBoletinsData = itens;
+            if (abaAtual === 'boletins') {
+                if (window.pastaBoletimAtual) window.renderizarListaBoletins();
+                else window.renderizarPastasBoletins();
+            }
+            window.verificarUrgentesHome();
+            window.renderizarGraficoHome();
+            return;
+        }
+        if (colecaoNome === 'boletins-privados') {
+            window.todosPrivadosData = itens;
+            if (abaAtual === 'boletins-privados') {
+                if (window.pastaPrivadoAtual) window.renderizarListaPrivados();
+                else window.renderizarPastasPrivados();
+            }
+            window.verificarUrgentesHome();
+            window.renderizarGraficoPrivadosGeral();
+            return;
+        }
+        if (colecaoNome === 'treinamentos') {
+            window.todosTreinamentosData = itens;
+            if (window.alunoLogado) window.renderizarTrilhaAluno();
+            if (isAdmin && abaAtual === 'rh' && typeof window.renderizarDashboardRH === 'function') window.renderizarDashboardRH();
+        }
+        if (configuracaoAbas[colecaoNome] && configuracaoAbas[colecaoNome].campoAgrupador && colecaoNome !== 'colaboradores') {
+            window.dadosGlobaisAbas[colecaoNome] = itens;
+            if (abaAtual === colecaoNome) {
+                if (window[`pasta_${colecaoNome}_Atual`]) window.renderizarListaGenerica(colecaoNome);
+                else window.renderizarPastasGenericas(colecaoNome);
+            }
+            return;
+        }
+
+        if (!grid || !configuracaoAbas[colecaoNome]) return;
+        grid.style.display = 'grid';
+        grid.innerHTML = '';
+        itens.sort((a, b) => String(a.data[configuracaoAbas[colecaoNome].campos[0]] || '').localeCompare(String(b.data[configuracaoAbas[colecaoNome].campos[0]] || '')))
+            .forEach(item => { grid.innerHTML += window.gerarHTMLCard(colecaoNome, item.id, item.data); });
+    };
+
+    window.renderizarCards = function(colecaoNome, opts = {}) {
+        const grid = document.getElementById(`grid-${colecaoNome}`);
+        if (!grid && colecaoNome !== 'boletins' && colecaoNome !== 'boletins-privados' && colecaoNome !== 'ramais' && !configuracaoAbas[colecaoNome]?.campoAgrupador) return;
+
+        const tabWantsCollection = !!opts.force
+            || essentialCollections.has(colecaoNome)
+            || abaAtual === colecaoNome
+            || (colecaoNome === 'ramais' && abaAtual === 'contatos')
+            || (colecaoNome === 'emails' && abaAtual === 'contatos')
+            || (colecaoNome === 'contatos-gerais' && abaAtual === 'contatos')
+            || (colecaoNome === 'contatos-convenios' && abaAtual === 'contatos')
+            || (colecaoNome === 'senhas' && abaAtual === 'contatos')
+            || (colecaoNome === 'colaboradores' && ['agenda-trabalho', 'colaboradores', 'rh'].includes(abaAtual));
+
+        if (!tabWantsCollection) return;
+        if (window._collectionListeners[colecaoNome]) return;
+
+        window._collectionListeners[colecaoNome] = onSnapshot(collection(db, colecaoNome), (snapshot) => {
+            window._processarSnapshotColecao(colecaoNome, snapshot);
+        }, (error) => {
+            console.error(`Erro ao escutar ${colecaoNome}:`, error);
+            window.pararListenerColecao(colecaoNome);
+        });
+    };
+
+    window.sincronizarListenersPorAba = function(tabDestino = '') {
+        const keep = new Set(['colaboradores']);
+        const tab = String(tabDestino || abaAtual || '').trim();
+
+        if (configuracaoAbas[tab]) keep.add(tab);
+        if (tab === 'contatos') ['ramais', 'emails', 'contatos-gerais', 'contatos-convenios', 'senhas'].forEach(c => keep.add(c));
+        if (tab === 'boletins') keep.add('boletins');
+        if (tab === 'boletins-privados') keep.add('boletins-privados');
+        if (tab === 'agenda-trabalho') keep.add('colaboradores');
+        if (tab === 'rh') keep.add('colaboradores');
+
+        Object.keys(window._collectionListeners || {}).forEach(nome => {
+            if (!keep.has(nome)) window.pararListenerColecao(nome);
+        });
+
+        keep.forEach(nome => {
+            if (nome !== 'agenda_trabalho' && nome !== 'inventarios_ativos') window.renderizarCards(nome, { force: true });
+        });
+
+        if (tab === 'agenda-trabalho') {
+            if (typeof window.escutarAgendaTrabalho === 'function') window.escutarAgendaTrabalho();
+        } else if (window._agendaUnsub) {
+            try { window._agendaUnsub(); } catch (e) {}
+            window._agendaUnsub = null;
+            window.agendaListenerAtivo = false;
+        }
+
+        if (tab === 'ativos') {
+            if (typeof window.escutarInventariosAtivos === 'function') window.escutarInventariosAtivos();
+        } else if (window._inventarioUnsub) {
+            try { window._inventarioUnsub(); } catch (e) {}
+            window._inventarioUnsub = null;
+            window._inventariosAtivosEscutando = false;
+        }
+
+        if (tab === 'rh' && typeof window.escutarRH === 'function') window.escutarRH(true);
+    };
+
+    const _oldEscutarRH380 = window.escutarRH;
+    if (typeof _oldEscutarRH380 === 'function') {
+        window.escutarRH = function(force = false) {
+            if (!isAdmin) return;
+            if (!force && abaAtual !== 'rh') return;
+            if (window._rhListening) return;
+            window._rhListening = true;
+            return _oldEscutarRH380();
+        };
+    }
+
+    window.escutarInventariosAtivos = function() {
+        const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+        if (!window.podeVerAbasRestritas || !window.podeVerAbasRestritas(emailAtual)) {
+            window.inventariosAtivosData = [];
+            window._inventariosAtivosEscutando = false;
+            if (window._inventarioUnsub) { try { window._inventarioUnsub(); } catch (e) {} window._inventarioUnsub = null; }
+            return;
+        }
+        if (window._inventariosAtivosEscutando) return;
+        window._inventariosAtivosEscutando = true;
+        window._inventarioUnsub = onSnapshot(collection(db, 'inventarios_ativos'), (snapshot) => {
+            const itens = [];
+            snapshot.forEach(docSnap => itens.push({ id: docSnap.id, data: docSnap.data() }));
+            window.inventariosAtivosData = itens;
+            if (abaAtual === 'ativos') {
+                window.renderizarOverviewInventarioAtivos();
+                window.renderizarPastasAtivosFase1();
+            }
+            window.renderizarListaInventariosEmAberto();
+        }, (error) => {
+            console.error('Erro ao escutar inventários de ativos:', error);
+            window._inventariosAtivosEscutando = false;
+            if (window._inventarioUnsub) { try { window._inventarioUnsub(); } catch (e) {} window._inventarioUnsub = null; }
+        });
+    };
+
+    window.escutarAgendaTrabalho = function() {
+        const emailAtual = String(auth?.currentUser?.email || emailLogado || '').toLowerCase().trim();
+        if (!window.podeVerAbasRestritas || !window.podeVerAbasRestritas(emailAtual)) {
+            window.todosAgendaTrabalho = [];
+            window.agendaListenerAtivo = false;
+            if (window._agendaUnsub) { try { window._agendaUnsub(); } catch (e) {} window._agendaUnsub = null; }
+            return;
+        }
+        if (window.agendaListenerAtivo) return;
+        window.agendaListenerAtivo = true;
+        window._agendaUnsub = onSnapshot(collection(db, 'agenda_trabalho'), (snapshot) => {
+            const itens = [];
+            snapshot.forEach(docSnap => itens.push({ id: docSnap.id, data: window.normalizarAgendaData(docSnap.data()) }));
+            window.todosAgendaTrabalho = itens;
+            if (abaAtual === 'agenda-trabalho') window.renderizarAgendaTrabalho();
+        }, (error) => {
+            console.error('Erro ao escutar agenda de trabalho:', error);
+            window.agendaListenerAtivo = false;
+            if (window._agendaUnsub) { try { window._agendaUnsub(); } catch (e) {} window._agendaUnsub = null; }
+        });
+    };
+
+    const _oldOnAuthSync380 = onAuthStateChanged;
+    onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            Object.keys(window._collectionListeners || {}).forEach(nome => window.pararListenerColecao(nome));
+            if (window._agendaUnsub) { try { window._agendaUnsub(); } catch (e) {} window._agendaUnsub = null; }
+            if (window._inventarioUnsub) { try { window._inventarioUnsub(); } catch (e) {} window._inventarioUnsub = null; }
+            window._rhListening = false;
+            return;
+        }
+        setTimeout(() => window.sincronizarListenersPorAba(abaAtual || 'home'), 120);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => window.sincronizarListenersPorAba(abaAtual || 'home'), 500);
+        document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+            if (btn.dataset.cacheSync380 === '1') return;
+            btn.dataset.cacheSync380 = '1';
+            btn.addEventListener('click', () => {
+                const tabDestino = btn.getAttribute('data-tab') || '';
+                setTimeout(() => window.sincronizarListenersPorAba(tabDestino), 60);
+            });
+        });
+    });
+
+    window.getResumoStatusDiaAgenda = function(tarefasDia = [], diaIso = '') {
+        if (!tarefasDia.length) {
+            return { cardClass: 'day-neutral', chipClass: 'is-neutral', texto: 'Sem demandas' };
+        }
+        const ranks = tarefasDia.map(item => window.getAgendaStatusRank(window.getAgendaStatusNaData(item.data, diaIso)));
+        const minRank = Math.min(...ranks);
+        if (minRank >= 6) return { cardClass: 'day-complete', chipClass: 'is-success', texto: 'Tudo concluído' };
+        if (minRank >= 5) return { cardClass: 'day-success-light', chipClass: 'is-success-light', texto: 'Tudo publicado' };
+        if (minRank >= 4) return { cardClass: 'day-purple', chipClass: 'is-purple', texto: 'Tudo enviado' };
+        if (minRank >= 3) return { cardClass: 'day-warning', chipClass: 'is-warning', texto: 'Tudo em revisão' };
+        if (minRank >= 2) return { cardClass: 'day-info', chipClass: 'is-info', texto: 'Tudo em andamento' };
+        return { cardClass: 'day-danger', chipClass: 'is-danger', texto: 'Há pendências' };
+    };
+
+    window.gerarCardAgendaTarefa = function(item = {}, opts = {}) {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        window.aplicarEstiloResponsavelCompactoAgenda && window.aplicarEstiloResponsavelCompactoAgenda();
+
+        const dataRef = String(opts.dataRef || '').trim();
+        const data = window.normalizarAgendaData(item.data || {});
+        const podeEditar = opts.podeEditar !== false;
+        const visualUrl = data.link || data.iframeUrl || '';
+        const extraordinaria = !!data.destaqueEspecial;
+        const statusAtual = window.getAgendaStatusCanonico(window.getAgendaStatusNaData(data, dataRef));
+        const statusVisual = window.getAgendaStatusVisual(statusAtual);
+        const collapseId = `agenda-collapse-${item.id}-${dataRef || 'base'}`.replace(/[^a-zA-Z0-9_-]/g, '');
+        const dataExibir = dataRef || window.getAgendaDataExibicao(data);
+        const dataFormatada = window.formatarDataAgenda(dataExibir);
+        const prazo = window.getAgendaPrazoInfo({ ...data, status: statusAtual, dataPrincipal: dataExibir });
+
+        return `
+            <div class="agenda-task-card ${extraordinaria ? 'agenda-task-card--extraordinaria' : ''} ${statusVisual.tone}" draggable="true" data-task-id="${item.id}">
+                <div class="agenda-task-header" onclick="window.toggleAgendaCard('${collapseId}')">
+                    <div class="agenda-task-header-main">
+                        <h5>${extraordinaria ? '<span class="agenda-raio"><i class="ri-flashlight-fill"></i></span>' : ''}${window.escapeHTML(data.titulo || 'Demanda')}</h5>
+                        <div class="agenda-task-header-date">${dataFormatada || 'Sem data definida'}${data.horario ? ` • ${window.escapeHTML(data.horario)}` : ''}</div>
+                        ${data.responsavel ? `<div class="agenda-task-responsavel-mini">Resp.: ${window.escapeHTML(data.responsavel)}</div>` : ''}
+                    </div>
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                        ${podeEditar ? `
+                            <div class="agenda-task-actions" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-action btn-edit" style="width:28px; height:28px; font-size:14px;" onclick="window.abrirModalAgendaTrabalho('${item.id}','${dataRef}')" title="Editar demanda">
+                                    <i class="ri-pencil-line"></i>
+                                </button>
+                                <button type="button" class="btn-action btn-delete" style="width:28px; height:28px; font-size:14px;" onclick="window.excluirAgendaTrabalho('${item.id}')" title="Excluir demanda">
+                                    <i class="ri-delete-bin-6-line"></i>
+                                </button>
+                            </div>` : ''}
+                        <i class="ri-arrow-down-s-line agenda-task-chevron"></i>
+                    </div>
+                </div>
+                <div id="${collapseId}" class="agenda-task-body-collapsible">
+                    <p>${window.escapeHTML(data.descricao || 'Sem descrição.')}</p>
+                    ${data.temaEspecial ? `<p><strong>Tema:</strong> ${window.escapeHTML(data.temaEspecial)}</p>` : ''}
+                    <p><strong>Responsável:</strong> ${window.escapeHTML(data.responsavel || 'Não definido')}</p>
+                    <div class="agenda-task-meta">
+                        ${extraordinaria ? `<span class="agenda-mini-badge agenda-mini-badge-extraordinaria"><i class="ri-flashlight-fill"></i> Extraordinária</span>` : ''}
+                        <span class="agenda-mini-badge ${window.agendaCorUrgenciaClass(data.urgencia)}">${window.escapeHTML(data.urgencia)}</span>
+                        <span class="agenda-mini-badge">${window.escapeHTML(statusAtual)}</span>
+                        <span class="agenda-mini-badge">${window.escapeHTML(data.visibilidade)}</span>
+                        ${dataFormatada ? `<span class="agenda-mini-badge agenda-mini-badge-data"><i class="ri-calendar-line"></i> ${window.escapeHTML(dataFormatada)}</span>` : ''}
+                        ${data.horario ? `<span class="agenda-mini-badge agenda-mini-badge-horario"><i class="ri-time-line"></i> ${window.escapeHTML(data.horario)}</span>` : ''}
+                    </div>
+                    ${prazo ? `<div style="margin-top:10px;"><span class="agenda-prazo-chip ${prazo.tone}"><i class="ri-alarm-warning-line"></i> ${window.escapeHTML(prazo.texto)}</span></div>` : ''}
+                    ${visualUrl ? `<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        <button class="btn-hover color-9" style="height:30px; font-size:11px; padding:0 12px;" type="button" onclick="event.stopPropagation(); window.abrirPreviewAgenda('${window.escapeAttr(visualUrl)}','${window.escapeAttr(data.titulo)}')"><i class="ri-layout-window-line"></i> Visualizar</button>
+                    </div>` : ''}
+                </div>
+            </div>
+        `;
+    };
+
+    window.renderizarCardsColaboradoresAgenda = function() {
+        const grid = document.getElementById('agenda-colaboradores-grid');
+        if (!grid) return;
+        const colaboradores = (window.todosOsDadosDoSistema['colaboradores'] || []).map(item => item.data || {}).filter(window.colaboradorEhMarketing);
+        const dataRef = window.getAgendaDataFiltroExato() || new Date().toISOString().slice(0,10);
+
+        if (!colaboradores.length) {
+            grid.innerHTML = '<div style="color:#64748b; font-size:13px;">Nenhum colaborador do marketing cadastrado.</div>';
+            return;
+        }
+
+        grid.innerHTML = colaboradores.map(colab => {
+            const nome = String(colab['Nome Completo do Colaborador'] || '').trim();
+            const setor = String(colab['Setor da Clínica'] || 'Marketing').trim();
+            const foto = String(colab['Link da Foto'] || colab['Foto'] || '').trim();
+            const aniversario = String(colab['Data de Aniversário'] || colab['Aniversário'] || 'Não informado').trim();
+            const info = String(colab['Informações Gerais'] || colab['Observações'] || 'Sem observações').trim();
+
+            const tarefasDaData = (window.todosAgendaTrabalho || [])
+                .filter(item => item.data.responsavel === nome)
+                .filter(item => window.getAgendaDatasExecucao(item.data, dataRef).includes(dataRef));
+
+            const concluidas = tarefasDaData.filter(item => {
+                const statusDia = window.getAgendaStatusNaData(item.data, dataRef);
+                return window.agendaStatusConclusivos.includes(statusDia) || window.getAgendaStatusRank(statusDia) >= 5;
+            }).length;
+
+            const pendentes = tarefasDaData.filter(item => {
+                const rank = window.getAgendaStatusRank(window.getAgendaStatusNaData(item.data, dataRef));
+                return rank < 5;
+            });
+
+            const resumoHoje = pendentes.length
+                ? pendentes.slice(0, 2).map(item => `• ${window.escapeHTML(item.data.titulo)}`).join('<br>')
+                : (tarefasDaData.length ? 'Tudo certo para a data selecionada.' : 'Sem demanda para a data selecionada.');
+
+            return `
+                <div class="agenda-colaborador-card">
+                    <div class="agenda-colaborador-avatar">${foto ? `<img src="${window.escapeAttr(foto)}" alt="${window.escapeAttr(nome)}" onerror="this.parentElement.innerHTML='<i class=\\"ri-user-3-line\\"></i>'">` : '<i class="ri-user-3-line"></i>'}</div>
+                    <div class="agenda-colaborador-meta">
+                        <h4>${window.escapeHTML(nome || 'Colaborador')}</h4>
+                        <p><strong>Setor:</strong> ${window.escapeHTML(setor)}</p>
+                        <p><strong>Aniversário:</strong> ${window.escapeHTML(aniversario)}</p>
+                        <p>${window.escapeHTML(info)}</p>
+                        <div class="agenda-colaborador-resumo">
+                            <span class="agenda-badge-hoje"><i class="ri-calendar-check-line"></i> ${tarefasDaData.length} do dia</span>
+                            <span class="agenda-badge-concluido"><i class="ri-checkbox-circle-line"></i> ${concluidas} concluída(s)</span>
+                        </div>
+                        <div style="margin-top:10px; font-size:12px; color:#64748b; line-height:1.5;">${resumoHoje}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.renderizarAgendaDirecao = function() {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        const grid = document.getElementById('agenda-direcao-grid');
+        if (!grid) return;
+
+        const dataRef = window.getAgendaDataFiltroExato() || new Date().toISOString().slice(0,10);
+        const doDia = (window.todosAgendaTrabalho || [])
+            .filter(item => ['direcao', 'ambos'].includes(item.data.visibilidade))
+            .filter(item => window.getAgendaDatasExecucao(item.data, dataRef).includes(dataRef))
+            .sort((a, b) => String(a.data.horario || '').localeCompare(String(b.data.horario || '')));
+
+        const renderLista = (lista) => lista.length ? `<div class="agenda-direcao-list">${lista.map(item => {
+            const statusDia = window.getAgendaStatusCanonico(window.getAgendaStatusNaData(item.data, dataRef));
+            const visual = window.getAgendaStatusVisual(statusDia);
+            const prazo = window.getAgendaPrazoInfo({ ...item.data, status: statusDia, dataPrincipal: dataRef });
+            return `<div class="agenda-direcao-item ${visual.tone}">
+                <strong>${window.escapeHTML(item.data.titulo)}</strong>
+                <span style="font-size:12px; color:#475569;">${window.escapeHTML(item.data.responsavel || 'Sem responsável')} • ${window.escapeHTML(statusDia)}${item.data.horario ? ` • ${window.escapeHTML(item.data.horario)}` : ''}</span>
+                ${item.data.temaEspecial ? `<small>Tema: ${window.escapeHTML(item.data.temaEspecial)}</small>` : ''}
+                ${prazo ? `<div style="margin-top:8px;"><span class="agenda-prazo-chip ${prazo.tone}"><i class="ri-alarm-warning-line"></i> ${window.escapeHTML(prazo.texto)}</span></div>` : ''}
+            </div>`;
+        }).join('')}</div>` : '<p style="font-size:12px; color:#94a3b8;">Nenhuma demanda programada para esta data.</p>';
+
+        grid.innerHTML = `
+            <div class="agenda-direcao-card" style="grid-column:1 / -1;">
+                <h4>Demandas do dia — ${window.formatarDataAgenda(dataRef)}</h4>
+                ${renderLista(doDia)}
+            </div>
+        `;
+    };
+
+    window.renderizarAgendaCalendario = function() {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        window.aplicarEstilosResumoDiaAgenda();
+        const grid = document.getElementById('agenda-calendario-grid');
+        if (!grid) return;
+        const mes = window.obterAgendaMesSelecionado();
+        const dias = window.gerarDiasDoMesAgenda(mes);
+        const [ano, mesNum] = mes.split('-').map(Number);
+        const primeiroDia = new Date(ano, mesNum - 1, 1);
+        const offsetInicio = (primeiroDia.getDay() + 6) % 7;
+        const tarefas = (window.todosAgendaTrabalho || []).filter(item => {
+            const datas = window.getAgendaDatasExecucao(item.data, `${mes}-01`);
+            return datas.some(dt => dt.startsWith(mes));
+        });
+
+        const weekHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(label => `<div class="agenda-weekday-head">${label}</div>`).join('');
+        const blanksInicio = Array.from({ length: offsetInicio }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        const cellsDias = dias.map(dia => {
+            const tarefasDia = tarefas.filter(item => window.getAgendaDatasExecucao(item.data, dia.iso).includes(dia.iso));
+            const concluidas = tarefasDia.filter(item => window.getAgendaStatusRank(window.getAgendaStatusNaData(item.data, dia.iso)) >= 5).length;
+            const resumo = window.getResumoStatusDiaAgenda(tarefasDia, dia.iso);
+            return `
+                <div class="agenda-day-column clickable-day ${resumo.cardClass}" data-date="${dia.iso}" onclick="window.abrirDiaAgenda('${dia.iso}')">
+                    <div class="agenda-day-header">
+                        <strong>${dia.label}</strong>
+                        <span>${window.escapeHTML(dia.semana)}</span>
+                    </div>
+                    <div class="agenda-day-summary">
+                        <span class="agenda-day-count"><i class="ri-stack-line"></i> ${tarefasDia.length} demanda(s)</span>
+                        <span class="agenda-day-status-chip ${resumo.chipClass}">${window.escapeHTML(resumo.texto)}</span>
+                        ${concluidas ? `<span class="agenda-badge-concluido"><i class="ri-checkbox-circle-line"></i> ${concluidas} concluída(s)</span>` : ''}
+                        <div class="agenda-day-preview">${tarefasDia.length ? tarefasDia.slice(0,2).map(item => window.escapeHTML(item.data.titulo)).join(' • ') : 'Sem demandas'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const totalCelulas = offsetInicio + dias.length;
+        const resto = totalCelulas % 7;
+        const blanksFim = resto === 0 ? '' : Array.from({ length: 7 - resto }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
         grid.classList.add('agenda-calendario-grid--mes');
         grid.innerHTML = weekHeaders + blanksInicio + cellsDias + blanksFim;
     };
