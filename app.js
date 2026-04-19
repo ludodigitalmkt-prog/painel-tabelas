@@ -7529,3 +7529,123 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 })();
+
+
+// ==========================================
+// AGENDA 3.7.2 - STATUS ISOLADO POR DATA + LIMITE DE MESES NA RECORRÊNCIA
+// ==========================================
+(function() {
+    const _oldNormalizarAgenda372 = window.normalizarAgendaData;
+    window.normalizarAgendaData = function(data = {}) {
+        const base = typeof _oldNormalizarAgenda372 === 'function' ? _oldNormalizarAgenda372(data) : { ...(data || {}) };
+        return {
+            ...base,
+            recorrenciaMesInicio: String(data.recorrenciaMesInicio || base.recorrenciaMesInicio || '').trim(),
+            recorrenciaMesFim: String(data.recorrenciaMesFim || base.recorrenciaMesFim || '').trim()
+        };
+    };
+
+    window.mesEstaDentroDaRecorrenciaAgenda = function(mesContexto = '', data = {}) {
+        const normalizada = window.normalizarAgendaData(data);
+        const inicio = String(normalizada.recorrenciaMesInicio || '').trim();
+        const fim = String(normalizada.recorrenciaMesFim || '').trim();
+        if (!inicio && !fim) return true;
+        if (inicio && mesContexto < inicio) return false;
+        if (fim && mesContexto > fim) return false;
+        return true;
+    };
+
+    const _oldGerarDatasRecorrentes372 = window.getAgendaDatasExecucao;
+    window.getAgendaDatasExecucao = function(data = {}, dataRef = '') {
+        const normalizada = window.normalizarAgendaData(data);
+        if (Array.isArray(normalizada.diasRecorrentes) && normalizada.diasRecorrentes.length) {
+            const mesContexto = window.obterMesContextoAgenda(dataRef);
+            if (!window.mesEstaDentroDaRecorrenciaAgenda(mesContexto, normalizada)) return [];
+            return window.gerarDatasRecorrentesNoMesAgenda(mesContexto, normalizada.diasRecorrentes);
+        }
+        return typeof _oldGerarDatasRecorrentes372 === 'function'
+            ? _oldGerarDatasRecorrentes372(normalizada, dataRef)
+            : [];
+    };
+
+    const _oldStatusNaData372 = window.getAgendaStatusNaData;
+    window.getAgendaStatusNaData = function(data = {}, dataRef = '') {
+        const normalizada = window.normalizarAgendaData(data);
+        const chave = String(dataRef || '').trim();
+        if (Array.isArray(normalizada.diasRecorrentes) && normalizada.diasRecorrentes.length) {
+            if (chave && normalizada.statusPorData && normalizada.statusPorData[chave]) {
+                return String(normalizada.statusPorData[chave]).trim();
+            }
+            return 'A fazer';
+        }
+        return typeof _oldStatusNaData372 === 'function'
+            ? _oldStatusNaData372(normalizada, dataRef)
+            : String(normalizada.status || 'A fazer').trim();
+    };
+
+    const _oldConfigurarRecorrencia372 = window.configurarRecorrenciaAgenda;
+    window.configurarRecorrenciaAgenda = function(docId = null) {
+        if (typeof _oldConfigurarRecorrencia372 === 'function') _oldConfigurarRecorrencia372(docId);
+        const box = document.getElementById('agenda-recorrencia-box');
+        if (!box || document.getElementById('agenda-recorrencia-meses')) return;
+
+        const item = docId ? (window.todosAgendaTrabalho || []).find(t => t.id === docId) : null;
+        const data = item?.data || {};
+        const mesBase = window.obterAgendaMesSelecionado ? window.obterAgendaMesSelecionado() : new Date().toISOString().slice(0,7);
+
+        const wrap = document.createElement('div');
+        wrap.id = 'agenda-recorrencia-meses';
+        wrap.style.marginTop = '12px';
+        wrap.innerHTML = `
+            <div class="agenda-recorrencia-title">Aplicar a recorrência em quais meses?</div>
+            <div class="agenda-datas-picker-row">
+                <input type="month" id="agenda-recorrencia-inicio" class="form-input" value="${window.escapeAttr(data.recorrenciaMesInicio || mesBase)}">
+                <input type="month" id="agenda-recorrencia-fim" class="form-input" value="${window.escapeAttr(data.recorrenciaMesFim || mesBase)}">
+            </div>
+        `;
+        box.appendChild(wrap);
+    };
+
+    const _oldAbrirModalAgenda372 = window.abrirModalAgendaTrabalho;
+    window.abrirModalAgendaTrabalho = function(docId = null, dataRef = '') {
+        if (typeof _oldAbrirModalAgenda372 === 'function') _oldAbrirModalAgenda372(docId, dataRef);
+        setTimeout(() => {
+            const item = docId ? (window.todosAgendaTrabalho || []).find(t => t.id === docId) : null;
+            const data = item?.data || {};
+            const inicio = document.getElementById('agenda-recorrencia-inicio');
+            const fim = document.getElementById('agenda-recorrencia-fim');
+            const baseMes = window.obterAgendaMesSelecionado ? window.obterAgendaMesSelecionado() : new Date().toISOString().slice(0,7);
+            if (inicio && !inicio.value) inicio.value = data.recorrenciaMesInicio || baseMes;
+            if (fim && !fim.value) fim.value = data.recorrenciaMesFim || baseMes;
+        }, 80);
+    };
+
+    const _oldSalvarAgenda372 = window.salvarAgendaTrabalho;
+    window.salvarAgendaTrabalho = async function() {
+        const docId = document.getElementById('agenda-doc-id')?.value || '';
+        const diasRecorrentes = Array.from(document.querySelectorAll('.agenda-check-recorrencia:checked')).map(el => String(el.value));
+        const inicioMes = String(document.getElementById('agenda-recorrencia-inicio')?.value || '').trim();
+        const fimMes = String(document.getElementById('agenda-recorrencia-fim')?.value || '').trim();
+
+        if (inicioMes && fimMes && inicioMes > fimMes) {
+            alert('O mês inicial não pode ser maior que o mês final.');
+            return;
+        }
+
+        const retorno = typeof _oldSalvarAgenda372 === 'function' ? await _oldSalvarAgenda372() : undefined;
+
+        try {
+            const idAtual = docId || '';
+            if (idAtual) {
+                await window.setDoc(window.doc(window.db, 'agenda_trabalho', idAtual), {
+                    recorrenciaMesInicio: diasRecorrentes.length ? inicioMes : '',
+                    recorrenciaMesFim: diasRecorrentes.length ? fimMes : ''
+                }, { merge: true });
+            }
+        } catch (e) {
+            console.error('Falha ao salvar período de recorrência:', e);
+        }
+
+        return retorno;
+    };
+})();
