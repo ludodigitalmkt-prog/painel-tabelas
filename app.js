@@ -7649,3 +7649,244 @@ window.addEventListener('DOMContentLoaded', () => {
         return retorno;
     };
 })();
+
+
+// ==========================================
+// AGENDA 3.7.3 - RESUMO DO CALENDÁRIO PELO STATUS DO DIA
+// ==========================================
+(function() {
+    window.getResumoStatusDiaAgenda = function(tarefasDia = [], diaIso = '') {
+        if (!tarefasDia.length) {
+            return { cardClass: 'day-neutral', chipClass: 'is-neutral', texto: 'Sem demandas' };
+        }
+        const todasConcluidas = tarefasDia.every(item => {
+            const statusDia = window.getAgendaStatusNaData(item.data, diaIso);
+            return window.agendaStatusConclusivos.includes(statusDia);
+        });
+        if (todasConcluidas) {
+            return { cardClass: 'day-complete', chipClass: 'is-success', texto: 'Tudo concluído' };
+        }
+        return { cardClass: 'day-pending', chipClass: 'is-danger', texto: 'Há pendências' };
+    };
+
+    window.renderizarAgendaCalendario = function() {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        window.aplicarEstilosResumoDiaAgenda();
+        const grid = document.getElementById('agenda-calendario-grid');
+        if (!grid) return;
+        const mes = window.obterAgendaMesSelecionado();
+        const dias = window.gerarDiasDoMesAgenda(mes);
+        const [ano, mesNum] = mes.split('-').map(Number);
+        const primeiroDia = new Date(ano, mesNum - 1, 1);
+        const offsetInicio = (primeiroDia.getDay() + 6) % 7;
+        const tarefas = (window.todosAgendaTrabalho || []).filter(item => {
+            const datas = window.getAgendaDatasExecucao(item.data);
+            return datas.some(dt => dt.startsWith(mes));
+        });
+
+        const weekHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+            .map(label => `<div class="agenda-weekday-head">${label}</div>`).join('');
+
+        const blanksInicio = Array.from({ length: offsetInicio }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        const cellsDias = dias.map(dia => {
+            const tarefasDia = tarefas.filter(item => window.getAgendaDatasExecucao(item.data, dia.iso).includes(dia.iso));
+            const concluidas = tarefasDia.filter(item => {
+                const statusDia = window.getAgendaStatusNaData(item.data, dia.iso);
+                return window.agendaStatusConclusivos.includes(statusDia);
+            }).length;
+            const resumo = window.getResumoStatusDiaAgenda(tarefasDia, dia.iso);
+
+            return `
+                <div class="agenda-day-column clickable-day ${resumo.cardClass}" data-date="${dia.iso}" onclick="window.abrirDiaAgenda('${dia.iso}')">
+                    <div class="agenda-day-header">
+                        <strong>${dia.label}</strong>
+                        <span>${window.escapeHTML(dia.semana)}</span>
+                    </div>
+                    <div class="agenda-day-summary">
+                        <span class="agenda-day-count"><i class="ri-stack-line"></i> ${tarefasDia.length} demanda(s)</span>
+                        <span class="agenda-day-status-chip ${resumo.chipClass}">${window.escapeHTML(resumo.texto)}</span>
+                        ${concluidas ? `<span class="agenda-badge-concluido"><i class="ri-checkbox-circle-line"></i> ${concluidas} concluída(s)</span>` : ''}
+                        <div class="agenda-day-preview">${tarefasDia.length ? tarefasDia.slice(0,2).map(item => window.escapeHTML(item.data.titulo)).join(' • ') : 'Sem demandas'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const totalCeldas = offsetInicio + dias.length;
+        const resto = totalCeldas % 7;
+        const blanksFim = resto === 0 ? '' : Array.from({ length: 7 - resto }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        grid.classList.add('agenda-calendario-grid--mes');
+        grid.innerHTML = weekHeaders + blanksInicio + cellsDias + blanksFim;
+    };
+})();
+
+
+// ==========================================
+// AGENDA 3.7.4 - COR DO DIA SEGUINDO O ANDAMENTO
+// ==========================================
+(function() {
+    window.aplicarEstilosResumoDiaAgenda = function() {
+        if (document.getElementById('agenda-style-374')) return;
+        const style = document.createElement('style');
+        style.id = 'agenda-style-374';
+        style.textContent = `
+            .agenda-day-column.day-complete {
+                background:#f0fdf4;
+                border-color:#86efac;
+            }
+            .agenda-day-column.day-danger {
+                background:#fef2f2;
+                border-color:#fca5a5;
+            }
+            .agenda-day-column.day-info {
+                background:#eff6ff;
+                border-color:#93c5fd;
+            }
+            .agenda-day-column.day-warning {
+                background:#fffbeb;
+                border-color:#fcd34d;
+            }
+            .agenda-day-column.day-purple {
+                background:#faf5ff;
+                border-color:#d8b4fe;
+            }
+            .agenda-day-column.day-success-light {
+                background:#ecfdf5;
+                border-color:#6ee7b7;
+            }
+            .agenda-day-column.day-neutral {
+                background:#f8fafc;
+            }
+            .agenda-day-status-chip {
+                display:inline-flex;
+                align-items:center;
+                gap:6px;
+                width:max-content;
+                padding:5px 9px;
+                border-radius:999px;
+                font-size:11px;
+                font-weight:800;
+            }
+            .agenda-day-status-chip.is-success {
+                background:#dcfce7;
+                color:#166534;
+            }
+            .agenda-day-status-chip.is-danger {
+                background:#fee2e2;
+                color:#b91c1c;
+            }
+            .agenda-day-status-chip.is-info {
+                background:#dbeafe;
+                color:#1d4ed8;
+            }
+            .agenda-day-status-chip.is-warning {
+                background:#fef3c7;
+                color:#b45309;
+            }
+            .agenda-day-status-chip.is-purple {
+                background:#f3e8ff;
+                color:#7e22ce;
+            }
+            .agenda-day-status-chip.is-success-light {
+                background:#d1fae5;
+                color:#065f46;
+            }
+            .agenda-day-status-chip.is-neutral {
+                background:#e2e8f0;
+                color:#475569;
+            }
+        `;
+        document.head.appendChild(style);
+    };
+
+    window.getResumoStatusDiaAgenda = function(tarefasDia = [], diaIso = '') {
+        if (!tarefasDia.length) {
+            return { cardClass: 'day-neutral', chipClass: 'is-neutral', texto: 'Sem demandas' };
+        }
+
+        const statuses = tarefasDia.map(item => window.getAgendaStatusNaData(item.data, diaIso));
+
+        const allDone = statuses.every(status => ['Concluído', 'Concluido'].includes(status));
+        if (allDone) {
+            return { cardClass: 'day-complete', chipClass: 'is-success', texto: 'Tudo concluído' };
+        }
+
+        const allPublishedOrMore = statuses.every(status => ['Publicado', 'Concluído', 'Concluido'].includes(status));
+        if (allPublishedOrMore) {
+            return { cardClass: 'day-success-light', chipClass: 'is-success-light', texto: 'Tudo publicado' };
+        }
+
+        const allSentOrMore = statuses.every(status => ['Enviado', 'Publicado', 'Concluído', 'Concluido'].includes(status));
+        if (allSentOrMore) {
+            return { cardClass: 'day-purple', chipClass: 'is-purple', texto: 'Tudo enviado' };
+        }
+
+        const allReviewOrMore = statuses.every(status => ['Em revisão', 'Enviado', 'Publicado', 'Concluído', 'Concluido'].includes(status));
+        if (allReviewOrMore) {
+            return { cardClass: 'day-warning', chipClass: 'is-warning', texto: 'Tudo em revisão' };
+        }
+
+        const allProgressOrMore = statuses.every(status => ['Em andamento', 'Em revisão', 'Enviado', 'Publicado', 'Concluído', 'Concluido'].includes(status));
+        if (allProgressOrMore) {
+            return { cardClass: 'day-info', chipClass: 'is-info', texto: 'Tudo em andamento' };
+        }
+
+        return { cardClass: 'day-danger', chipClass: 'is-danger', texto: 'Há pendências' };
+    };
+
+    window.renderizarAgendaCalendario = function() {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        window.aplicarEstilosResumoDiaAgenda();
+        const grid = document.getElementById('agenda-calendario-grid');
+        if (!grid) return;
+        const mes = window.obterAgendaMesSelecionado();
+        const dias = window.gerarDiasDoMesAgenda(mes);
+        const [ano, mesNum] = mes.split('-').map(Number);
+        const primeiroDia = new Date(ano, mesNum - 1, 1);
+        const offsetInicio = (primeiroDia.getDay() + 6) % 7;
+        const tarefas = (window.todosAgendaTrabalho || []).filter(item => {
+            const datas = window.getAgendaDatasExecucao(item.data);
+            return datas.some(dt => dt.startsWith(mes));
+        });
+
+        const weekHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+            .map(label => `<div class="agenda-weekday-head">${label}</div>`).join('');
+
+        const blanksInicio = Array.from({ length: offsetInicio }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        const cellsDias = dias.map(dia => {
+            const tarefasDia = tarefas.filter(item => window.getAgendaDatasExecucao(item.data, dia.iso).includes(dia.iso));
+            const concluidas = tarefasDia.filter(item => {
+                const statusDia = window.getAgendaStatusNaData(item.data, dia.iso);
+                return window.agendaStatusConclusivos.includes(statusDia);
+            }).length;
+            const resumo = window.getResumoStatusDiaAgenda(tarefasDia, dia.iso);
+
+            return `
+                <div class="agenda-day-column clickable-day ${resumo.cardClass}" data-date="${dia.iso}" onclick="window.abrirDiaAgenda('${dia.iso}')">
+                    <div class="agenda-day-header">
+                        <strong>${dia.label}</strong>
+                        <span>${window.escapeHTML(dia.semana)}</span>
+                    </div>
+                    <div class="agenda-day-summary">
+                        <span class="agenda-day-count"><i class="ri-stack-line"></i> ${tarefasDia.length} demanda(s)</span>
+                        <span class="agenda-day-status-chip ${resumo.chipClass}">${window.escapeHTML(resumo.texto)}</span>
+                        ${concluidas ? `<span class="agenda-badge-concluido"><i class="ri-checkbox-circle-line"></i> ${concluidas} concluída(s)</span>` : ''}
+                        <div class="agenda-day-preview">${tarefasDia.length ? tarefasDia.slice(0,2).map(item => window.escapeHTML(item.data.titulo)).join(' • ') : 'Sem demandas'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const totalCeldas = offsetInicio + dias.length;
+        const resto = totalCeldas % 7;
+        const blanksFim = resto === 0 ? '' : Array.from({ length: 7 - resto }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        grid.classList.add('agenda-calendario-grid--mes');
+        grid.innerHTML = weekHeaders + blanksInicio + cellsDias + blanksFim;
+    };
+})();
