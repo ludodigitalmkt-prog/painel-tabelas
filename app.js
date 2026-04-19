@@ -8507,3 +8507,421 @@ window.addEventListener('DOMContentLoaded', () => {
         return true;
     };
 })();
+
+
+// ==========================================
+// CERTIFICADOS ENSINO 3.9.0 - PARTICIPAÇÃO / CONCLUSÃO
+// ==========================================
+(function() {
+    const CERT_CONFIG = {
+        empresa: 'Clínica Médica São Vicente',
+        slogan: 'Saúde Cuidado & Bem-estar',
+        cidadeUf: 'Araucária PR',
+        diretorNome: 'Dr. Emerson Aparecido Albertasse Alves',
+        diretorCargo: 'Diretor Técnico',
+        logo: './logo.png'
+    };
+    window.CERT_CONFIG = CERT_CONFIG;
+
+    const camposTreino = configuracaoAbas?.treinamentos?.campos || [];
+    [
+        'Tipo de Certificado',
+        'Carga Horária (Certificado)',
+        'Texto Personalizado do Certificado',
+        'Criado Por Email'
+    ].forEach(campo => {
+        if (!camposTreino.includes(campo)) camposTreino.push(campo);
+    });
+
+    window.getTipoCertificadoTreinamento = function(data = {}) {
+        return String(data['Tipo de Certificado'] || 'Nenhum').trim();
+    };
+
+    window.getCargaHorariaCertificado = function(data = {}) {
+        return String(data['Carga Horária (Certificado)'] || '').trim();
+    };
+
+    window.getTextoBaseCertificado = function(data = {}, tipoCert = 'participacao', nomeAluno = '') {
+        const nome = nomeAluno || 'COLABORADOR';
+        const tema = String(data['Título da Atividade'] || 'Atividade').trim();
+        const carga = window.getCargaHorariaCertificado(data);
+        const textoCustom = String(data['Texto Personalizado do Certificado'] || '').trim();
+        if (textoCustom) return textoCustom;
+        if (tipoCert === 'conclusao') {
+            return `Certificamos que ${nome} concluiu com êxito ${tema}${carga ? `, com carga horária de ${carga}` : ''}.`;
+        }
+        return `Certificamos que ${nome} participou de ${tema}${carga ? `, com carga horária de ${carga}` : ''}.`;
+    };
+
+    window.obterElegibilidadeCertificadoTreinamento = function(item = {}, nomeAluno = '') {
+        const data = item.data || {};
+        const tipoCert = window.getTipoCertificadoTreinamento(data).toLowerCase();
+        const respostas = data.respostas_alunos || [];
+        let minhaResposta = null;
+        respostas.forEach(r => { try { const obj = window.safeParseJSON(r, null); if (obj && obj.nome === nomeAluno) minhaResposta = obj; } catch(e){} });
+        const progresso = window.obterProgressoAlunoTreinamento ? window.obterProgressoAlunoTreinamento(data, nomeAluno) : null;
+        const jaLeu = (data.leituras || []).some(txt => String(txt).startsWith(nomeAluno));
+        const tipoTreino = String(data['Tipo (Vídeo, PDF, Tarefa, Prova)'] || 'Vídeo');
+        const precisaResponder = tipoTreino.includes('Tarefa') || tipoTreino.includes('Prova');
+        const temCorrecao = !!(minhaResposta && ((minhaResposta.nota !== '' && minhaResposta.nota !== undefined && minhaResposta.nota !== null) || (minhaResposta.nota_total_calculada !== '' && minhaResposta.nota_total_calculada !== undefined && minhaResposta.nota_total_calculada !== null)));
+        const submeteu = !!minhaResposta;
+        const concluiuFluxo = jaLeu || String(progresso?.status || '') === 'concluida';
+        const participacao = (tipoCert === 'participação' || tipoCert === 'participacao' || tipoCert === 'ambos')
+            && (precisaResponder ? (submeteu || concluiuFluxo) : concluiuFluxo);
+        const conclusao = (tipoCert === 'conclusão' || tipoCert === 'conclusao' || tipoCert === 'ambos')
+            && (precisaResponder ? (temCorrecao || concluiuFluxo) : concluiuFluxo);
+        return { participacao, conclusao };
+    };
+
+    const oldAbrirModalCertFields = window.abrirModal;
+    window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
+        if (typeof oldAbrirModalCertFields === 'function') oldAbrirModalCertFields(colecao, docId, dadosAntigos);
+        if (colecao !== 'treinamentos') return;
+        setTimeout(() => {
+            const tipoInput = document.getElementById('input-Tipo de Certificado');
+            if (tipoInput && tipoInput.tagName !== 'SELECT') {
+                const val = String(tipoInput.value || 'Nenhum');
+                const sel = document.createElement('select');
+                sel.id = tipoInput.id; sel.className = tipoInput.className;
+                sel.innerHTML = `
+                    <option value="Nenhum">Tipo de Certificado: Nenhum</option>
+                    <option value="Participação">Participação</option>
+                    <option value="Conclusão">Conclusão</option>
+                    <option value="Ambos">Ambos</option>
+                `;
+                sel.value = ['Nenhum','Participação','Conclusão','Ambos'].includes(val) ? val : 'Nenhum';
+                tipoInput.replaceWith(sel);
+            }
+            const cargaInput = document.getElementById('input-Carga Horária (Certificado)');
+            if (cargaInput) cargaInput.placeholder = 'Carga Horária (Ex: 4 horas)';
+            const textoInput = document.getElementById('input-Texto Personalizado do Certificado');
+            if (textoInput && textoInput.tagName !== 'TEXTAREA') {
+                const txt = document.createElement('textarea');
+                txt.id = textoInput.id; txt.className = textoInput.className;
+                txt.style.height = '90px'; txt.style.resize = 'vertical';
+                txt.placeholder = 'Texto personalizado do certificado (opcional)';
+                txt.value = textoInput.value || '';
+                textoInput.replaceWith(txt);
+            }
+            const criadoPorInput = document.getElementById('input-Criado Por Email');
+            if (criadoPorInput) {
+                criadoPorInput.value = String(dadosAntigos?.['Criado Por Email'] || emailLogado || '').trim();
+                criadoPorInput.type = 'hidden';
+                criadoPorInput.style.display = 'none';
+            }
+        }, 40);
+    };
+
+    window.garantirEstilosCertificadoTreinamento = function() {
+        if (document.getElementById('certificado-style-runtime')) return;
+        const style = document.createElement('style');
+        style.id = 'certificado-style-runtime';
+        style.textContent = `
+            .certificado-modal-grid{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}
+            .certificado-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:18px;padding:16px}
+            .certificado-preview-shell{background:#fff;border-radius:24px;border:1px solid #e2e8f0;box-shadow:0 18px 40px rgba(15,23,42,.08);overflow:hidden}
+            .certificado-doc{min-height:720px;padding:34px 42px;position:relative;background:#fff;display:flex;flex-direction:column;gap:18px}
+            .certificado-doc.tipo-participacao{border:10px solid #8B252C}
+            .certificado-doc.tipo-conclusao{border:10px solid #0f766e}
+            .certificado-top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+            .certificado-logo{max-width:210px;max-height:90px;object-fit:contain}
+            .certificado-selo{padding:10px 16px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border:2px solid currentColor}
+            .certificado-doc.tipo-participacao .certificado-selo{color:#8B252C;background:#fff5f5}
+            .certificado-doc.tipo-conclusao .certificado-selo{color:#0f766e;background:#ecfdf5}
+            .certificado-org{text-align:center}
+            .certificado-org h2{font-size:36px;line-height:1.1;margin:8px 0 0;color:#0f172a}
+            .certificado-org p{font-size:14px;color:#64748b;margin:0}
+            .certificado-title{text-align:center;font-size:20px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#334155}
+            .certificado-body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;text-align:center}
+            .certificado-body p{font-size:17px;line-height:1.7;color:#334155;margin:0}
+            .certificado-aluno{font-size:42px;font-weight:800;color:#111827;line-height:1.15}
+            .certificado-curso{font-size:21px;font-weight:700;color:#8B252C}
+            .certificado-doc.tipo-conclusao .certificado-curso{color:#0f766e}
+            .certificado-meta{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+            .certificado-meta span{background:#f8fafc;border:1px solid #e2e8f0;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;color:#334155}
+            .certificado-footer{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:end;margin-top:10px}
+            .certificado-city{font-size:13px;color:#64748b}
+            .certificado-sign{text-align:center}
+            .certificado-sign-line{height:1px;background:#1f2937;margin:0 auto 10px;max-width:260px}
+            .certificado-sign-name{font-size:16px;font-weight:700;color:#0f172a}
+            .certificado-sign-role{font-size:12px;color:#64748b}
+            .certificado-sign-mode{font-size:11px;color:#8B252C;font-weight:700;margin-top:6px}
+            .certificado-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+            .certificado-empty-note{font-size:12px;color:#64748b;background:#fff;border:1px dashed #cbd5e1;border-radius:12px;padding:12px}
+            .certificado-alert{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:14px 16px;border-radius:16px;margin-bottom:16px;font-size:13px;font-weight:600}
+            @media (max-width: 980px){.certificado-modal-grid{grid-template-columns:1fr}.certificado-doc{padding:26px 20px}.certificado-aluno{font-size:30px}.certificado-org h2{font-size:28px}.certificado-footer{grid-template-columns:1fr}}
+            @media print {.certificado-no-print{display:none !important} body *{visibility:hidden !important} #certificado-print-root, #certificado-print-root *{visibility:visible !important} #certificado-print-root{position:absolute;left:0;top:0;width:100%}}
+        `;
+        document.head.appendChild(style);
+    };
+
+    window.garantirModalCertificadoTreinamento = function() {
+        window.garantirEstilosCertificadoTreinamento();
+        if (document.getElementById('modal-certificado-treinamento')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'modal-certificado-treinamento';
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'none';
+        overlay.style.zIndex = '10020';
+        overlay.innerHTML = `
+            <div class="modal-box" style="max-width:1220px; width:96vw;">
+                <div class="modal-header certificado-no-print">
+                    <h3>Certificado</h3>
+                    <button type="button" class="btn-icon" onclick="window.fecharModalCertificadoTreinamento()"><i class="ri-close-line"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="certificado-modal-grid">
+                        <div class="certificado-panel certificado-no-print">
+                            <input type="hidden" id="cert-docid">
+                            <label class="form-label">Modelo</label>
+                            <select id="cert-tipo" class="form-input"></select>
+                            <label class="form-label">Assinatura</label>
+                            <select id="cert-assinatura" class="form-input">
+                                <option value="digital">Digital</option>
+                                <option value="manual">Manual</option>
+                            </select>
+                            <label class="form-label">Texto personalizado (opcional)</label>
+                            <textarea id="cert-texto-extra" class="form-input" style="height:110px;resize:vertical;" placeholder="Escreva uma frase complementar para este certificado."></textarea>
+                            <div id="cert-manual-note" class="certificado-empty-note" style="display:none;">No modo manual, o certificado não imprime na hora. O sistema envia uma solicitação para assinatura física ao responsável do material.</div>
+                            <div class="certificado-actions">
+                                <button type="button" class="btn-hover color-9" onclick="window.atualizarPreviewCertificadoTreinamento()"><i class="ri-eye-line"></i> Atualizar prévia</button>
+                                <button type="button" id="btn-print-certificado" class="btn-hover color-5" onclick="window.imprimirCertificadoTreinamento()"><i class="ri-printer-line"></i> Imprimir / PDF</button>
+                                <button type="button" id="btn-manual-certificado" class="btn-hover color-11" onclick="window.solicitarAssinaturaManualCertificado()" style="display:none;"><i class="ri-notification-2-line"></i> Solicitar assinatura manual</button>
+                            </div>
+                        </div>
+                        <div id="certificado-print-root" class="certificado-preview-shell"></div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        document.getElementById('cert-assinatura').addEventListener('change', () => {
+            const manual = document.getElementById('cert-assinatura').value === 'manual';
+            document.getElementById('cert-manual-note').style.display = manual ? 'block' : 'none';
+            document.getElementById('btn-print-certificado').style.display = manual ? 'none' : 'inline-flex';
+            document.getElementById('btn-manual-certificado').style.display = manual ? 'inline-flex' : 'none';
+            window.atualizarPreviewCertificadoTreinamento();
+        });
+        document.getElementById('cert-tipo').addEventListener('change', window.atualizarPreviewCertificadoTreinamento);
+        document.getElementById('cert-texto-extra').addEventListener('input', window.atualizarPreviewCertificadoTreinamento);
+    };
+
+    window.fecharModalCertificadoTreinamento = function() {
+        const modal = document.getElementById('modal-certificado-treinamento');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.abrirModalCertificadoTreinamento = function(docId = '', tipoPreferido = '') {
+        if (!window.alunoLogado) return;
+        const item = (window.todosTreinamentosData || []).find(t => t.id === docId);
+        if (!item) return;
+        const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
+        const eleg = window.obterElegibilidadeCertificadoTreinamento(item, nomeAluno);
+        const opcoes = [];
+        if (eleg.participacao) opcoes.push({ value: 'participacao', label: 'Certificado de Participação' });
+        if (eleg.conclusao) opcoes.push({ value: 'conclusao', label: 'Certificado de Conclusão' });
+        if (!opcoes.length) {
+            alert('Este certificado ainda não está disponível para a sua situação atual.');
+            return;
+        }
+        window.garantirModalCertificadoTreinamento();
+        const select = document.getElementById('cert-tipo');
+        const texto = document.getElementById('cert-texto-extra');
+        document.getElementById('cert-docid').value = docId;
+        select.innerHTML = opcoes.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+        const prefer = opcoes.find(o => o.value === tipoPreferido)?.value || opcoes[0].value;
+        select.value = prefer;
+        texto.value = String(item.data['Texto Personalizado do Certificado'] || '').trim();
+        document.getElementById('cert-assinatura').value = 'digital';
+        document.getElementById('cert-manual-note').style.display = 'none';
+        document.getElementById('btn-print-certificado').style.display = 'inline-flex';
+        document.getElementById('btn-manual-certificado').style.display = 'none';
+        window.atualizarPreviewCertificadoTreinamento();
+        document.getElementById('modal-certificado-treinamento').style.display = 'flex';
+    };
+
+    window.gerarHTMLCertificadoTreinamento = function(item = {}, opts = {}) {
+        const data = item.data || {};
+        const nomeAluno = opts.nomeAluno || 'COLABORADOR';
+        const tipo = opts.tipo || 'participacao';
+        const assinaturaModo = opts.assinatura || 'digital';
+        const tema = String(data['Título da Atividade'] || 'Atividade').trim();
+        const carga = window.getCargaHorariaCertificado(data);
+        const textoExtra = String(opts.textoExtra || '').trim();
+        const textoBase = textoExtra || window.getTextoBaseCertificado(data, tipo, nomeAluno);
+        const dataEmissao = new Date().toLocaleDateString('pt-BR');
+        const selo = tipo === 'conclusao' ? 'Certificado de Conclusão' : 'Certificado de Participação';
+        const classeTipo = tipo === 'conclusao' ? 'tipo-conclusao' : 'tipo-participacao';
+        const assinaturaLabel = assinaturaModo === 'manual' ? 'Aguardando assinatura manual' : 'Assinado digitalmente';
+        return `
+            <div class="certificado-doc ${classeTipo}">
+                <div class="certificado-top">
+                    <img src="${window.escapeAttr(CERT_CONFIG.logo)}" alt="Logo" class="certificado-logo" onerror="this.style.display='none'">
+                    <div class="certificado-selo">${window.escapeHTML(selo)}</div>
+                </div>
+                <div class="certificado-org">
+                    <p>${window.escapeHTML(CERT_CONFIG.empresa)}</p>
+                    <h2>${window.escapeHTML(selo)}</h2>
+                    <p>${window.escapeHTML(CERT_CONFIG.slogan)}</p>
+                </div>
+                <div class="certificado-body">
+                    <div class="certificado-title">Certificamos que</div>
+                    <div class="certificado-aluno">${window.escapeHTML(nomeAluno)}</div>
+                    <p>${window.escapeHTML(textoBase)}</p>
+                    <div class="certificado-curso">${window.escapeHTML(tema)}</div>
+                    <div class="certificado-meta">
+                        ${carga ? `<span><i class="ri-time-line"></i> ${window.escapeHTML(carga)}</span>` : ''}
+                        <span><i class="ri-calendar-check-line"></i> ${window.escapeHTML(dataEmissao)}</span>
+                        <span><i class="ri-map-pin-line"></i> ${window.escapeHTML(CERT_CONFIG.cidadeUf)}</span>
+                    </div>
+                </div>
+                <div class="certificado-footer">
+                    <div class="certificado-city">${window.escapeHTML(CERT_CONFIG.cidadeUf)}, ${window.escapeHTML(dataEmissao)}</div>
+                    <div class="certificado-sign">
+                        <div class="certificado-sign-line"></div>
+                        <div class="certificado-sign-name">${window.escapeHTML(CERT_CONFIG.diretorNome)}</div>
+                        <div class="certificado-sign-role">${window.escapeHTML(CERT_CONFIG.diretorCargo)}</div>
+                        <div class="certificado-sign-mode">${window.escapeHTML(assinaturaLabel)}</div>
+                    </div>
+                </div>
+            </div>`;
+    };
+
+    window.atualizarPreviewCertificadoTreinamento = function() {
+        const docId = document.getElementById('cert-docid')?.value || '';
+        const item = (window.todosTreinamentosData || []).find(t => t.id === docId);
+        if (!item || !window.alunoLogado) return;
+        const html = window.gerarHTMLCertificadoTreinamento(item, {
+            nomeAluno: window.alunoLogado['Nome Completo do Colaborador'],
+            tipo: document.getElementById('cert-tipo')?.value || 'participacao',
+            assinatura: document.getElementById('cert-assinatura')?.value || 'digital',
+            textoExtra: document.getElementById('cert-texto-extra')?.value || ''
+        });
+        const root = document.getElementById('certificado-print-root');
+        if (root) root.innerHTML = html;
+    };
+
+    window.imprimirCertificadoTreinamento = function() {
+        const root = document.getElementById('certificado-print-root');
+        if (!root) return;
+        const w = window.open('', '_blank', 'width=1100,height=860');
+        if (!w) { alert('Permita pop-ups para imprimir o certificado.'); return; }
+        w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Certificado</title><style>${document.getElementById('certificado-style-runtime')?.innerHTML || ''} body{margin:0;padding:20px;background:#f1f5f9;} .certificado-doc{min-height:auto}</style></head><body>${root.innerHTML}<script>window.onload=function(){window.print();};<\/script></body></html>`);
+        w.document.close();
+    };
+
+    window.solicitarAssinaturaManualCertificado = async function() {
+        const docId = document.getElementById('cert-docid')?.value || '';
+        const tipo = document.getElementById('cert-tipo')?.value || 'participacao';
+        const item = (window.todosTreinamentosData || []).find(t => t.id === docId);
+        if (!item || !window.alunoLogado) return;
+        const solicitacao = JSON.stringify({
+            aluno: window.alunoLogado['Nome Completo do Colaborador'],
+            tipo,
+            assinatura: 'manual',
+            em: new Date().toISOString(),
+            status: 'pendente'
+        });
+        try {
+            await window.updateDoc(window.doc(window.db, 'treinamentos', docId), {
+                solicitacoes_certificado: window.arrayUnion(solicitacao)
+            });
+            alert('Solicitação enviada para impressão e assinatura manual.');
+            window.fecharModalCertificadoTreinamento();
+        } catch (e) {
+            alert('Erro ao solicitar assinatura manual: ' + e.message);
+        }
+    };
+
+    window.getSolicitacoesCertificadoPendentes = function() {
+        if (!isAdmin) return [];
+        const email = String(emailLogado || '').trim().toLowerCase();
+        const itens = [];
+        (window.todosTreinamentosData || []).forEach(item => {
+            const criadoPor = String(item.data['Criado Por Email'] || '').trim().toLowerCase();
+            if (criadoPor && criadoPor !== email) return;
+            (item.data.solicitacoes_certificado || []).forEach(raw => {
+                const obj = window.safeParseJSON(raw, null);
+                if (obj && String(obj.status || 'pendente') === 'pendente') {
+                    itens.push({ docId: item.id, titulo: item.data['Título da Atividade'] || 'Treinamento', ...obj });
+                }
+            });
+        });
+        return itens;
+    };
+
+    window.renderizarAlertasCertificadosPendentes = function() {
+        if (!isAdmin) return;
+        const itens = window.getSolicitacoesCertificadoPendentes();
+        const html = itens.length
+            ? `<div class="certificado-alert"><i class="ri-notification-3-line"></i> Você tem <strong>${itens.length}</strong> solicitação(ões) de certificado manual pendente(s).</div>`
+            : '';
+        ['tab-home', 'tab-treinamentos'].forEach(id => {
+            const host = document.getElementById(id);
+            if (!host) return;
+            let box = host.querySelector('.certificado-alert-host');
+            if (!box) {
+                box = document.createElement('div');
+                box.className = 'certificado-alert-host';
+                host.insertBefore(box, host.firstChild.nextSibling || host.firstChild);
+            }
+            box.innerHTML = html;
+        });
+        if (itens.length && !window._alertaCertificadoJaMostrado) {
+            window._alertaCertificadoJaMostrado = true;
+            setTimeout(() => alert(`Há ${itens.length} solicitação(ões) de certificado manual pendente(s).`), 500);
+        }
+    };
+
+    const oldProcessarSnapshotCert = window._processarSnapshotColecao;
+    if (typeof oldProcessarSnapshotCert === 'function') {
+        window._processarSnapshotColecao = function(colecaoNome, snapshot) {
+            oldProcessarSnapshotCert(colecaoNome, snapshot);
+            if (colecaoNome === 'treinamentos') setTimeout(window.renderizarAlertasCertificadosPendentes, 50);
+        };
+    }
+
+    const oldRenderizarTrilhaAlunoCert = window.renderizarTrilhaAluno;
+    window.renderizarTrilhaAluno = function() {
+        if (typeof oldRenderizarTrilhaAlunoCert === 'function') oldRenderizarTrilhaAlunoCert();
+        if (!window.alunoLogado) return;
+        const grid = document.getElementById('grid-trilha-aluno');
+        if (!grid) return;
+        const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
+        const setorAluno = window.alunoLogado['Setor da Clínica'] || 'Geral';
+        const treinamentosAluno = window.todosTreinamentosData.filter(item => {
+            const setorAlvo = String(item.data['Para quais Setores?'] || 'Geral');
+            const colabAlvo = String(item.data['Colaborador Específico (Opcional)'] || '');
+            if (colabAlvo && !colabAlvo.includes('Nenhum')) return colabAlvo === nomeAluno;
+            return setorAlvo.includes('Geral') || setorAlvo.includes(setorAluno);
+        });
+        Array.from(grid.children).forEach((card, idx) => {
+            const item = treinamentosAluno[idx];
+            if (!item || card.querySelector('.certificado-btn-wrap')) return;
+            const eleg = window.obterElegibilidadeCertificadoTreinamento(item, nomeAluno);
+            const botoes = [];
+            if (eleg.participacao) botoes.push(`<button onclick="window.abrirModalCertificadoTreinamento('${item.id}','participacao')" class="btn-hover color-8" style="width:100%;height:34px;border-radius:8px;font-size:12px;margin-top:8px;"><i class="ri-award-line"></i> Certificado de participação</button>`);
+            if (eleg.conclusao) botoes.push(`<button onclick="window.abrirModalCertificadoTreinamento('${item.id}','conclusao')" class="btn-hover color-5" style="width:100%;height:34px;border-radius:8px;font-size:12px;margin-top:8px;"><i class="ri-medal-line"></i> Certificado de conclusão</button>`);
+            if (botoes.length) {
+                const wrap = document.createElement('div');
+                wrap.className = 'certificado-btn-wrap';
+                wrap.innerHTML = botoes.join('');
+                card.appendChild(wrap);
+            }
+        });
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            if (isAdmin && typeof window.renderizarCards === 'function') {
+                window.renderizarCards('treinamentos', { force: true });
+            }
+            window.garantirModalCertificadoTreinamento();
+        }, 400);
+    });
+
+    onAuthStateChanged(auth, (user) => {
+        if (user && String(user.email || '').includes('@clinica') && typeof window.renderizarCards === 'function') {
+            setTimeout(() => window.renderizarCards('treinamentos', { force: true }), 300);
+        }
+    });
+})();
