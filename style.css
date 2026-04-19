@@ -477,3 +477,5 @@ body.is-auth-loading { cursor: progress; }
 
 /* certificados ensino */
 .certificado-alert-host{margin-bottom:16px}
+
+#painel-cursos-internos{margin-bottom:18px;}
