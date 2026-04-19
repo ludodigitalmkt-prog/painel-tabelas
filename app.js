@@ -6856,3 +6856,217 @@ window.addEventListener('DOMContentLoaded', () => {
         `;
     };
 })();
+
+
+// ==========================================
+// AGENDA 3.6.2.1 - RESPONSÁVEL COMPACTO NO CARD
+// ==========================================
+(function() {
+    window.aplicarEstiloResponsavelCompactoAgenda = function() {
+        if (document.getElementById('agenda-style-3621')) return;
+        const style = document.createElement('style');
+        style.id = 'agenda-style-3621';
+        style.textContent = `
+            .agenda-task-responsavel-mini {
+                margin-top:2px;
+                font-size:10px;
+                font-weight:700;
+                color:#64748b;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                max-width:100%;
+            }
+        `;
+        document.head.appendChild(style);
+    };
+
+    window.gerarCardAgendaTarefa = function(item = {}, opts = {}) {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        window.aplicarEstiloResponsavelCompactoAgenda();
+
+        const data = window.normalizarAgendaData(item.data || {});
+        const podeEditar = opts.podeEditar !== false;
+        const visualUrl = data.link || data.iframeUrl || '';
+        const extraordinaria = !!data.destaqueEspecial;
+        const statusVisual = window.getAgendaStatusVisual(data.status);
+        const collapseId = `agenda-collapse-${item.id}`;
+        const dataExibicao = window.getAgendaDataExibicao(data);
+        const dataFormatada = window.formatarDataAgenda(dataExibicao);
+        const prazo = window.getAgendaPrazoInfo(data);
+
+        return `
+            <div class="agenda-task-card ${extraordinaria ? 'agenda-task-card--extraordinaria' : ''} ${statusVisual.tone}" draggable="true" data-task-id="${item.id}">
+                <div class="agenda-task-header" onclick="window.toggleAgendaCard('${collapseId}')">
+                    <div class="agenda-task-header-main">
+                        <h5>${extraordinaria ? '<span class="agenda-raio"><i class="ri-flashlight-fill"></i></span>' : ''}${window.escapeHTML(data.titulo || 'Demanda')}</h5>
+                        <div class="agenda-task-header-date">${dataFormatada || 'Sem data definida'}${data.horario ? ` • ${window.escapeHTML(data.horario)}` : ''}</div>
+                        ${data.responsavel ? `<div class="agenda-task-responsavel-mini">Resp.: ${window.escapeHTML(data.responsavel)}</div>` : ''}
+                    </div>
+                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                        ${podeEditar ? `
+                            <div class="agenda-task-actions" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-action btn-edit" style="width:28px; height:28px; font-size:14px;" onclick="window.abrirModalAgendaTrabalho('${item.id}')" title="Editar demanda">
+                                    <i class="ri-pencil-line"></i>
+                                </button>
+                                <button type="button" class="btn-action btn-delete" style="width:28px; height:28px; font-size:14px;" onclick="window.excluirAgendaTrabalho('${item.id}')" title="Excluir demanda">
+                                    <i class="ri-delete-bin-6-line"></i>
+                                </button>
+                            </div>` : ''}
+                        <i class="ri-arrow-down-s-line agenda-task-chevron"></i>
+                    </div>
+                </div>
+                <div id="${collapseId}" class="agenda-task-body-collapsible">
+                    <p>${window.escapeHTML(data.descricao || 'Sem descrição.')}</p>
+                    ${data.temaEspecial ? `<p><strong>Tema:</strong> ${window.escapeHTML(data.temaEspecial)}</p>` : ''}
+                    <p><strong>Responsável:</strong> ${window.escapeHTML(data.responsavel || 'Não definido')}</p>
+                    <div class="agenda-task-meta">
+                        ${extraordinaria ? `<span class="agenda-mini-badge agenda-mini-badge-extraordinaria"><i class="ri-flashlight-fill"></i> Extraordinária</span>` : ''}
+                        <span class="agenda-mini-badge ${window.agendaCorUrgenciaClass(data.urgencia)}">${window.escapeHTML(data.urgencia)}</span>
+                        <span class="agenda-mini-badge">${window.escapeHTML(data.status)}</span>
+                        <span class="agenda-mini-badge">${window.escapeHTML(data.visibilidade)}</span>
+                        ${dataFormatada ? `<span class="agenda-mini-badge agenda-mini-badge-data"><i class="ri-calendar-line"></i> ${window.escapeHTML(dataFormatada)}</span>` : ''}
+                        ${data.horario ? `<span class="agenda-mini-badge agenda-mini-badge-horario"><i class="ri-time-line"></i> ${window.escapeHTML(data.horario)}</span>` : ''}
+                    </div>
+                    ${prazo ? `<div style="margin-top:10px;"><span class="agenda-prazo-chip ${prazo.tone}"><i class="ri-alarm-warning-line"></i> ${window.escapeHTML(prazo.texto)}</span></div>` : ''}
+                    ${visualUrl ? `<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        <button class="btn-hover color-9" style="height:30px; font-size:11px; padding:0 12px;" type="button" onclick="event.stopPropagation(); window.abrirPreviewAgenda('${window.escapeAttr(visualUrl)}','${window.escapeAttr(data.titulo)}')"><i class="ri-layout-window-line"></i> Visualizar</button>
+                    </div>` : ''}
+                </div>
+            </div>
+        `;
+    };
+})();
+
+
+// ==========================================
+// AGENDA 3.6.4 - COR POR DIA + BOARD DO DIA
+// ==========================================
+(function() {
+    window.aplicarEstilosResumoDiaAgenda = function() {
+        if (document.getElementById('agenda-style-364')) return;
+        const style = document.createElement('style');
+        style.id = 'agenda-style-364';
+        style.textContent = `
+            .agenda-day-column.day-complete {
+                background:#f0fdf4;
+                border-color:#86efac;
+            }
+            .agenda-day-column.day-pending {
+                background:#fef2f2;
+                border-color:#fca5a5;
+            }
+            .agenda-day-column.day-neutral {
+                background:#f8fafc;
+            }
+            .agenda-day-status-chip {
+                display:inline-flex;
+                align-items:center;
+                gap:6px;
+                width:max-content;
+                padding:5px 9px;
+                border-radius:999px;
+                font-size:11px;
+                font-weight:800;
+            }
+            .agenda-day-status-chip.is-success {
+                background:#dcfce7;
+                color:#166534;
+            }
+            .agenda-day-status-chip.is-danger {
+                background:#fee2e2;
+                color:#b91c1c;
+            }
+            .agenda-day-status-chip.is-neutral {
+                background:#e2e8f0;
+                color:#475569;
+            }
+        `;
+        document.head.appendChild(style);
+    };
+
+    window.getResumoStatusDiaAgenda = function(tarefasDia = []) {
+        if (!tarefasDia.length) {
+            return { cardClass: 'day-neutral', chipClass: 'is-neutral', texto: 'Sem demandas' };
+        }
+        const todasConcluidas = tarefasDia.every(item => window.agendaStatusConclusivos.includes(item.data.status));
+        if (todasConcluidas) {
+            return { cardClass: 'day-complete', chipClass: 'is-success', texto: 'Tudo concluído' };
+        }
+        return { cardClass: 'day-pending', chipClass: 'is-danger', texto: 'Há pendências' };
+    };
+
+    window.renderizarAgendaCalendario = function() {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        window.aplicarEstilosResumoDiaAgenda();
+        const grid = document.getElementById('agenda-calendario-grid');
+        if (!grid) return;
+        const mes = window.obterAgendaMesSelecionado();
+        const dias = window.gerarDiasDoMesAgenda(mes);
+        const [ano, mesNum] = mes.split('-').map(Number);
+        const primeiroDia = new Date(ano, mesNum - 1, 1);
+        const offsetInicio = (primeiroDia.getDay() + 6) % 7;
+        const tarefas = (window.todosAgendaTrabalho || []).filter(item => {
+            const datas = window.getAgendaDatasExecucao(item.data);
+            return datas.some(dt => dt.startsWith(mes));
+        });
+
+        const weekHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+            .map(label => `<div class="agenda-weekday-head">${label}</div>`).join('');
+
+        const blanksInicio = Array.from({ length: offsetInicio }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        const cellsDias = dias.map(dia => {
+            const tarefasDia = tarefas.filter(item => window.getAgendaDatasExecucao(item.data).includes(dia.iso));
+            const concluidas = tarefasDia.filter(item => window.agendaStatusConclusivos.includes(item.data.status)).length;
+            const resumo = window.getResumoStatusDiaAgenda(tarefasDia);
+
+            return `
+                <div class="agenda-day-column clickable-day ${resumo.cardClass}" data-date="${dia.iso}" onclick="window.abrirDiaAgenda('${dia.iso}')">
+                    <div class="agenda-day-header">
+                        <strong>${dia.label}</strong>
+                        <span>${window.escapeHTML(dia.semana)}</span>
+                    </div>
+                    <div class="agenda-day-summary">
+                        <span class="agenda-day-count"><i class="ri-stack-line"></i> ${tarefasDia.length} demanda(s)</span>
+                        <span class="agenda-day-status-chip ${resumo.chipClass}">${window.escapeHTML(resumo.texto)}</span>
+                        ${concluidas ? `<span class="agenda-badge-concluido"><i class="ri-checkbox-circle-line"></i> ${concluidas} concluída(s)</span>` : ''}
+                        <div class="agenda-day-preview">${tarefasDia.length ? tarefasDia.slice(0,2).map(item => window.escapeHTML(item.data.titulo)).join(' • ') : 'Sem demandas'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const totalCeldas = offsetInicio + dias.length;
+        const resto = totalCeldas % 7;
+        const blanksFim = resto === 0 ? '' : Array.from({ length: 7 - resto }).map(() => `<div class="agenda-day-column agenda-day-column--blank"></div>`).join('');
+
+        grid.classList.add('agenda-calendario-grid--mes');
+        grid.innerHTML = weekHeaders + blanksInicio + cellsDias + blanksFim;
+    };
+
+    window.renderizarAgendaBoard = function() {
+        window.aplicarEstilosAgendaAvancados();
+        window.aplicarEstilosAgendaConferencia();
+        const grid = document.getElementById('agenda-board-grid');
+        if (!grid) return;
+
+        const dataRef = window.getAgendaDataFiltroExato() || new Date().toISOString().slice(0,10);
+        const tarefas = (window.todosAgendaTrabalho || [])
+            .filter(item => window.getAgendaDatasExecucao(item.data).includes(dataRef))
+            .sort((a, b) => String(a.data.horario || '').localeCompare(String(b.data.horario || '')));
+
+        grid.innerHTML = window.agendaStatusColunas.map(status => {
+            const col = tarefas.filter(item => item.data.status === status);
+            return `
+                <div class="agenda-board-column" data-status="${window.escapeAttr(status)}">
+                    <h4>${window.escapeHTML(status)} <span style="color:#94a3b8;">(${col.length})</span></h4>
+                    ${col.map(item => window.gerarCardAgendaTarefa(item)).join('') || '<p style="font-size:12px; color:#94a3b8;">Sem itens</p>'}
+                </div>
+            `;
+        }).join('');
+        window.aplicarDnDAgenda();
+    };
+})();
