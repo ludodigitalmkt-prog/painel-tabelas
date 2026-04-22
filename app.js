@@ -9303,3 +9303,894 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     };
 })();
+
+
+// ==========================================
+// CURSO SEQUENCIAL 4.0.0 - TRILHA OBRIGATÓRIA COM ETAPAS, PERGUNTA E CERTIFICADO
+// ==========================================
+(function() {
+    const COURSE_TYPE = 'Curso Sequencial';
+    const COURSE_FIELD = 'Configuração do Curso';
+    const COURSE_DESC_FIELD = 'Descrição do Curso';
+    const COURSE_NOTE_FIELD = 'Nota Mínima para Certificado';
+    const COURSE_CERT_TEXT_FIELD = 'Texto Personalizado do Certificado';
+    const COURSE_PROGRESS_KEY = 'curso_sequencial';
+
+    window.isCursoSequencialTreinamento = function(data = {}) {
+        return String(data?.['Tipo (Vídeo, PDF, Tarefa, Prova)'] || '').trim() === COURSE_TYPE || !!String(data?.[COURSE_FIELD] || '').trim();
+    };
+
+    window.normalizarEtapaCurso = function(step = {}, idx = 0) {
+        const tipoRaw = String(step.tipoConteudo || step.tipo || 'video').trim().toLowerCase();
+        const tipoConteudo = ['video', 'documento', 'texto'].includes(tipoRaw) ? tipoRaw : 'video';
+        const ops = Array.isArray(step.opcoes) ? step.opcoes : (Array.isArray(step.ops) ? step.ops : ['', '', '', '']);
+        const opcoes = [0, 1, 2, 3].map(i => String(ops[i] || '').trim());
+        return {
+            id: step.id || `etapa_${idx + 1}`,
+            titulo: String(step.titulo || step.nome || `Etapa ${idx + 1}`).trim(),
+            tipoConteudo,
+            link: String(step.link || step.url || '').trim(),
+            texto: String(step.texto || step.conteudo || '').trim(),
+            pergunta: String(step.pergunta || '').trim(),
+            opcoes,
+            correta: String(step.correta !== undefined ? step.correta : '0'),
+            tempoMinimoSegundos: Math.max(5, parseInt(step.tempoMinimoSegundos || step.tempoMinimo || (tipoConteudo === 'video' ? 30 : 20), 10) || (tipoConteudo === 'video' ? 30 : 20)),
+            exigirVisualizacaoCompleta: step.exigirVisualizacaoCompleta !== false,
+            observacao: String(step.observacao || '').trim()
+        };
+    };
+
+    window.lerConfiguracaoCursoSequencial = function(raw = '[]') {
+        const decodificado = window.decodificarConfigAvaliacao ? window.decodificarConfigAvaliacao(raw) : String(raw || '[]');
+        const arr = window.safeParseJSON(decodificado, []);
+        return Array.isArray(arr) ? arr.map((step, idx) => window.normalizarEtapaCurso(step, idx)).filter(step => step.titulo) : [];
+    };
+
+    window.criarEtapaCursoPadrao = function(idx = 0) {
+        return window.normalizarEtapaCurso({
+            titulo: `Etapa ${idx + 1}`,
+            tipoConteudo: 'video',
+            pergunta: '',
+            opcoes: ['', '', '', ''],
+            correta: '0',
+            tempoMinimoSegundos: 30,
+            exigirVisualizacaoCompleta: true
+        }, idx);
+    };
+
+    window.obterProgressoCursoSequencial = function(item = {}, nomeAluno = '') {
+        const base = window.obterProgressoAlunoTreinamento ? (window.obterProgressoAlunoTreinamento(item.data || item || {}, nomeAluno) || {}) : {};
+        const curso = base?.[COURSE_PROGRESS_KEY] || {};
+        const steps = window.lerConfiguracaoCursoSequencial(item?.data?.[COURSE_FIELD] || item?.[COURSE_FIELD] || '[]');
+        const total = steps.length;
+        const concluidas = Array.isArray(curso.etapasConcluidas) ? curso.etapasConcluidas.map(n => parseInt(n, 10)).filter(Number.isFinite) : [];
+        const respostas = Array.isArray(curso.respostas) ? curso.respostas : [];
+        const acertos = parseInt(curso.acertos || 0, 10) || 0;
+        const notaFinal = Number.isFinite(parseFloat(curso.notaFinal)) ? parseFloat(curso.notaFinal) : (total ? Number(((acertos / total) * 10).toFixed(2)) : 0);
+        const etapaAtual = Number.isFinite(parseInt(curso.etapaAtual, 10)) ? parseInt(curso.etapaAtual, 10) : 0;
+        return {
+            etapaAtual: Math.min(Math.max(0, etapaAtual), Math.max(total - 1, 0)),
+            etapasConcluidas: concluidas,
+            respostas,
+            acertos,
+            total,
+            notaFinal,
+            percentual: total ? Math.round((concluidas.length / total) * 100) : 0,
+            finalizado: !!curso.finalizado,
+            liberouCertificado: !!curso.liberouCertificado,
+            ultimoAcessoEm: curso.ultimoAcessoEm || '',
+            resumo: curso.resumo || ''
+        };
+    };
+
+    window.salvarProgressoCursoSequencial = async function(docId = '', nomeAluno = '', patchCurso = {}) {
+        const item = (window.todosTreinamentosData || []).find(i => i.id === docId);
+        if (!item || !nomeAluno) return null;
+        const atual = window.obterProgressoCursoSequencial(item, nomeAluno);
+        const merged = {
+            ...atual,
+            ...patchCurso,
+            ultimoAcessoEm: new Date().toLocaleString('pt-BR')
+        };
+        if (!Array.isArray(merged.etapasConcluidas)) merged.etapasConcluidas = [];
+        if (!Array.isArray(merged.respostas)) merged.respostas = [];
+        merged.etapasConcluidas = Array.from(new Set(merged.etapasConcluidas.map(n => parseInt(n, 10)).filter(Number.isFinite))).sort((a, b) => a - b);
+        merged.acertos = parseInt(merged.acertos || 0, 10) || 0;
+        merged.total = parseInt(merged.total || item?.data?.totalEtapas || 0, 10) || merged.total || 0;
+        if (merged.total > 0 && (patchCurso.notaFinal === undefined || patchCurso.notaFinal === null || patchCurso.notaFinal === '')) {
+            merged.notaFinal = Number(((merged.acertos / merged.total) * 10).toFixed(2));
+        }
+        const status = merged.finalizado ? 'concluida' : (merged.etapasConcluidas.length ? 'em_andamento' : 'pendente');
+        return window.salvarProgressoTreinamento(docId, nomeAluno, {
+            status,
+            [COURSE_PROGRESS_KEY]: merged
+        });
+    };
+
+    window.removerEntradaArrayStringPorNome = async function(docId = '', campo = '', nome = '') {
+        const item = (window.todosTreinamentosData || []).find(i => i.id === docId);
+        if (!item) return;
+        const lista = Array.isArray(item.data?.[campo]) ? item.data[campo] : [];
+        const antigo = lista.find(raw => {
+            const obj = window.safeParseJSON(raw, null);
+            if (obj && obj.nome) return String(obj.nome) === String(nome);
+            return String(raw || '').startsWith(String(nome));
+        });
+        if (antigo) {
+            await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { [campo]: window.arrayRemove(antigo) });
+            item.data[campo] = (item.data[campo] || []).filter(v => v !== antigo);
+        }
+    };
+
+    window.upsertResumoCursoSequencial = async function(docId = '', item = null, nomeAluno = '', progresso = null) {
+        const cursoItem = item || (window.todosTreinamentosData || []).find(i => i.id === docId);
+        if (!cursoItem || !nomeAluno || !progresso?.finalizado) return;
+        const steps = window.lerConfiguracaoCursoSequencial(cursoItem.data?.[COURSE_FIELD] || '[]');
+        const total = steps.length || progresso.total || 0;
+        const resumoObj = {
+            nome: nomeAluno,
+            data: new Date().toLocaleString('pt-BR'),
+            curso_sequencial: true,
+            etapa_atual: progresso.etapaAtual,
+            etapas_concluidas: progresso.etapasConcluidas.length,
+            total_etapas: total,
+            acertos: progresso.acertos,
+            nota: progresso.notaFinal,
+            nota_total_calculada: progresso.notaFinal,
+            feedback: progresso.liberouCertificado ? 'Curso concluído com aproveitamento.' : 'Curso concluído. Nota abaixo da mínima para certificado.',
+            respostas: progresso.respostas || []
+        };
+        await window.removerEntradaArrayStringPorNome(docId, 'respostas_alunos', nomeAluno);
+        await window.updateDoc(window.doc(window.db, 'treinamentos', docId), {
+            respostas_alunos: window.arrayUnion(JSON.stringify(resumoObj))
+        });
+        cursoItem.data.respostas_alunos = [...(cursoItem.data.respostas_alunos || []).filter(raw => {
+            const obj = window.safeParseJSON(raw, null);
+            return !(obj && String(obj.nome || '') === String(nomeAluno));
+        }), JSON.stringify(resumoObj)];
+
+        const registroLeitura = `${nomeAluno} (Curso concluído em: ${new Date().toLocaleString('pt-BR')})`;
+        const leituras = Array.isArray(cursoItem.data.leituras) ? cursoItem.data.leituras : [];
+        const antigoRegistro = leituras.find(txt => String(txt || '').startsWith(`${nomeAluno} (`));
+        if (antigoRegistro) {
+            await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { leituras: window.arrayRemove(antigoRegistro) });
+            cursoItem.data.leituras = cursoItem.data.leituras.filter(txt => txt !== antigoRegistro);
+        }
+        await window.updateDoc(window.doc(window.db, 'treinamentos', docId), { leituras: window.arrayUnion(registroLeitura) });
+        cursoItem.data.leituras = [...(cursoItem.data.leituras || []), registroLeitura];
+    };
+
+    window.garantirBotoesCursoSequencialAdmin = function() {
+        const areas = [
+            ...document.querySelectorAll('#tab-treinamentos .flex-gap-10'),
+            ...document.querySelectorAll('#tab-treinamentos .flex-between')
+        ];
+        areas.forEach(area => {
+            if (!area || area.querySelector('.btn-cadastrar-curso-sequencial')) return;
+            const alvo = area.classList.contains('flex-gap-10') ? area : area.querySelector('.admin-only')?.parentElement;
+            const destino = alvo || area.querySelector('.flex-gap-10') || area;
+            if (!destino || destino.querySelector('.btn-cadastrar-curso-sequencial')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-hover color-5 admin-only btn-cadastrar-curso-sequencial';
+            btn.style.display = isAdmin ? 'inline-flex' : 'none';
+            btn.innerHTML = '<i class="ri-graduation-cap-fill"></i> Cadastrar Curso';
+            btn.onclick = () => window.abrirModalCursoSequencial();
+            destino.prepend(btn);
+        });
+    };
+
+    window.garantirModalCursoSequencial = function() {
+        if (document.getElementById('modal-curso-sequencial')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'modal-curso-sequencial';
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'none';
+        overlay.style.zIndex = '10030';
+        overlay.innerHTML = `
+            <div class="modal-box" style="max-width:1180px; width:96vw; max-height:94vh;">
+                <div class="modal-header">
+                    <h3 id="curso-sequencial-title">Cadastrar Curso Sequencial</h3>
+                    <button type="button" class="btn-icon" onclick="window.fecharModalCursoSequencial()"><i class="ri-close-line"></i></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="curso-seq-doc-id">
+                    <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px;">
+                        <input id="curso-seq-titulo" class="form-input" placeholder="Título do curso">
+                        <input id="curso-seq-pasta" class="form-input" placeholder="Pasta / módulo">
+                        <input id="curso-seq-carga" class="form-input" placeholder="Carga horária (certificado)">
+                    </div>
+                    <textarea id="curso-seq-descricao" class="form-input" style="height:86px; resize:vertical;" placeholder="Descrição / objetivo do curso"></textarea>
+                    <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px;">
+                        <input id="curso-seq-pontos" class="form-input" type="number" min="0" step="1" placeholder="XP total do curso">
+                        <input id="curso-seq-nota-minima" class="form-input" type="number" min="0" max="10" step="0.5" placeholder="Nota mínima para certificado">
+                        <select id="curso-seq-certificado" class="form-input">
+                            <option value="Nenhum">Certificado: nenhum</option>
+                            <option value="Participação">Certificado de participação</option>
+                            <option value="Conclusão">Certificado de conclusão</option>
+                            <option value="Ambos">Ambos</option>
+                        </select>
+                        <select id="curso-seq-colaborador" class="form-input"></select>
+                    </div>
+                    <textarea id="curso-seq-texto-cert" class="form-input" style="height:70px; resize:vertical;" placeholder="Texto personalizado do certificado (opcional)"></textarea>
+                    <label style="font-size:12px; font-weight:600; display:block; margin-bottom:8px;">Para quais setores?</label>
+                    <div id="curso-seq-setores" style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:14px; padding:12px; margin-bottom:14px;"></div>
+                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; margin:14px 0 10px; flex-wrap:wrap;">
+                        <div style="font-size:13px; color:#475569;"><strong style="color:#8B252C;">Etapas do curso:</strong> cada etapa contém material + pergunta objetiva.</div>
+                        <button type="button" class="btn-hover color-9" onclick="window.adicionarEtapaCursoBuilder()"><i class="ri-add-line"></i> Adicionar etapa</button>
+                    </div>
+                    <div id="curso-seq-builder-list"></div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                    <button type="button" class="btn-hover color-8" onclick="window.fecharModalCursoSequencial()"><i class="ri-close-line"></i> Cancelar</button>
+                    <button type="button" class="btn-hover color-11" id="btn-salvar-curso-sequencial" onclick="window.salvarCursoSequencial()"><i class="ri-save-line"></i> Salvar curso</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    };
+
+    window.preencherSetoresCursoSequencial = function(valoresMarcados = ['Geral']) {
+        const host = document.getElementById('curso-seq-setores');
+        if (!host) return;
+        const marcados = Array.isArray(valoresMarcados) && valoresMarcados.length ? valoresMarcados : ['Geral'];
+        host.innerHTML = '';
+        ['Geral', ...setoresGlobais].forEach(setor => {
+            const label = document.createElement('label');
+            label.style.cssText = 'font-size:13px; display:flex; align-items:center; gap:6px;';
+            label.innerHTML = `<input type="checkbox" class="curso-seq-check-setor" value="${window.escapeAttr(setor)}" ${marcados.includes(setor) ? 'checked' : ''}> ${window.escapeHTML(setor)}`;
+            host.appendChild(label);
+        });
+    };
+
+    window.preencherSelectColaboradorCursoSequencial = function(valorAtual = '') {
+        const select = document.getElementById('curso-seq-colaborador');
+        if (!select) return;
+        select.innerHTML = '<option value="">Colaborador específico: nenhum</option>';
+        (listaColaboradoresGlobal || []).slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''))).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.nome;
+            opt.textContent = `Colaborador: ${c.nome}`;
+            if (valorAtual === c.nome) opt.selected = true;
+            select.appendChild(opt);
+        });
+    };
+
+    window.adicionarEtapaCursoBuilder = function(stepData = null) {
+        const host = document.getElementById('curso-seq-builder-list');
+        if (!host) return;
+        const idx = host.children.length;
+        const step = window.normalizarEtapaCurso(stepData || window.criarEtapaCursoPadrao(idx), idx);
+        const wrap = document.createElement('div');
+        wrap.className = 'curso-step-builder';
+        wrap.style.cssText = 'background:#fff; border:1px solid #e2e8f0; border-left:5px solid var(--primary-color); border-radius:18px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow-soft);';
+        wrap.innerHTML = `
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+                <div style="font-weight:700; color:#8B252C; font-size:14px;"><i class="ri-play-list-2-line"></i> Etapa <span class="curso-step-order">${idx + 1}</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn-hover color-8" style="height:34px; font-size:11px; padding:0 12px;" onclick="window.moverEtapaCursoBuilder(this, -1)"><i class="ri-arrow-up-line"></i> Subir</button>
+                    <button type="button" class="btn-hover color-8" style="height:34px; font-size:11px; padding:0 12px;" onclick="window.moverEtapaCursoBuilder(this, 1)"><i class="ri-arrow-down-line"></i> Descer</button>
+                    <button type="button" class="btn-hover color-11" style="height:34px; font-size:11px; padding:0 12px;" onclick="window.removerEtapaCursoBuilder(this)"><i class="ri-delete-bin-6-line"></i> Remover</button>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
+                <input class="form-input curso-step-titulo" placeholder="Título da etapa" value="${window.escapeAttr(step.titulo)}">
+                <select class="form-input curso-step-tipo">
+                    <option value="video" ${step.tipoConteudo === 'video' ? 'selected' : ''}>Vídeo</option>
+                    <option value="documento" ${step.tipoConteudo === 'documento' ? 'selected' : ''}>Documento / PDF</option>
+                    <option value="texto" ${step.tipoConteudo === 'texto' ? 'selected' : ''}>Texto / instrução</option>
+                </select>
+                <input class="form-input curso-step-tempo" type="number" min="5" step="5" value="${window.escapeAttr(step.tempoMinimoSegundos)}" placeholder="Tempo mínimo (s)">
+            </div>
+            <input class="form-input curso-step-link" placeholder="Link do vídeo / documento (se houver)" value="${window.escapeAttr(step.link)}">
+            <textarea class="form-input curso-step-texto" style="height:80px; resize:vertical;" placeholder="Texto complementar ou conteúdo da etapa (use para leitura interna)">${window.escapeHTML(step.texto)}</textarea>
+            <textarea class="form-input curso-step-pergunta" style="height:70px; resize:vertical;" placeholder="Pergunta obrigatória de múltipla escolha ao final da etapa">${window.escapeHTML(step.pergunta)}</textarea>
+            <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px;">
+                <input class="form-input curso-step-op0" placeholder="Opção A" value="${window.escapeAttr(step.opcoes[0] || '')}">
+                <input class="form-input curso-step-op1" placeholder="Opção B" value="${window.escapeAttr(step.opcoes[1] || '')}">
+                <input class="form-input curso-step-op2" placeholder="Opção C" value="${window.escapeAttr(step.opcoes[2] || '')}">
+                <input class="form-input curso-step-op3" placeholder="Opção D" value="${window.escapeAttr(step.opcoes[3] || '')}">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:center;">
+                <select class="form-input curso-step-correta">
+                    <option value="0" ${step.correta === '0' ? 'selected' : ''}>Resposta correta: A</option>
+                    <option value="1" ${step.correta === '1' ? 'selected' : ''}>Resposta correta: B</option>
+                    <option value="2" ${step.correta === '2' ? 'selected' : ''}>Resposta correta: C</option>
+                    <option value="3" ${step.correta === '3' ? 'selected' : ''}>Resposta correta: D</option>
+                </select>
+                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;"><input type="checkbox" class="curso-step-fullwatch" ${step.exigirVisualizacaoCompleta ? 'checked' : ''}> Exigir visualização completa / tempo mínimo</label>
+            </div>
+            <input class="form-input curso-step-observacao" placeholder="Observação opcional ao aluno" value="${window.escapeAttr(step.observacao || '')}">
+        `;
+        host.appendChild(wrap);
+        window.renumerarEtapasCursoBuilder();
+    };
+
+    window.renumerarEtapasCursoBuilder = function() {
+        document.querySelectorAll('#curso-seq-builder-list .curso-step-builder').forEach((box, idx) => {
+            const order = box.querySelector('.curso-step-order');
+            if (order) order.textContent = idx + 1;
+        });
+    };
+
+    window.moverEtapaCursoBuilder = function(btn, direcao = 0) {
+        const box = btn.closest('.curso-step-builder');
+        const host = document.getElementById('curso-seq-builder-list');
+        if (!box || !host) return;
+        if (direcao < 0 && box.previousElementSibling) host.insertBefore(box, box.previousElementSibling);
+        if (direcao > 0 && box.nextElementSibling) host.insertBefore(box.nextElementSibling, box);
+        window.renumerarEtapasCursoBuilder();
+    };
+
+    window.removerEtapaCursoBuilder = function(btn) {
+        const box = btn.closest('.curso-step-builder');
+        if (box) box.remove();
+        if (!document.querySelector('#curso-seq-builder-list .curso-step-builder')) window.adicionarEtapaCursoBuilder();
+        window.renumerarEtapasCursoBuilder();
+    };
+
+    window.coletarEtapasCursoBuilder = function() {
+        return Array.from(document.querySelectorAll('#curso-seq-builder-list .curso-step-builder')).map((box, idx) => window.normalizarEtapaCurso({
+            titulo: box.querySelector('.curso-step-titulo')?.value || `Etapa ${idx + 1}`,
+            tipoConteudo: box.querySelector('.curso-step-tipo')?.value || 'video',
+            tempoMinimoSegundos: box.querySelector('.curso-step-tempo')?.value || '30',
+            link: box.querySelector('.curso-step-link')?.value || '',
+            texto: box.querySelector('.curso-step-texto')?.value || '',
+            pergunta: box.querySelector('.curso-step-pergunta')?.value || '',
+            opcoes: [
+                box.querySelector('.curso-step-op0')?.value || '',
+                box.querySelector('.curso-step-op1')?.value || '',
+                box.querySelector('.curso-step-op2')?.value || '',
+                box.querySelector('.curso-step-op3')?.value || ''
+            ],
+            correta: box.querySelector('.curso-step-correta')?.value || '0',
+            exigirVisualizacaoCompleta: !!box.querySelector('.curso-step-fullwatch')?.checked,
+            observacao: box.querySelector('.curso-step-observacao')?.value || ''
+        }, idx));
+    };
+
+    window.abrirModalCursoSequencial = function(docId = '', dadosAntigos = null) {
+        if (!isAdmin) return;
+        window.garantirModalCursoSequencial();
+        const data = dadosAntigos || {};
+        document.getElementById('curso-sequencial-title').textContent = docId ? 'Editar Curso Sequencial' : 'Cadastrar Curso Sequencial';
+        document.getElementById('curso-seq-doc-id').value = docId || '';
+        document.getElementById('curso-seq-titulo').value = data['Título da Atividade'] || '';
+        document.getElementById('curso-seq-pasta').value = data['Pasta / Módulo'] || '';
+        document.getElementById('curso-seq-descricao').value = data[COURSE_DESC_FIELD] || '';
+        document.getElementById('curso-seq-pontos').value = data['Pontos Valendo'] || '';
+        document.getElementById('curso-seq-nota-minima').value = data[COURSE_NOTE_FIELD] || '';
+        document.getElementById('curso-seq-certificado').value = data['Tipo de Certificado'] || 'Nenhum';
+        document.getElementById('curso-seq-carga').value = data['Carga Horária (Certificado)'] || '';
+        document.getElementById('curso-seq-texto-cert').value = data[COURSE_CERT_TEXT_FIELD] || '';
+        window.preencherSelectColaboradorCursoSequencial(data['Colaborador Específico (Opcional)'] || '');
+        const setoresMarcados = String(data['Para quais Setores?'] || 'Geral').split(',').map(s => s.trim()).filter(Boolean);
+        window.preencherSetoresCursoSequencial(setoresMarcados.length ? setoresMarcados : ['Geral']);
+        const host = document.getElementById('curso-seq-builder-list');
+        if (host) host.innerHTML = '';
+        const steps = window.lerConfiguracaoCursoSequencial(data[COURSE_FIELD] || '[]');
+        (steps.length ? steps : [window.criarEtapaCursoPadrao(0)]).forEach(step => window.adicionarEtapaCursoBuilder(step));
+        document.getElementById('modal-curso-sequencial').style.display = 'flex';
+    };
+
+    window.fecharModalCursoSequencial = function() {
+        const modal = document.getElementById('modal-curso-sequencial');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.salvarCursoSequencial = async function() {
+        const btn = document.getElementById('btn-salvar-curso-sequencial');
+        const original = btn ? btn.innerHTML : '';
+        try {
+            const docId = document.getElementById('curso-seq-doc-id')?.value || '';
+            const titulo = String(document.getElementById('curso-seq-titulo')?.value || '').trim();
+            const pasta = String(document.getElementById('curso-seq-pasta')?.value || '').trim() || 'Cursos';
+            const descricao = String(document.getElementById('curso-seq-descricao')?.value || '').trim();
+            const pontos = String(document.getElementById('curso-seq-pontos')?.value || '').trim() || '0';
+            const notaMinima = String(document.getElementById('curso-seq-nota-minima')?.value || '').trim();
+            const certificado = String(document.getElementById('curso-seq-certificado')?.value || 'Nenhum').trim();
+            const carga = String(document.getElementById('curso-seq-carga')?.value || '').trim();
+            const textoCert = String(document.getElementById('curso-seq-texto-cert')?.value || '').trim();
+            const colabEsp = String(document.getElementById('curso-seq-colaborador')?.value || '').trim();
+            const setores = Array.from(document.querySelectorAll('.curso-seq-check-setor:checked')).map(el => el.value);
+            const steps = window.coletarEtapasCursoBuilder();
+
+            if (!titulo) return alert('Informe o título do curso.');
+            if (!steps.length) return alert('Adicione ao menos uma etapa ao curso.');
+            for (let i = 0; i < steps.length; i++) {
+                const step = steps[i];
+                if (!step.titulo) return alert(`A etapa ${i + 1} está sem título.`);
+                if ((step.tipoConteudo === 'video' || step.tipoConteudo === 'documento') && !step.link && !step.texto) return alert(`A etapa ${i + 1} precisa de um link ou texto de apoio.`);
+                if (!step.pergunta) return alert(`A etapa ${i + 1} precisa de uma pergunta.`);
+                if (step.opcoes.filter(Boolean).length < 2) return alert(`A etapa ${i + 1} precisa de pelo menos 2 opções.`);
+                const correta = parseInt(step.correta, 10);
+                if (!Number.isFinite(correta) || !step.opcoes[correta]) return alert(`Defina uma resposta correta válida na etapa ${i + 1}.`);
+            }
+            if (btn) btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Salvando curso...';
+
+            const dados = {
+                'Título da Atividade': titulo,
+                'Pasta / Módulo': pasta,
+                'Tipo (Vídeo, PDF, Tarefa, Prova)': COURSE_TYPE,
+                'Link do Material (Se houver)': '',
+                'Colaborador Específico (Opcional)': colabEsp,
+                'Para quais Setores?': (setores.length ? setores : ['Geral']).join(', '),
+                'Pontos Valendo': pontos,
+                'Modo de Controle': 'curso_sequencial',
+                'Permite Pausa?': 'Sim',
+                'Limite de Infrações': '3',
+                'Regra ao Sair': 'inconclusa',
+                'Configuração da Avaliação': '[]',
+                [COURSE_FIELD]: JSON.stringify(steps),
+                [COURSE_DESC_FIELD]: descricao,
+                [COURSE_NOTE_FIELD]: notaMinima,
+                'Tipo de Certificado': certificado,
+                'Carga Horária (Certificado)': carga,
+                [COURSE_CERT_TEXT_FIELD]: textoCert,
+                totalEtapas: steps.length,
+                atualizadoEmCurso: new Date().toISOString(),
+                atualizadoPorCurso: emailLogado || 'Gestor'
+            };
+
+            if (docId) {
+                const atual = (window.todosTreinamentosData || []).find(i => i.id === docId);
+                if (atual?.data?.progresso_alunos) dados.progresso_alunos = atual.data.progresso_alunos;
+                if (atual?.data?.leituras) dados.leituras = atual.data.leituras;
+                if (atual?.data?.respostas_alunos) dados.respostas_alunos = atual.data.respostas_alunos;
+                await window.updateDoc(window.doc(window.db, 'treinamentos', docId), dados);
+            } else {
+                await window.addDoc(window.collection(window.db, 'treinamentos'), dados);
+            }
+            alert(docId ? 'Curso atualizado com sucesso!' : 'Curso cadastrado com sucesso!');
+            window.fecharModalCursoSequencial();
+        } catch (e) {
+            alert('Erro ao salvar o curso: ' + (e?.message || e));
+        } finally {
+            if (btn) btn.innerHTML = original;
+        }
+    };
+
+    window.garantirModalCursoAluno = function() {
+        if (document.getElementById('modal-curso-aluno')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'modal-curso-aluno';
+        overlay.className = 'modal-overlay';
+        overlay.style.display = 'none';
+        overlay.style.zIndex = '10040';
+        overlay.innerHTML = `
+            <div class="modal-box" style="max-width:1100px; width:96vw; max-height:94vh;">
+                <div class="modal-header">
+                    <h3 id="curso-aluno-titulo">Curso</h3>
+                    <button type="button" class="btn-icon" onclick="window.fecharModalCursoAluno()"><i class="ri-close-line"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div style="margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+                            <div id="curso-aluno-subtitulo" style="font-size:13px; color:#64748b;">Etapa atual</div>
+                            <div id="curso-aluno-meta" style="font-size:12px; color:#334155; font-weight:700;"></div>
+                        </div>
+                        <div style="height:12px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                            <div id="curso-aluno-progressbar" style="height:100%; width:0%; background:linear-gradient(90deg, #8B252C, #e53e3e);"></div>
+                        </div>
+                    </div>
+                    <div id="curso-aluno-resumo-final" style="display:none; margin-bottom:14px;"></div>
+                    <div style="display:grid; grid-template-columns:280px minmax(0,1fr); gap:16px; align-items:start;">
+                        <div id="curso-aluno-trilha" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:18px; padding:14px; max-height:65vh; overflow:auto;"></div>
+                        <div>
+                            <div id="curso-aluno-etapa-box" style="background:#fff; border:1px solid #e2e8f0; border-radius:18px; padding:18px; box-shadow:var(--shadow-soft);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    };
+
+    window.fecharModalCursoAluno = function() {
+        const modal = document.getElementById('modal-curso-aluno');
+        if (modal) modal.style.display = 'none';
+        if (window._cursoAlunoTimer) { clearInterval(window._cursoAlunoTimer); window._cursoAlunoTimer = null; }
+        window._cursoAlunoSessao = null;
+    };
+
+    window.htmlConteudoCursoAluno = function(step = {}) {
+        if (step.tipoConteudo === 'texto') {
+            return `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px; white-space:pre-wrap; line-height:1.6; color:#334155;">${window.escapeHTML(step.texto || 'Conteúdo de leitura.')}</div>`;
+        }
+        if (step.tipoConteudo === 'documento') {
+            const src = step.link ? window.obterUrlEmbedMaterial(step.link) : '';
+            return `${step.texto ? `<div style="white-space:pre-wrap; line-height:1.6; color:#334155; margin-bottom:12px;">${window.escapeHTML(step.texto)}</div>` : ''}${src ? `<div style="position:relative; padding-top:66%; border-radius:14px; overflow:hidden; border:1px solid #e2e8f0; background:#fff;"><iframe src="${window.escapeAttr(src)}" style="position:absolute; inset:0; width:100%; height:100%; border:none;" allowfullscreen></iframe></div>` : `<div style="padding:16px; border:1px dashed #cbd5e1; border-radius:14px; color:#64748b;">Documento sem link configurado.</div>`}`;
+        }
+        if (step.link && /\.(mp4|webm|ogg)(\?|#|$)/i.test(step.link)) {
+            return `<video id="curso-video-player" controls controlsList="nodownload noplaybackrate" disablepictureinpicture style="width:100%; max-height:420px; background:#000; border-radius:14px; border:1px solid #e2e8f0;" src="${window.escapeAttr(step.link)}"></video>${step.texto ? `<div style="white-space:pre-wrap; line-height:1.6; color:#334155; margin-top:12px;">${window.escapeHTML(step.texto)}</div>` : ''}`;
+        }
+        const embed = step.link ? window.obterUrlEmbedMaterial(step.link) : '';
+        return `${step.texto ? `<div style="white-space:pre-wrap; line-height:1.6; color:#334155; margin-bottom:12px;">${window.escapeHTML(step.texto)}</div>` : ''}${embed ? `<div style="position:relative; padding-top:56.25%; border-radius:14px; overflow:hidden; border:1px solid #e2e8f0; background:#000;"><iframe src="${window.escapeAttr(embed)}" allow="autoplay; fullscreen" allowfullscreen style="position:absolute; inset:0; width:100%; height:100%; border:none;"></iframe></div>` : `<div style="padding:16px; border:1px dashed #cbd5e1; border-radius:14px; color:#64748b;">Vídeo sem link configurado.</div>`}`;
+    };
+
+    window.atualizarNavegacaoCursoAluno = function(sessao = null) {
+        const s = sessao || window._cursoAlunoSessao;
+        if (!s) return;
+        const trilha = document.getElementById('curso-aluno-trilha');
+        const bar = document.getElementById('curso-aluno-progressbar');
+        const sub = document.getElementById('curso-aluno-subtitulo');
+        const meta = document.getElementById('curso-aluno-meta');
+        if (!trilha || !bar || !sub || !meta) return;
+        trilha.innerHTML = s.steps.map((step, idx) => {
+            const done = s.progress.etapasConcluidas.includes(idx);
+            const active = idx === s.progress.etapaAtual && !s.progress.finalizado;
+            const locked = !done && idx > s.progress.etapaAtual;
+            const cor = done ? '#38a169' : active ? '#3182ce' : '#94a3b8';
+            return `<div style="padding:12px; border-radius:14px; border:1px solid ${active ? '#93c5fd' : '#e2e8f0'}; margin-bottom:10px; background:${active ? '#eff6ff' : '#fff'}; opacity:${locked ? '0.7' : '1'};"><div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;"><div><div style="font-size:12px; color:${cor}; font-weight:700; text-transform:uppercase;">Etapa ${idx + 1}</div><div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.35;">${window.escapeHTML(step.titulo)}</div></div><div style="font-size:18px; color:${cor};"><i class="${done ? 'ri-check-double-line' : active ? 'ri-play-circle-line' : 'ri-lock-line'}"></i></div></div></div>`;
+        }).join('');
+        const total = s.steps.length || 1;
+        const pct = s.progress.finalizado ? 100 : Math.round((s.progress.etapasConcluidas.length / total) * 100);
+        bar.style.width = `${pct}%`;
+        sub.textContent = s.progress.finalizado ? 'Curso concluído' : `Etapa ${Math.min(s.progress.etapaAtual + 1, total)} de ${total}`;
+        meta.textContent = `Progresso ${pct}% • Acertos ${s.progress.acertos}/${total}`;
+    };
+
+    window.inicializarControleVideoCursoAluno = function(step = {}, idx = 0) {
+        const video = document.getElementById('curso-video-player');
+        if (!video) {
+            window.iniciarContagemConteudoCursoAluno(step, idx, false);
+            return;
+        }
+        const notice = document.getElementById('curso-conteudo-status');
+        let maxAssistido = 0;
+        let bloqueado = false;
+        const desbloquear = () => {
+            if (bloqueado) return;
+            bloqueado = true;
+            if (notice) notice.innerHTML = '<span style="color:#166534; font-weight:700;"><i class="ri-checkbox-circle-fill"></i> Vídeo concluído. A pergunta foi liberada.</span>';
+            window.liberarPerguntaEtapaCursoAluno(idx);
+        };
+        video.addEventListener('timeupdate', () => {
+            if (video.currentTime > maxAssistido + 1.5 && !video.seeking) {
+                video.currentTime = maxAssistido;
+                return;
+            }
+            maxAssistido = Math.max(maxAssistido, video.currentTime || 0);
+            if (notice && !bloqueado) {
+                notice.innerHTML = `<span style="color:#9a3412; font-weight:700;"><i class="ri-time-line"></i> Assista sem avançar o vídeo para liberar a pergunta.</span>`;
+            }
+            if (video.duration && maxAssistido >= Math.max(video.duration - 0.6, 1)) desbloquear();
+        });
+        video.addEventListener('seeking', () => {
+            if (video.currentTime > maxAssistido + 1.5) video.currentTime = maxAssistido;
+        });
+        video.addEventListener('ratechange', () => {
+            if (video.playbackRate !== 1) video.playbackRate = 1;
+        });
+        video.addEventListener('ended', desbloquear);
+    };
+
+    window.iniciarContagemConteudoCursoAluno = function(step = {}, idx = 0, renderizarMensagem = true) {
+        if (window._cursoAlunoTimer) clearInterval(window._cursoAlunoTimer);
+        const status = document.getElementById('curso-conteudo-status');
+        const btn = document.getElementById('btn-liberar-pergunta-curso');
+        let restante = Math.max(1, parseInt(step.tempoMinimoSegundos || 20, 10) || 20);
+        if (btn) btn.disabled = true;
+        const tick = () => {
+            if (status && renderizarMensagem) status.innerHTML = `<span style="color:#9a3412; font-weight:700;"><i class="ri-timer-line"></i> Permaneça no material por mais <b>${restante}s</b> para liberar a pergunta.</span>`;
+            if (restante <= 0) {
+                clearInterval(window._cursoAlunoTimer);
+                window._cursoAlunoTimer = null;
+                if (btn) btn.disabled = false;
+                if (status) status.innerHTML = '<span style="color:#166534; font-weight:700;"><i class="ri-checkbox-circle-fill"></i> Conteúdo concluído. Clique para responder a pergunta.</span>';
+                return;
+            }
+            restante -= 1;
+        };
+        tick();
+        window._cursoAlunoTimer = setInterval(tick, 1000);
+    };
+
+    window.liberarPerguntaEtapaCursoAluno = function(idx = 0) {
+        const s = window._cursoAlunoSessao;
+        if (!s) return;
+        if (s.stepPerguntaLiberada === idx) return;
+        s.stepPerguntaLiberada = idx;
+        const question = document.getElementById('curso-aluno-question-box');
+        if (question) question.style.display = 'block';
+        const btn = document.getElementById('btn-liberar-pergunta-curso');
+        if (btn) btn.style.display = 'none';
+    };
+
+    window.renderizarEtapaAtualCursoAluno = function() {
+        const s = window._cursoAlunoSessao;
+        if (!s) return;
+        const box = document.getElementById('curso-aluno-etapa-box');
+        const resumoFinal = document.getElementById('curso-aluno-resumo-final');
+        if (!box || !resumoFinal) return;
+        window.atualizarNavegacaoCursoAluno(s);
+        if (s.progress.finalizado) {
+            const notaMin = window.obterNotaMinimaCertificado ? window.obterNotaMinimaCertificado(s.item.data || {}) : null;
+            const aprovado = notaMin === null || s.progress.notaFinal >= notaMin;
+            const eleg = window.obterElegibilidadeCertificadoTreinamento ? window.obterElegibilidadeCertificadoTreinamento(s.item, s.nomeAluno) : { participacao: false, conclusao: false };
+            const tipoCert = eleg.conclusao ? 'conclusao' : (eleg.participacao ? 'participacao' : '');
+            resumoFinal.style.display = 'block';
+            resumoFinal.innerHTML = `<div style="padding:16px; border-radius:16px; border:1px solid ${aprovado ? '#86efac' : '#fdba74'}; background:${aprovado ? '#f0fdf4' : '#fff7ed'};"><div style="font-weight:700; font-size:16px; margin-bottom:8px; color:${aprovado ? '#166534' : '#9a3412'};"><i class="${aprovado ? 'ri-medal-fill' : 'ri-information-line'}"></i> Curso finalizado</div><div style="font-size:14px; color:#334155; line-height:1.6;">Nota final: <b>${s.progress.notaFinal.toFixed(1)}</b> • Acertos: <b>${s.progress.acertos}/${s.steps.length}</b>${notaMin !== null ? ` • Nota mínima: <b>${notaMin}</b>` : ''}</div><div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">${tipoCert ? `<button class="btn-hover color-5" onclick="window.abrirModalCertificadoTreinamento('${s.docId}','${tipoCert}')"><i class="ri-award-line"></i> Certificado</button>` : ''}<button class="btn-hover color-8" onclick="window.fecharModalCursoAluno()"><i class="ri-close-line"></i> Fechar</button></div></div>`;
+            box.innerHTML = '<div style="padding:24px; text-align:center; color:#64748b;">Todas as etapas já foram concluídas.</div>';
+            return;
+        }
+        resumoFinal.style.display = 'none';
+        const idx = s.progress.etapaAtual;
+        const step = s.steps[idx];
+        const respostaSalva = Array.isArray(s.progress.respostas) ? s.progress.respostas.find(r => parseInt(r.etapa, 10) === idx) : null;
+        const opcoesHtml = step.opcoes.map((op, opIdx) => op ? `<label style="display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; cursor:pointer;"><input type="radio" name="curso-step-resposta" value="${opIdx}" ${String(respostaSalva?.marcada ?? '') === String(opIdx) ? 'checked' : ''}> <span>${window.escapeHTML(op)}</span></label>` : '').join('');
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; margin-bottom:14px;">
+                <div>
+                    <div style="font-size:12px; text-transform:uppercase; color:#8B252C; font-weight:700; margin-bottom:4px;">${window.escapeHTML(step.tipoConteudo)}</div>
+                    <div style="font-size:22px; font-weight:700; color:#0f172a; line-height:1.2;">${window.escapeHTML(step.titulo)}</div>
+                </div>
+                <div style="font-size:12px; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:8px 12px; font-weight:700;">Pergunta liberada após conteúdo</div>
+            </div>
+            ${step.observacao ? `<div style="margin-bottom:12px; padding:12px; border-radius:12px; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; font-size:13px;">${window.escapeHTML(step.observacao)}</div>` : ''}
+            <div>${window.htmlConteudoCursoAluno(step)}</div>
+            <div id="curso-conteudo-status" style="margin:14px 0 10px; font-size:13px;"></div>
+            <button id="btn-liberar-pergunta-curso" type="button" class="btn-hover color-9" style="display:${step.tipoConteudo === 'video' && step.link && /\.(mp4|webm|ogg)(\?|#|$)/i.test(step.link) ? 'none' : 'inline-flex'}; height:38px; font-size:12px; ${step.exigirVisualizacaoCompleta ? '' : 'display:none;'}" onclick="window.liberarPerguntaEtapaCursoAluno(${idx})"><i class="ri-question-answer-line"></i> Responder pergunta</button>
+            <div id="curso-aluno-question-box" style="display:none; margin-top:16px; padding-top:16px; border-top:1px dashed #cbd5e1;">
+                <div style="font-weight:700; font-size:15px; color:#0f172a; margin-bottom:12px;">Pergunta da etapa</div>
+                <div style="font-size:14px; color:#334155; margin-bottom:12px; line-height:1.5;">${window.escapeHTML(step.pergunta || '')}</div>
+                <div>${opcoesHtml}</div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px; flex-wrap:wrap;">
+                    <button type="button" class="btn-hover color-11" onclick="window.confirmarRespostaEtapaCursoAluno()"><i class="ri-check-line"></i> Confirmar resposta</button>
+                </div>
+            </div>`;
+
+        s.stepPerguntaLiberada = null;
+        if (!step.exigirVisualizacaoCompleta) {
+            document.getElementById('btn-liberar-pergunta-curso').style.display = 'inline-flex';
+            document.getElementById('btn-liberar-pergunta-curso').disabled = false;
+            document.getElementById('curso-conteudo-status').innerHTML = '<span style="color:#166534; font-weight:700;"><i class="ri-checkbox-circle-fill"></i> Você já pode responder a pergunta desta etapa.</span>';
+        } else if (step.tipoConteudo === 'video' && step.link && /\.(mp4|webm|ogg)(\?|#|$)/i.test(step.link)) {
+            window.inicializarControleVideoCursoAluno(step, idx);
+        } else {
+            window.iniciarContagemConteudoCursoAluno(step, idx, true);
+        }
+    };
+
+    window.confirmarRespostaEtapaCursoAluno = async function() {
+        const s = window._cursoAlunoSessao;
+        if (!s) return;
+        const idx = s.progress.etapaAtual;
+        const step = s.steps[idx];
+        const marcada = document.querySelector('input[name="curso-step-resposta"]:checked');
+        if (!marcada) return alert('Selecione uma resposta para continuar.');
+        const correta = String(step.correta) === String(marcada.value);
+        const respostas = Array.isArray(s.progress.respostas) ? s.progress.respostas.filter(r => parseInt(r.etapa, 10) !== idx) : [];
+        respostas.push({ etapa: idx, marcada: String(marcada.value), correta, titulo: step.titulo, pergunta: step.pergunta, resposta: step.opcoes[parseInt(marcada.value, 10)] || '' });
+        const concluidas = Array.from(new Set([...(s.progress.etapasConcluidas || []), idx])).sort((a, b) => a - b);
+        const acertos = respostas.filter(r => r.correta).length;
+        const finalizado = concluidas.length >= s.steps.length;
+        const proxima = finalizado ? idx : Math.min(idx + 1, s.steps.length - 1);
+        const notaFinal = Number(((acertos / s.steps.length) * 10).toFixed(2));
+        const notaMin = window.obterNotaMinimaCertificado ? window.obterNotaMinimaCertificado(s.item.data || {}) : null;
+        const liberouCertificado = finalizado && (notaMin === null || notaFinal >= notaMin);
+        const patch = {
+            respostas,
+            etapasConcluidas: concluidas,
+            etapaAtual: proxima,
+            acertos,
+            total: s.steps.length,
+            notaFinal,
+            finalizado,
+            liberouCertificado,
+            percentual: Math.round((concluidas.length / s.steps.length) * 100)
+        };
+        s.progress = { ...s.progress, ...patch };
+        await window.salvarProgressoCursoSequencial(s.docId, s.nomeAluno, patch);
+        if (finalizado) {
+            await window.upsertResumoCursoSequencial(s.docId, s.item, s.nomeAluno, s.progress);
+            alert(`Curso concluído! Nota final: ${notaFinal.toFixed(1)}`);
+        } else {
+            alert(correta ? 'Resposta correta! Avançando para a próxima etapa.' : 'Resposta registrada. Vamos para a próxima etapa.');
+        }
+        if (window.renderizarTrilhaAluno) window.renderizarTrilhaAluno();
+        window.renderizarEtapaAtualCursoAluno();
+    };
+
+    window.abrirCursoSequencialAluno = function(docId = '') {
+        if (!window.alunoLogado) return;
+        const item = (window.todosTreinamentosData || []).find(i => i.id === docId);
+        if (!item) return;
+        const steps = window.lerConfiguracaoCursoSequencial(item.data?.[COURSE_FIELD] || '[]');
+        if (!steps.length) return alert('Este curso ainda não possui etapas configuradas.');
+        const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
+        const progress = window.obterProgressoCursoSequencial(item, nomeAluno);
+        window.garantirModalCursoAluno();
+        window._cursoAlunoSessao = { docId, item, steps, nomeAluno, progress, stepPerguntaLiberada: null };
+        document.getElementById('curso-aluno-titulo').textContent = item.data?.['Título da Atividade'] || 'Curso';
+        document.getElementById('modal-curso-aluno').style.display = 'flex';
+        window.renderizarEtapaAtualCursoAluno();
+    };
+
+    const oldAbrirModalCursoPatch = window.abrirModal;
+    window.abrirModal = function(colecao, docId = null, dadosAntigos = null) {
+        if (colecao === 'treinamentos' && window.isCursoSequencialTreinamento(dadosAntigos || {})) {
+            window.abrirModalCursoSequencial(docId || '', dadosAntigos || {});
+            return;
+        }
+        return oldAbrirModalCursoPatch(colecao, docId, dadosAntigos);
+    };
+
+    const oldAbrirListaLeiturasCurso = window.abrirListaLeituras;
+    window.abrirListaLeituras = function(docId, colecao) {
+        if (colecao === 'treinamentos') {
+            const item = (window.todosTreinamentosData || []).find(i => i.id === docId);
+            if (item && window.isCursoSequencialTreinamento(item.data || {})) {
+                const modal = document.getElementById('modal-leituras');
+                const titulo = document.getElementById('modal-leitura-titulo');
+                const areaOk = document.getElementById('lista-lidos-content');
+                const areaPend = document.getElementById('lista-falta-content');
+                if (!modal || !titulo || !areaOk || !areaPend) return;
+                const publico = window.obterPublicoAlvo(item.data['Para quais Setores?'], item.data['Colaborador Específico (Opcional)']);
+                const progressos = window.listarProgressoTreinamento(item.data || {});
+                const concluidos = [];
+                const andamento = [];
+                progressos.forEach(p => {
+                    const curso = p?.[COURSE_PROGRESS_KEY];
+                    if (!curso) return;
+                    const totalEtapas = parseInt(curso.total || item.data.totalEtapas || 0, 10) || 0;
+                    const qtd = Array.isArray(curso.etapasConcluidas) ? curso.etapasConcluidas.length : 0;
+                    const nota = Number.isFinite(parseFloat(curso.notaFinal)) ? parseFloat(curso.notaFinal).toFixed(1) : '--';
+                    const baseHtml = `<strong style="display:block; color:#0f172a;">${window.escapeHTML(p.nome || 'Colaborador')}</strong><span style="font-size:12px; color:#64748b;">${qtd}/${totalEtapas} etapa(s) concluída(s) • Nota: ${nota}</span><div style="margin-top:8px; font-size:12px; color:#475569;">Último acesso: ${window.escapeHTML(curso.ultimoAcessoEm || p.ultima_interacao_em || '-')}</div>`;
+                    if (curso.finalizado) concluidos.push(`<div style="padding:12px; border-radius:12px; background:#fff; border-left:4px solid #38a169; margin-bottom:10px; box-shadow:var(--shadow-soft);">${baseHtml}</div>`);
+                    else andamento.push(`<div style="padding:12px; border-radius:12px; background:#fff; border-left:4px solid #3182ce; margin-bottom:10px; box-shadow:var(--shadow-soft);">${baseHtml}</div>`);
+                });
+                const nomesRegistrados = new Set(progressos.map(p => p.nome));
+                const faltantes = publico.filter(nome => !nomesRegistrados.has(nome));
+                titulo.textContent = `Progresso do curso: ${item.data['Título da Atividade'] || 'Curso'}`;
+                areaOk.innerHTML = concluidos.length || andamento.length ? [...concluidos, ...andamento].join('') : '<div style="padding:12px; border:1px dashed #cbd5e1; border-radius:12px; color:#64748b; background:#f8fafc;">Nenhum progresso registrado ainda.</div>';
+                areaPend.innerHTML = faltantes.length ? faltantes.map(nome => `<div style="padding:12px; border-radius:12px; background:#fff; border-left:4px solid #e53e3e; margin-bottom:10px; box-shadow:var(--shadow-soft);"><strong style="display:block; color:#0f172a;">${window.escapeHTML(nome)}</strong><span style="font-size:12px; color:#64748b;">Ainda não iniciou o curso.</span></div>`).join('') : '<div style="padding:12px; border:1px dashed #cbd5e1; border-radius:12px; color:#64748b; background:#f8fafc;">Todos já iniciaram o curso.</div>';
+                modal.style.display = 'flex';
+                return;
+            }
+        }
+        return oldAbrirListaLeiturasCurso(docId, colecao);
+    };
+
+    const oldObterNotaAlunoCurso = window.obterNotaAlunoTreinamento;
+    window.obterNotaAlunoTreinamento = function(item = {}, nomeAluno = '') {
+        if (window.isCursoSequencialTreinamento(item.data || item || {})) {
+            const progresso = window.obterProgressoCursoSequencial(item, nomeAluno);
+            return Number.isFinite(parseFloat(progresso.notaFinal)) ? parseFloat(progresso.notaFinal) : null;
+        }
+        return typeof oldObterNotaAlunoCurso === 'function' ? oldObterNotaAlunoCurso(item, nomeAluno) : null;
+    };
+
+    const oldElegibilidadeCurso = window.obterElegibilidadeCertificadoTreinamento;
+    window.obterElegibilidadeCertificadoTreinamento = function(item = {}, nomeAluno = '') {
+        if (window.isCursoSequencialTreinamento(item.data || item || {})) {
+            const data = item.data || item || {};
+            const tipoCert = String(data['Tipo de Certificado'] || 'Nenhum').toLowerCase();
+            const progresso = window.obterProgressoCursoSequencial(item, nomeAluno);
+            const notaMinima = window.obterNotaMinimaCertificado ? window.obterNotaMinimaCertificado(data) : null;
+            const notaAluno = Number.isFinite(parseFloat(progresso.notaFinal)) ? parseFloat(progresso.notaFinal) : null;
+            const atendeNota = notaMinima === null || (notaAluno !== null && notaAluno >= notaMinima);
+            const participacao = ['participação', 'participacao', 'ambos'].includes(tipoCert) && progresso.finalizado && atendeNota;
+            const conclusao = ['conclusão', 'conclusao', 'ambos'].includes(tipoCert) && progresso.finalizado && atendeNota;
+            return { participacao, conclusao, notaMinima, notaAluno, atendeNota };
+        }
+        return typeof oldElegibilidadeCurso === 'function' ? oldElegibilidadeCurso(item, nomeAluno) : { participacao: false, conclusao: false };
+    };
+
+    window.recalcularResumoAlunoTrilha = function() {
+        if (!window.alunoLogado) return;
+        const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
+        const setorAluno = window.alunoLogado['Setor da Clínica'] || 'Geral';
+        let pontos = 0;
+        let pendentes = 0;
+        const treinamentosAluno = (window.todosTreinamentosData || []).filter(item => {
+            const setorAlvo = String(item.data['Para quais Setores?'] || 'Geral');
+            const colabAlvo = String(item.data['Colaborador Específico (Opcional)'] || '');
+            if (colabAlvo && !colabAlvo.includes('Nenhum')) return colabAlvo === nomeAluno;
+            return setorAlvo.includes('Geral') || setorAlvo.includes(setorAluno);
+        });
+        treinamentosAluno.forEach(item => {
+            const d = item.data || {};
+            if (window.isCursoSequencialTreinamento(d)) {
+                const p = window.obterProgressoCursoSequencial(item, nomeAluno);
+                if (p.finalizado) pontos += parseFloat(d['Pontos Valendo'] || p.notaFinal || 0) || 0;
+                else pendentes += 1;
+                return;
+            }
+            const respostas = d.respostas_alunos || [];
+            let minhaResposta = null; respostas.forEach(r => { const obj = window.safeParseJSON(r, null); if (obj && obj.nome === nomeAluno) minhaResposta = obj; });
+            const progresso = window.obterProgressoAlunoTreinamento ? window.obterProgressoAlunoTreinamento(d, nomeAluno) : null;
+            const statusProgresso = String(progresso?.status || 'pendente');
+            const jaLeu = (d.leituras || []).some(txt => String(txt).startsWith(nomeAluno));
+            const tipo = d['Tipo (Vídeo, PDF, Tarefa, Prova)'] || 'Vídeo';
+            const precisaResponder = tipo.includes('Tarefa') || tipo.includes('Prova');
+            const pontosItem = parseInt(d['Pontos Valendo'], 10) || 0;
+            if (precisaResponder) {
+                if (statusProgresso === 'zerada_por_saida') return;
+                if (minhaResposta) {
+                    const nota = minhaResposta.nota_total_calculada !== undefined && minhaResposta.nota_total_calculada !== '' ? minhaResposta.nota_total_calculada : minhaResposta.nota;
+                    if (nota !== '' && nota !== undefined && nota !== null) pontos += parseFloat(nota) || 0;
+                } else pendentes += 1;
+            } else {
+                if (jaLeu) pontos += pontosItem;
+                else pendentes += 1;
+            }
+        });
+        const ptsEl = document.getElementById('aluno-pontos');
+        const pendEl = document.getElementById('aluno-tarefas-pendentes');
+        if (ptsEl) ptsEl.textContent = String(Number(pontos.toFixed(1)).toString().replace('.0', ''));
+        if (pendEl) pendEl.textContent = String(pendentes);
+    };
+
+    const oldRenderTrilhaCurso = window.renderizarTrilhaAluno;
+    window.renderizarTrilhaAluno = function() {
+        if (typeof oldRenderTrilhaCurso === 'function') oldRenderTrilhaCurso();
+        if (!window.alunoLogado) return;
+        const grid = document.getElementById('grid-trilha-aluno');
+        if (!grid) return;
+        const nomeAluno = window.alunoLogado['Nome Completo do Colaborador'];
+        const setorAluno = window.alunoLogado['Setor da Clínica'] || 'Geral';
+        const treinamentosAluno = (window.todosTreinamentosData || []).filter(item => {
+            const setorAlvo = String(item.data['Para quais Setores?'] || 'Geral');
+            const colabAlvo = String(item.data['Colaborador Específico (Opcional)'] || '');
+            if (colabAlvo && !colabAlvo.includes('Nenhum')) return colabAlvo === nomeAluno;
+            return setorAlvo.includes('Geral') || setorAlvo.includes(setorAluno);
+        });
+        Array.from(grid.children).forEach((card, idx) => {
+            const item = treinamentosAluno[idx];
+            if (!item || !window.isCursoSequencialTreinamento(item.data || {})) return;
+            const data = item.data || {};
+            const steps = window.lerConfiguracaoCursoSequencial(data[COURSE_FIELD] || '[]');
+            const progress = window.obterProgressoCursoSequencial(item, nomeAluno);
+            const notaMin = window.obterNotaMinimaCertificado ? window.obterNotaMinimaCertificado(data) : null;
+            const okNota = notaMin === null || progress.notaFinal >= notaMin;
+            const statusTexto = progress.finalizado ? (okNota ? `Concluído • Nota ${progress.notaFinal.toFixed(1)}` : `Concluído • Nota ${progress.notaFinal.toFixed(1)} (sem certificado)`) : `${progress.etapasConcluidas.length}/${steps.length} etapa(s) concluídas`;
+            const cor = progress.finalizado ? (okNota ? '#38a169' : '#dd6b20') : '#3182ce';
+            const descricao = String(data[COURSE_DESC_FIELD] || '').trim();
+            const eleg = window.obterElegibilidadeCertificadoTreinamento ? window.obterElegibilidadeCertificadoTreinamento(item, nomeAluno) : { participacao: false, conclusao: false };
+            const tipoCert = eleg.conclusao ? 'conclusao' : (eleg.participacao ? 'participacao' : '');
+            card.innerHTML = `
+                <div style="font-size:10px; opacity:.8; text-transform:uppercase; font-weight:700; margin-bottom:6px; color: var(--primary-color);"><i class="ri-graduation-cap-line"></i> CURSO SEQUENCIAL • ${window.escapeHTML(data['Pasta / Módulo'] || 'Cursos')}</div>
+                <div style="font-size:18px; font-weight:700; line-height:1.25; margin-bottom:8px; color:#0f172a;">${window.escapeHTML(data['Título da Atividade'] || 'Curso')}</div>
+                ${descricao ? `<div style="font-size:13px; color:#64748b; margin-bottom:12px; line-height:1.5;">${window.escapeHTML(descricao)}</div>` : ''}
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <span style="font-size:12px; font-weight:700; color:#334155; background:#f8fafc; border:1px solid #e2e8f0; padding:6px 10px; border-radius:999px;">${steps.length} etapa(s)</span>
+                    ${data['Pontos Valendo'] ? `<span style="font-size:12px; font-weight:700; color:#92400e; background:#fff7ed; border:1px solid #fdba74; padding:6px 10px; border-radius:999px;">${window.escapeHTML(data['Pontos Valendo'])} XP</span>` : ''}
+                    ${notaMin !== null ? `<span style="font-size:12px; font-weight:700; color:#1d4ed8; background:#eff6ff; border:1px solid #93c5fd; padding:6px 10px; border-radius:999px;">Nota mín.: ${window.escapeHTML(String(notaMin))}</span>` : ''}
+                </div>
+                <div style="margin-bottom:10px;">
+                    <div style="height:10px; background:#e2e8f0; border-radius:999px; overflow:hidden;"><div style="height:100%; width:${progress.finalizado ? 100 : progress.percentual}%; background:linear-gradient(90deg, #8B252C, #e53e3e);"></div></div>
+                </div>
+                <div style="font-size:13px; color:#334155; margin-bottom:14px;"><b>Status:</b> <span style="color:${cor}; font-weight:700;">${window.escapeHTML(statusTexto)}</span></div>
+                <button onclick="window.abrirCursoSequencialAluno('${item.id}')" class="btn-hover color-11" style="width:100%; height:38px; border-radius:10px; font-size:13px; background:#3182ce; border:none;"> <i class="ri-play-circle-line"></i> ${progress.finalizado ? 'Ver resultado do curso' : progress.etapasConcluidas.length ? 'Continuar curso' : 'Iniciar curso'} </button>
+                ${tipoCert ? `<button onclick="window.abrirModalCertificadoTreinamento('${item.id}','${tipoCert}')" class="btn-hover color-5" style="width:100%; height:36px; border-radius:10px; font-size:12px; margin-top:8px;"><i class="ri-award-line"></i> Certificado</button>` : ''}`;
+            card.style.border = `2px solid ${cor}`;
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.background = '#fff';
+            card.style.borderRadius = '12px';
+            card.style.padding = '16px';
+        });
+        window.recalcularResumoAlunoTrilha();
+    };
+
+    const oldRenderizarCardsCurso = window.renderizarCards;
+    window.renderizarCards = function(colecaoNome, opts = {}) {
+        const retorno = oldRenderizarCardsCurso(colecaoNome, opts);
+        if (colecaoNome === 'treinamentos') {
+            setTimeout(() => {
+                window.garantirBotoesCursoSequencialAdmin();
+                if (typeof window.renderizarAlertasCertificadosPendentes === 'function') window.renderizarAlertasCertificadosPendentes();
+            }, 80);
+        }
+        return retorno;
+    };
+
+    window.abrirCadastroCurso = function() { window.abrirModalCursoSequencial(); };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            window.garantirModalCursoSequencial();
+            window.garantirModalCursoAluno();
+            window.garantirBotoesCursoSequencialAdmin();
+        }, 500);
+    });
+})();
